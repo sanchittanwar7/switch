@@ -17,9 +17,9 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
 
 - [x] **1.2 Backend foundation**
   - Express server with JSON body parser, CORS, error handler
-  - Workspace init: on startup, ensure `~/.switch/{resumes,kanban.json,settings.json}` exist
+  - Workspace init: on startup, ensure `~/.switch/{user_id}/{resumes}` exist (per-user)
   - Settings read/write helpers (`getSettings()`, `updateSettings()`)
-  - Path resolution utility: resolve relative path → absolute under workspace root, block `..`
+  - Path resolution utility: resolve relative path → absolute under user's workspace root, block `..`
   - **~200 LOC**
 
 - [x] **1.3 Frontend shell**
@@ -29,11 +29,23 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
   - Base layout CSS: sidebar fixed left, content area fills remaining
   - **~200 LOC**
 
+- [ ] **1.4 Google Auth + User Scoping**
+  - Install `@supabase/supabase-js` on client + server
+  - `<LoginPage>` with "Sign in with Google" button → Supabase OAuth redirect flow
+  - `<AuthContext>` — React context providing `user`, `session`, `login`, `logout`
+  - `supabaseClient` utility on frontend for session management
+  - `JWT middleware` on server: verify Supabase JWT using service key, extract `user_id` → `req.userId`
+  - `ensureUser` on first call: upsert into `users` table (sync from Supabase Auth)
+  - `GET /api/auth/me` — return current user profile
+  - Protected routes: redirect to `/login` if no valid session
+  - File paths scoped: `~/.switch/{user_id}/` instead of `~/.switch/`
+  - **~250 LOC**
+
 ---
 
 ## Phase 2: Backend API Routes
 
-- [ ] **2.1 Filesystem API**
+- [x] **2.1 Filesystem API**
   - `GET /api/fs/list` — `fs.readdir` with stats, returns `[{ name, type }]`
   - `GET /api/fs/read` — `fs.readFile`, returns `{ content }`
   - `PUT /api/fs/write` — `fs.writeFile` with `recursive: true`
@@ -42,15 +54,21 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
   - `POST /api/fs/rename` — `fs.rename`
   - **~200 LOC**
 
-- [ ] **2.2 Kanban API**
-  - `kanbanStore.ts` helper: read/parse `kanban.json`, write atomically
-  - `GET /api/kanban` — return `{ columns, cards }`
-  - `PUT /api/kanban` — save full board (drag-drop reorder)
-  - `POST /api/kanban/cards` — generate UUID, create card, append to column's `cardIds`
-  - `PATCH /api/kanban/cards/:id` — merge update card fields
-  - `DELETE /api/kanban/cards/:id` — remove card + filter from column `cardIds`
-  - Initialize `kanban.json` with default 7 columns on first run
-  - **~200 LOC**
+- [x] **2.2 Kanban API**
+  - PostgreSQL via Supabase (free tier). Drizzle ORM for schema + migrations.
+  - `server/src/db/schema.ts` — tables: `columns`, `cards`, `comments` (all scoped to `user_id`)
+  - `server/src/db/seed.ts` — seeds 7 default columns on startup (shared, not per-user)
+  - All queries filtered by `req.userId` from JWT middleware
+  - `GET /api/kanban` — return `{ columns, cards }` with comments nested under cards (current user only)
+  - `PUT /api/kanban` — save reorder (body: `{ columns: [{ id, cardIds[] }] }`)
+  - `POST /api/kanban/cards` — create card, `user_id` from JWT, auto-assign position
+  - `PATCH /api/kanban/cards/:id` — update card fields (ownership check)
+  - `DELETE /api/kanban/cards/:id` — delete card (ON DELETE CASCADE), ownership check
+  - `POST /api/kanban/cards/:id/comments` — add comment, `user_id` from JWT
+  - `DELETE /api/kanban/comments/:id` — delete single comment, ownership check
+  - Migrations run automatically on server start via drizzle-kit
+  - Requires `DATABASE_URL` + `SUPABASE_SERVICE_KEY` env vars
+  - **~350 LOC**
 
 - [ ] **2.3 LaTeX compile + download**
   - `POST /api/latex/compile` — run `pdflatex` twice in project dir, parse `.log` for errors
@@ -84,17 +102,18 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
 ## Phase 4: Settings & State
 
 - [ ] **4.1 Settings page (frontend + backend)**
-  - `GET /api/settings` — return current settings (mask API key)
-  - `PUT /api/settings` — save settings
-  - `<SettingsView>` with form: Provider, API Key (password input), Base URL, Model, Workspace Root
+  - `GET /api/settings` — return current user's LLM settings (API key masked) from `user_settings` table
+  - `PUT /api/settings` — upsert user's LLM settings
+  - `<SettingsView>` with form: Provider, API Key (password input), Base URL, Model
   - Save button → `PUT /api/settings`, show success toast
   - **~150 LOC**
 
 - [ ] **4.2 Frontend stores (Zustand)**
+  - `authStore`: user, session, isAuthenticated, login, logout, initFromSession
   - `kanbanStore`: columns, cards, fetchBoard, createCard, updateCard, deleteCard, moveCard, addComment
   - `editorStore`: activeFile, openFiles, fileTree, isDirty, compileStatus, pdfUrl, agentSession
-  - API client helper: thin wrapper around `fetch` with base URL, JSON handling
-  - **~200 LOC**
+  - API client helper: thin wrapper around `fetch` with base URL, auth header injection, JSON handling
+  - **~250 LOC**
 
 ---
 
@@ -181,10 +200,10 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
   - **~100 LOC**
 
 - [ ] **7.3 First-run experience**
-  - On backend startup, if `~/.switch/` doesn't exist, create directory structure
+  - On first login, sync user from Supabase Auth → `users` table
+  - `ensureUser` creates workspace dir: `~/.switch/{user_id}/resumes/`
   - Seed `resumes/default/` with a basic LaTeX resume template (`main.tex` + sections)
-  - Seed `kanban.json` with default 7 columns (empty)
-  - Seed `settings.json` with defaults (empty API key, `gpt-4o`, default workspace path)
+  - Seed default LLM settings in `user_settings` (empty API key)
   - On frontend first load, if settings have no API key, redirect to `/settings`
   - **~150 LOC**
 
@@ -194,11 +213,11 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
 
 | Phase | Tasks | Total LOC (est.) |
 |-------|-------|------------------|
-| 1. Scaffold & Foundation | 3 | ~550 |
-| 2. Backend APIs | 3 | ~550 |
+| 1. Scaffold & Foundation | 4 | ~800 |
+| 2. Backend APIs | 3 | ~600 |
 | 3. Agent Backend | 2 | ~550 |
-| 4. Settings & State | 2 | ~350 |
+| 4. Settings & State | 2 | ~400 |
 | 5. Kanban Frontend | 3 | ~750 |
 | 6. Editor Frontend | 4 | ~1150 |
 | 7. Integration & Polish | 3 | ~400 |
-| **Total** | **20** | **~4300** |
+| **Total** | **21** | **~4650** |

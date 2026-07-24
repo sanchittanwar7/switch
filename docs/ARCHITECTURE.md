@@ -7,7 +7,7 @@ A local-first web portal for managing job applications. Two core modules:
 1. **Kanban Board** — track job applications across pipeline stages
 2. **Resume Editor** — Overleaf-style LaTeX editor with an AI agent that tailors resumes to specific job postings
 
-Single user, local filesystem storage, user-provided LLM API key.
+Multi-user via Google OAuth. Resumes on local filesystem (per-user), kanban data in PostgreSQL (Supabase free tier). User-provided LLM API key (per-user). Auth via Supabase Auth + JWT middleware.
 
 ---
 
@@ -16,6 +16,12 @@ Single user, local filesystem storage, user-provided LLM API key.
 ```
 ┌──────────────────────────────────────────────────────┐
 │                    BROWSER (SPA)                      │
+│  ┌──────────────────────────────────────────────┐     │
+│  │  Auth Layer (Google OAuth via Supabase)      │     │
+│  │  - Login page with "Sign in with Google"     │     │
+│  │  - AuthContext provides user + JWT to all    │     │
+│  │    API calls via Authorization header        │     │
+│  └──────────────────────────────────────────────┘     │
 │  ┌─────────────────┐    ┌──────────────────────────┐ │
 │  │   KANBAN VIEW   │    │     RESUME EDITOR VIEW   │ │
 │  │                  │    │  ┌────────┬────────────┐ │ │
@@ -30,25 +36,30 @@ Single user, local filesystem storage, user-provided LLM API key.
 │  │                  │    │  └──────────────────────┘ │ │
 │  └─────────────────┘    └──────────────────────────┘ │
 └───────────────────────┬──────────────────────────────┘
-                        │ REST + SSE
+                        │ REST + SSE  (JWT Bearer header)
 ┌───────────────────────┴──────────────────────────────┐
 │                 BACKEND (Node.js)                     │
 │  ┌──────────┐  ┌──────────┐  ┌────────────────────┐  │
-│  │ kanban   │  │ filesys  │  │  agent orchestrator│  │
-│  │ routes   │  │ routes   │  │  (tool-calling loop)│  │
+│  │ jwt auth │  │ auth     │  │  agent orchestrator│  │
+│  │ middleware│  │ routes   │  │  (tool-calling loop)│  │ <- express
 │  └──────────┘  └──────────┘  └────────────────────┘  │
-│  ┌──────────┐  ┌──────────────────────────────────┐  │
-│  │ latex    │  │  tools: fs_read, fs_write,        │  │
-│  │ compiler │  │  fs_list, web_fetch               │  │
-│  └──────────┘  └──────────────────────────────────┘  │
+│  ┌──────────┐  ┌──────────┐  ┌────────────────────┐  │
+│  │ kanban   │  │ filesys  │  │  latex compiler    │  │
+│  │ routes   │  │ routes   │  │                     │  │
+│  └──────────┘  └──────────┘  └────────────────────┘  │
 └───────────────────────┬──────────────────────────────┘
                         │
 ┌───────────────────────┴──────────────────────────────┐
-│              LOCAL FILESYSTEM                         │
-│  ~/.switch/                                       │
+│         LOCAL FILESYSTEM + REMOTE DB                  │
+│  ~/.switch/{user_id}/                             │
 │  ├── resumes/            (latex project dirs)         │
-│  ├── kanban.json         (board state)                │
-│  └── settings.json       (LLM keys, prefs)            │
+│  └── settings/            (per-user LLM prefs in DB)  │
+│                                                       │
+│  Supabase (free tier)                                 │
+│  ├── Auth: Google OAuth, JWT issuance                 │
+│  ├── DB: users, columns, cards, comments, settings    │
+│  │   (all tables scoped by user_id)                   │
+│  └── RLS: optional, enforced by backend middleware     │
 └──────────────────────────────────────────────────────┘
 ```
 
@@ -60,7 +71,9 @@ Single user, local filesystem storage, user-provided LLM API key.
 |-------|--------|-------|
 | Frontend framework | React + Vite | SPA. No SSR needed. |
 | Routing | React Router v7 | — |
-| State management | Zustand | One store for kanban, one for editor. |
+| State management | Zustand | Stores: kanban, editor, auth. |
+| Auth (frontend) | @supabase/supabase-js | Google OAuth. JWT in Authorization header. |
+| Auth (backend) | @supabase/supabase-js (service key) | JWT verification middleware. Extract user_id. |
 | Drag & drop | @hello-pangea/dnd | Maintained fork of react-beautiful-dnd. |
 | Code editor | Monaco Editor (`@monaco-editor/react`) | LaTeX syntax via monarch tokens. |
 | PDF preview | react-pdf (pdf.js wrapper) | Canvas rendering. |
@@ -69,7 +82,8 @@ Single user, local filesystem storage, user-provided LLM API key.
 | LaTeX compile | child_process.exec → `pdflatex` | Requires texlive installed locally. |
 | LLM calls | openai npm SDK | Works with any OpenAI-compatible endpoint. |
 | SSE streaming | Express raw response | `text/event-stream` content-type. |
-| File storage | Native `fs` module | Direct local disk. |
+| Database | PostgreSQL (Supabase) + Drizzle ORM | Kanban + settings. Authed via user_id FK on all tables. |
+| File storage | Native `fs` module | Per-user scoped: `~/.switch/{user_id}/resumes/`. |
 | Web fetch (agent) | fetch + @mozilla/readability | Extract article text, convert to markdown. |
 
 ---
@@ -77,7 +91,7 @@ Single user, local filesystem storage, user-provided LLM API key.
 ## File System Layout
 
 ```
-~/.switch/
+~/.switch/{user_id}/
 ├── resumes/
 │   ├── default/                   # "master" resume (user maintains)
 │   │   ├── main.tex
@@ -95,79 +109,114 @@ Single user, local filesystem storage, user-provided LLM API key.
 │                   ├── education.tex
 │                   ├── experience.tex
 │                   └── skills.tex
-├── kanban.json
-└── settings.json
 ```
 
 **Rules:**
 - One resume project = one directory under `resumes/`.
 - Agent always copies master into `tailored/{company}/{job_id}/` before editing. Master stays pristine.
 - `@mozilla/readability` used to strip boilerplate from fetched pages. Returns clean markdown.
+- Workspace root: `~/.switch/{user_id}/`. User is derived from JWT. No cross-user file access.
+- `settings.json` removed — LLM settings stored in DB per user.
 
 ---
 
 ## Data Models
 
-### kanban.json
+### PostgreSQL Schema (Supabase)
 
-```json
-{
-  "columns": [
-    { "id": "wishlist",    "title": "Wishlist",    "cardIds": [] },
-    { "id": "applied",     "title": "Applied",     "cardIds": [] },
-    { "id": "screening",   "title": "Screening",   "cardIds": [] },
-    { "id": "interview",   "title": "Interview",   "cardIds": [] },
-    { "id": "offer",       "title": "Offer",       "cardIds": [] },
-    { "id": "accepted",    "title": "Accepted",    "cardIds": [] },
-    { "id": "rejected",    "title": "Rejected",    "cardIds": [] }
-  ],
-  "cards": {
-    "<uuid>": {
-      "company": "Acme Corp",
-      "role": "Senior Engineer",
-      "jobUrl": "https://acme.com/careers/123",
-      "resumePath": "resumes/tailored/acme-corp/abc123/",
-      "comments": [
-        { "text": "Recruiter reached out on LinkedIn.", "createdAt": "2026-07-24T00:00:00Z" }
-      ],
-      "tags": ["remote", "startup"],
-      "createdAt": "2026-07-24T00:00:00Z",
-      "updatedAt": "2026-07-24T00:00:00Z",
-      "columnId": "applied"
-    }
-  }
-}
+All tables scoped by `user_id`. Supabase Auth issues JWT; backend middleware extracts `user.sub` → `user_id`.
+
+```sql
+-- Users table (synced from Supabase Auth on first login)
+CREATE TABLE users (
+  id         TEXT PRIMARY KEY,           -- UUID from Supabase Auth `auth.users`
+  email      TEXT NOT NULL,
+  name       TEXT,
+  avatar_url TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Per-user LLM settings (replaces settings.json)
+CREATE TABLE user_settings (
+  user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  provider   TEXT NOT NULL DEFAULT 'openai',
+  api_key    TEXT NOT NULL DEFAULT '',
+  base_url   TEXT NOT NULL DEFAULT 'https://api.openai.com/v1',
+  model      TEXT NOT NULL DEFAULT 'gpt-4o',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- 7 fixed pipeline stages (not per-user — shared definition)
+CREATE TABLE columns (
+  id       TEXT PRIMARY KEY,
+  title    TEXT NOT NULL,
+  position INTEGER NOT NULL
+);
+
+-- Job application cards (per-user)
+CREATE TABLE cards (
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  company     TEXT NOT NULL,
+  role        TEXT NOT NULL,
+  job_url     TEXT,
+  resume_path TEXT,
+  tags        TEXT[],
+  column_id   TEXT NOT NULL REFERENCES columns(id) ON DELETE CASCADE,
+  position    INTEGER NOT NULL DEFAULT 0,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX idx_cards_user_id ON cards(user_id);
+
+-- Card comments (per-user)
+CREATE TABLE comments (
+  id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  card_id    UUID NOT NULL REFERENCES cards(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  text       TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- API response shape (GET /api/kanban) unchanged
+-- Backend middleware adds `WHERE user_id = $current_user` to all queries
 ```
 
-Columns are fixed. Cards are keyed by UUID. Column `cardIds` arrays define ordering. Drag-and-drop reorders `cardIds` within the source/target column.
-
-### settings.json
-
-```json
-{
-  "llm": {
-    "provider": "openai | gemini | claude | deepseek | qwen",
-    "apiKey": "sk-...",
-    "baseUrl": "https://api.openai.com/v1",
-    "model": "gpt-4o"
-  },
-  "workspaceRoot": "~/.switch"
-}
-```
+All write/read queries include `user_id` filter. Users can only see their own cards, comments, and settings. Columns table is shared (fixed 7 stages) but `cardIds` differ per user.
 
 ---
 
 ## API Design
 
+All routes (except `/api/auth/*` and `/api/health`) require `Authorization: Bearer <jwt>` header. JWT verified via Supabase Auth service key. User ID extracted from `sub` claim and attached to `req.userId`.
+
+### Auth
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/auth/me` | Returns current user `{ id, email, name, avatarUrl }`. Upserts into `users` table on first call. |
+| POST | `/api/auth/refresh` | Exchange Supabase refresh token (from client) for fresh session. |
+
+Client: `@supabase/supabase-js` handles Google OAuth redirect flow. Client stores session + JWT in `localStorage`. On each API call, client attaches `Authorization: Bearer <token>`. On page load, client checks Supabase session; if expired, redirects to `/login`.
+
+### Settings (per-user, in DB)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/api/settings` | Returns user's LLM settings (API key masked). From `user_settings` table. |
+| PUT | `/api/settings` | Upsert user's LLM settings. |
+
 ### Kanban
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/kanban` | Returns `{ columns, cards }` |
-| PUT | `/api/kanban` | Save full board state (body: `{ columns, cards }`) |
-| POST | `/api/kanban/cards` | Create card, returns card |
-| PATCH | `/api/kanban/cards/:id` | Update card fields |
-| DELETE | `/api/kanban/cards/:id` | Delete card + remove from column cardIds |
+| GET | `/api/kanban` | Returns `{ columns, cards }`. Cards include nested `comments[]`. Scoped to current user. |
+| PUT | `/api/kanban` | Save reorder. Body: `{ columns: [{ id, cardIds[] }] }`. Updates `column_id` + `position` per card. |
+| POST | `/api/kanban/cards` | Create card. Body: `{ company, role, columnId, jobUrl?, resumePath?, tags? }`. `user_id` set from JWT. |
+| PATCH | `/api/kanban/cards/:id` | Update card fields. Only if `card.user_id === req.userId`. |
+| DELETE | `/api/kanban/cards/:id` | Delete card + cascade-delete comments. Ownership check. |
+| POST | `/api/kanban/cards/:id/comments` | Add comment. Body: `{ text }`. `user_id` set from JWT. |
+| DELETE | `/api/kanban/comments/:id` | Delete single comment. Ownership check. |
 
 ### Filesystem
 
@@ -216,17 +265,25 @@ Compilation runs `pdflatex` twice (for ToC/references) inside the project direct
 
 ```
 <App>
-  <Sidebar>
-    <NavItem icon="board"    to="/board" />
-    <NavItem icon="resume"   to="/editor" />
-    <NavItem icon="settings" to="/settings" />
-  </Sidebar>
+  <AuthContext>
+    <Routes>
+      <Route path="/login" → <LoginPage />
 
-  <Routes>
-    <Route path="/board"    → <KanbanView />
-    <Route path="/editor"   → <EditorView />
-    <Route path="/settings" → <SettingsView />
-  </Routes>
+      {/* Protected routes — redirect to /login if no session */}
+      <Route element={<ProtectedRoute />}>
+        <Sidebar>
+          <NavItem icon="board"    to="/board" />
+          <NavItem icon="resume"   to="/editor" />
+          <NavItem icon="settings" to="/settings" />
+          <UserAvatar />           ← click to logout
+        </Sidebar>
+
+        <Route path="/board"    → <KanbanView />
+        <Route path="/editor"   → <EditorView />
+        <Route path="/settings" → <SettingsView />
+      </Route>
+    </Routes>
+  </AuthContext>
 </App>
 ```
 
@@ -300,10 +357,20 @@ Compilation runs `pdflatex` twice (for ToC/references) inside the project direct
     <Field label="Base URL" />
     <Field label="Model" />
   </FormSection>
-  <FormSection title="Workspace">
-    <Field label="Workspace Root" />
-  </FormSection>
 </SettingsView>
+```
+
+### LoginPage
+
+```
+<LoginPage>
+  <Card>
+    <Logo />
+    <h1>Job Switch Portal</h1>
+    <p>Track job applications. Tailor resumes with AI.</p>
+    <GoogleSignInButton />    ← triggers Supabase OAuth
+  </Card>
+</LoginPage>
 ```
 
 ---
@@ -381,7 +448,7 @@ All file paths are relative to workspace root. Backend prepends root and validat
 
 - When agent finishes (`done` event), the agent panel shows a "Create Card" button.
 - Click pre-fills a card with company/role extracted from the JD, links the tailored resume path.
-- Saves card to `kanban.json` at the same `resumePath`.
+- Saves card via `POST /api/kanban/cards`.
 
 ### LaTeX Errors → Editor
 
@@ -393,9 +460,11 @@ All file paths are relative to workspace root. Backend prepends root and validat
 
 ## Key Design Decisions
 
-1. **Single user, local-first.** No auth, no database server, no cloud. Everything on disk.
-2. **Agent tools are backend-only.** Agent loop runs server-side. API keys never exposed to browser after initial submit.
-3. **Master resume is read-only to agent.** Always copies to `tailored/{company}/{job_id}/` before editing.
-4. **Kanban ↔ Resume link is one-way.** Card stores `resumePath`. From board, click to open that resume in the editor.
-5. **Compilation is synchronous per request.** `pdflatex` runs twice in the project dir. PDF served as static file.
-6. **Settings persisted in `settings.json`.** API key stored on disk. File excluded from git.
+1. **Multi-user via Google OAuth.** No passwords. Supabase Auth issues JWT. All DB tables scoped by `user_id`. Filesystem scoped by `~/.switch/{user_id}/`.
+2. **JWT verification server-side.** Backend Express middleware verifies Supabase JWT using service key. Rejects unauthenticated requests (except health + auth routes).
+3. **Agent tools are backend-only.** Agent loop runs server-side. API keys never exposed to browser after initial submit.
+4. **Master resume is read-only to agent.** Always copies to `tailored/{company}/{job_id}/` before editing.
+5. **Kanban ↔ Resume link is one-way.** Card stores `resumePath`. From board, click to open that resume in the editor.
+6. **Compilation is synchronous per request.** `pdflatex` runs twice in the project dir. PDF served as static file.
+7. **Settings in DB per-user.** `settings.json` removed. LLM config in `user_settings` table. Database credentials via `DATABASE_URL` + `SUPABASE_SERVICE_KEY` env vars.
+8. **Migrations automatic.** Drizzle migrations run on server startup. Columns table seeded if empty.

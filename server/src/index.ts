@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
-import { ensureWorkspace } from "./workspace";
+import { ensureWorkspace, initializeDatabase } from "./workspace";
 import fsRoutes from "./routes/fs";
+import kanbanRoutes from "./routes/kanban";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -14,6 +15,7 @@ app.get("/api/health", (_req, res) => {
 });
 
 app.use("/api/fs", fsRoutes);
+app.use("/api/kanban", kanbanRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err.stack);
@@ -22,6 +24,7 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 
 async function start() {
   await ensureWorkspace();
+  await initializeDatabase();
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
