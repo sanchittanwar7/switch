@@ -29,7 +29,7 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
   - Base layout CSS: sidebar fixed left, content area fills remaining
   - **~200 LOC**
 
-- [ ] **1.4 Google Auth + User Scoping**
+- [x] **1.4 Google Auth + User Scoping**
   - Install `@supabase/supabase-js` on client + server
   - `<LoginPage>` with "Sign in with Google" button → Supabase OAuth redirect flow
   - `<AuthContext>` — React context providing `user`, `session`, `login`, `logout`
@@ -70,7 +70,7 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
   - Requires `DATABASE_URL` + `SUPABASE_SERVICE_KEY` env vars
   - **~350 LOC**
 
-- [ ] **2.3 LaTeX compile + download**
+- [x] **2.3 LaTeX compile + download**
   - `POST /api/latex/compile` — run `pdflatex` twice in project dir, parse `.log` for errors
   - `GET /api/latex/download` — serve compiled PDF as attachment
   - Serve static PDF files from workspace under `/pdfs/` route

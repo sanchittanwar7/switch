@@ -2,9 +2,12 @@ import express from "express";
 import cors from "cors";
 import { initializeDatabase } from "./workspace";
 import { authMiddleware } from "./middleware/auth";
+import { resolvePath } from "./utils/paths";
+import fs from "fs/promises";
 import authRoutes from "./routes/auth";
 import fsRoutes from "./routes/fs";
 import kanbanRoutes from "./routes/kanban";
+import latexRoutes from "./routes/latex";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -19,6 +22,28 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/fs", authMiddleware, fsRoutes);
 app.use("/api/kanban", authMiddleware, kanbanRoutes);
+app.use("/api/latex", authMiddleware, latexRoutes);
+
+app.use("/pdfs", authMiddleware, async (req, res) => {
+  const userId = (req as any).userId!;
+  const relativePath = req.path.replace(/^\//, "");
+  const absPath = resolvePath(relativePath, userId);
+
+  if (!absPath.endsWith(".pdf")) {
+    res.status(400).json({ error: "Only PDF files can be served" });
+    return;
+  }
+
+  try {
+    await fs.stat(absPath);
+  } catch {
+    res.status(404).json({ error: "PDF file not found" });
+    return;
+  }
+
+  res.setHeader("Content-Type", "application/pdf");
+  res.sendFile(absPath);
+});
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err.stack);
