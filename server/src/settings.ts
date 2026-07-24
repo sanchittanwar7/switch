@@ -35,26 +35,27 @@ const DEFAULT_SETTINGS: Settings = {
   workspaceRoot: getWorkspaceRoot(),
 };
 
-function settingsPath(): string {
-  return path.join(getWorkspaceRoot(), "settings.json");
+function settingsPath(userId: string): string {
+  return path.join(getWorkspaceRoot(userId), "settings.json");
 }
 
-export async function getSettings(): Promise<Settings> {
+export async function getSettings(userId: string): Promise<Settings> {
   try {
-    const raw = await fs.readFile(settingsPath(), "utf-8");
+    const raw = await fs.readFile(settingsPath(userId), "utf-8");
     return JSON.parse(raw);
   } catch {
     return { ...DEFAULT_SETTINGS };
   }
 }
 
-export async function updateSettings(partial: Partial<Settings>): Promise<Settings> {
-  const current = await getSettings();
+export async function updateSettings(userId: string, partial: Partial<Settings>): Promise<Settings> {
+  const current = await getSettings(userId);
   const merged = {
     ...current,
     ...partial,
     llm: { ...current.llm, ...(partial.llm || {}) },
   };
-  await fs.writeFile(settingsPath(), JSON.stringify(merged, null, 2), "utf-8");
+  await fs.mkdir(path.dirname(settingsPath(userId)), { recursive: true });
+  await fs.writeFile(settingsPath(userId), JSON.stringify(merged, null, 2), "utf-8");
   return merged;
 }

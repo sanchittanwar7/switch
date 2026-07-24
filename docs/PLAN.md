@@ -80,22 +80,45 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
 
 ## Phase 3: Agent Backend
 
-- [ ] **3.1 Agent tools**
+Uses [Vercel AI SDK](https://ai-sdk.dev) (`ai` + `@ai-sdk/*` providers) instead of custom orchestration. SDK handles:
+- Provider unification (OpenAI, Anthropic, Gemini, DeepSeek — all first-party)
+- Tool-calling loop via `streamText()` + `stopWhen: isStepCount(20)`
+- Tool format normalization across providers (define once with Zod)
+
+- [x] **3.1 Provider factory**
+  - `server/src/agent/provider-factory.ts` — maps `LLMSettings` → AI SDK provider instance
+  - OpenRouter: `@ai-sdk/openai` with custom `baseUrl` (default provider for flexibility)
+  - OpenAI: `@ai-sdk/openai`
+  - Gemini: `@ai-sdk/google`
+  - Claude: `@ai-sdk/anthropic`
+  - DeepSeek: `@ai-sdk/deepseek`
+  - Qwen: `@ai-sdk/openai` with custom `baseUrl`
+  - **~50 LOC**
+
+- [x] **3.2 Agent tools**
   - `read_file(path)` — resolve + `fs.readFile`
   - `write_file(path, content)` — resolve + `fs.writeFile` (recursive)
   - `list_dir(path)` — resolve + `fs.readdir` with type
   - `web_fetch(url)` — `fetch` + `@mozilla/readability` → markdown
   - All enforce `..` traversal block
+  - Defined as AI SDK tools with Zod schemas
   - **~200 LOC**
 
-- [ ] **3.2 Agent orchestrator**
+- [x] **3.3 Agent orchestrator + SSE**
   - `POST /api/agent/tailor` — accept `{ jobUrl, resumeProjectPath, apiKey?, model? }`, return `{ sessionId }`
   - `GET /api/agent/sessions/:id/stream` — SSE stream
-  - Orchestration loop: read settings for API key, call LLM with tools, execute tool calls, loop
+  - Uses `streamText()` + `stopWhen: isStepCount(20)` for tool-calling loop
+  - Lifecycle callbacks emit SSE events:
+    - `onToolExecutionStart` → `tool_call` event
+    - `onToolExecutionEnd` → `tool_result` event
+    - `textStream` chunks → `message` events
+    - stream end → `done` event
+    - catch block → `error` event
   - Session store (in-memory Map, session expires after 15 min idle)
   - System prompt construction (as defined in ARCHITECTURE.md §Agent Design)
-  - SSE event types: `tool_call`, `tool_result`, `message`, `done`, `error`
-  - **~350 LOC**
+  - **~200 LOC**
+
+Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@ai-sdk/deepseek`, `zod`
 
 ---
 
@@ -215,9 +238,9 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
 |-------|-------|------------------|
 | 1. Scaffold & Foundation | 4 | ~800 |
 | 2. Backend APIs | 3 | ~600 |
-| 3. Agent Backend | 2 | ~550 |
+| 3. Agent Backend | 3 | ~450 |
 | 4. Settings & State | 2 | ~400 |
 | 5. Kanban Frontend | 3 | ~750 |
 | 6. Editor Frontend | 4 | ~1150 |
 | 7. Integration & Polish | 3 | ~400 |
-| **Total** | **21** | **~4650** |
+| **Total** | **22** | **~4550** |
