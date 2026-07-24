@@ -22,7 +22,7 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
   - Path resolution utility: resolve relative path → absolute under workspace root, block `..`
   - **~200 LOC**
 
-- [ ] **1.3 Frontend shell**
+- [x] **1.3 Frontend shell**
   - `App.tsx` with `<BrowserRouter>` + `<Routes>`
   - `<Sidebar>` with 3 nav items: Board, Editor, Settings (use Lucide icons)
   - `<KanbanView>`, `<EditorView>`, `<SettingsView>` as empty placeholder pages

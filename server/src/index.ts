@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import { ensureWorkspace } from "./workspace";
+import fsRoutes from "./routes/fs";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -11,6 +12,8 @@ app.use(express.json());
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
+
+app.use("/api/fs", fsRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err.stack);
