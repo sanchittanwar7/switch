@@ -149,14 +149,14 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
   - Columns rendered from kanban store's column definitions
   - **~200 LOC**
 
-- [ ] **5.2 Card + drag-and-drop**
+- [x] **5.2 Card + drag-and-drop**
   - `<Card>` — compact view: company, role, 1-line comment preview, tags as badges
   - Draggable wrapper (via `@hello-pangea/dnd` `Draggable`)
   - `onDragEnd` handler: update column's `cardIds` array, PUT to `/api/kanban`
   - `<AddCardButton>` — inline button at bottom of each column
   - **~250 LOC**
 
-- [ ] **5.3 Card modal**
+- [x] **5.3 Card modal**
   - `<CardModal>` — overlay/modal triggered by clicking a card
   - Fields: Company, Role, Job URL, Resume (text input or file picker), Tags (comma-separated input)
   - `<CommentsSection>` — list of timestamped comments, `<AddCommentForm>` at bottom

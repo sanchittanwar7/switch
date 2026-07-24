@@ -6,9 +6,10 @@ import AddCardButton from "./AddCardButton";
 interface ColumnProps {
   column: ColumnType;
   cards: Card[];
+  onCardClick?: (cardId: string) => void;
 }
 
-export default function Column({ column, cards }: ColumnProps) {
+export default function Column({ column, cards, onCardClick }: ColumnProps) {
   return (
     <div className="flex-shrink-0 w-[272px] flex flex-col bg-white/5 rounded-lg border border-white/5 max-h-full">
       <div className="px-4 py-3 border-b border-white/5">
@@ -32,7 +33,14 @@ export default function Column({ column, cards }: ColumnProps) {
             }`}
           >
             {cards.map((card, index) => (
-              <CardComponent key={card.id} card={card} index={index} />
+              <CardComponent
+                key={card.id}
+                card={card}
+                index={index}
+                onClick={
+                  onCardClick ? () => onCardClick(card.id) : undefined
+                }
+              />
             ))}
             {cards.length === 0 && !snapshot.isDraggingOver && (
               <div className="flex items-center justify-center h-20 text-xs text-gray-600">

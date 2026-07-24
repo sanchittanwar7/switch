@@ -10,19 +10,29 @@ export default function AddCardButton({ columnId }: AddCardButtonProps) {
   const [open, setOpen] = useState(false);
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
+  const [jobUrl, setJobUrl] = useState("");
+  const [tagsInput, setTagsInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const createCard = useKanbanStore((s) => s.createCard);
 
   const handleSubmit = async () => {
     if (!company.trim() || !role.trim()) return;
     setSubmitting(true);
+    const tags = tagsInput
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
     await createCard({
       company: company.trim(),
       role: role.trim(),
+      jobUrl: jobUrl.trim() || undefined,
+      tags: tags.length > 0 ? tags : undefined,
       columnId,
     });
     setCompany("");
     setRole("");
+    setJobUrl("");
+    setTagsInput("");
     setOpen(false);
     setSubmitting(false);
   };
@@ -30,6 +40,8 @@ export default function AddCardButton({ columnId }: AddCardButtonProps) {
   const handleCancel = () => {
     setCompany("");
     setRole("");
+    setJobUrl("");
+    setTagsInput("");
     setOpen(false);
   };
 
@@ -68,6 +80,20 @@ export default function AddCardButton({ columnId }: AddCardButtonProps) {
             handleCancel();
           }
         }}
+        className="w-full mb-2 px-2 py-1.5 text-xs text-gray-200 bg-white/10 border border-white/5 rounded focus:outline-none focus:border-white/20 placeholder:text-gray-500"
+      />
+      <input
+        type="url"
+        placeholder="Job URL (optional)"
+        value={jobUrl}
+        onChange={(e) => setJobUrl(e.target.value)}
+        className="w-full mb-2 px-2 py-1.5 text-xs text-gray-200 bg-white/10 border border-white/5 rounded focus:outline-none focus:border-white/20 placeholder:text-gray-500"
+      />
+      <input
+        type="text"
+        placeholder="Tags: remote, frontend (optional)"
+        value={tagsInput}
+        onChange={(e) => setTagsInput(e.target.value)}
         className="w-full mb-2 px-2 py-1.5 text-xs text-gray-200 bg-white/10 border border-white/5 rounded focus:outline-none focus:border-white/20 placeholder:text-gray-500"
       />
       <div className="flex gap-2">

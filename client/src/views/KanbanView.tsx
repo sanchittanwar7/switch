@@ -1,16 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { DragDropContext } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
 import { useKanbanStore } from "../stores/kanbanStore";
 import BoardHeader from "../components/kanban/BoardHeader";
 import Column from "../components/kanban/Column";
+import CardModal from "../components/kanban/CardModal";
 
 export default function KanbanView() {
   const { columns, cards, loading, fetchBoard, moveCard } = useKanbanStore();
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBoard();
   }, [fetchBoard]);
+
+  const selectedCard = selectedCardId ? cards[selectedCardId] : null;
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -65,10 +69,18 @@ export default function KanbanView() {
                 cards={col.cardIds
                   .map((id) => cards[id])
                   .filter(Boolean)}
+                onCardClick={setSelectedCardId}
               />
             ))}
         </div>
       </DragDropContext>
+
+      {selectedCard && (
+        <CardModal
+          card={selectedCard}
+          onClose={() => setSelectedCardId(null)}
+        />
+      )}
     </div>
   );
 }
