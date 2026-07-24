@@ -9,6 +9,7 @@ import fsRoutes from "./routes/fs";
 import kanbanRoutes from "./routes/kanban";
 import latexRoutes from "./routes/latex";
 import agentRoutes from "./agent/routes";
+import settingsRoutes from "./routes/settings";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -25,6 +26,7 @@ app.use("/api/fs", authMiddleware, fsRoutes);
 app.use("/api/kanban", authMiddleware, kanbanRoutes);
 app.use("/api/latex", authMiddleware, latexRoutes);
 app.use("/api/agent", authMiddleware, agentRoutes);
+app.use("/api/settings", authMiddleware, settingsRoutes);
 
 app.use("/pdfs", authMiddleware, async (req, res) => {
   const userId = (req as any).userId!;

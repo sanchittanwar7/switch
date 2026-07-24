@@ -124,7 +124,7 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
 
 ## Phase 4: Settings & State
 
-- [ ] **4.1 Settings page (frontend + backend)**
+- [x] **4.1 Settings page (frontend + backend)**
   - `GET /api/settings` — return current user's LLM settings (API key masked) from `user_settings` table
   - `PUT /api/settings` — upsert user's LLM settings
   - `<SettingsView>` with form: Provider, API Key (password input), Base URL, Model
