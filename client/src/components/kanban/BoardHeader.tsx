@@ -6,10 +6,10 @@ export default function BoardHeader() {
 
   return (
     <div className="flex items-center justify-between mb-6">
-      <h1 className="text-2xl font-semibold text-white tracking-tight">
+      <h1 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-brand-ink">
         Job Pipeline
       </h1>
-      <span className="text-sm text-gray-400 bg-white/5 px-3 py-1 rounded-full border border-white/5">
+      <span className="text-sm text-brand-body bg-brand-canvas-soft-2 px-3 py-1 rounded-full border border-brand-hairline">
         {cardCount} {cardCount === 1 ? "application" : "applications"}
       </span>
     </div>

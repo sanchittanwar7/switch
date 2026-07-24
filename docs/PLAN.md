@@ -45,14 +45,22 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
 
 ## Phase 2: Backend API Routes
 
-- [x] **2.1 Filesystem API**
-  - `GET /api/fs/list` — `fs.readdir` with stats, returns `[{ name, type }]`
-  - `GET /api/fs/read` — `fs.readFile`, returns `{ content }`
-  - `PUT /api/fs/write` — `fs.writeFile` with `recursive: true`
-  - `DELETE /api/fs/delete` — `fs.rm` (file) or `fs.rmdir` (empty dir)
-  - `POST /api/fs/mkdir` — `fs.mkdir` with `recursive: true`
-  - `POST /api/fs/rename` — `fs.rename`
-  - **~200 LOC**
+- [x] **2.1 Filesystem API (local + cloud)**
+  - Local FS routes (`/api/fs/*`) — tmp working directory:
+    - `GET /api/fs/list` — `fs.readdir` with stats, returns `[{ name, type }]`
+    - `GET /api/fs/read` — `fs.readFile`, returns `{ content }`
+    - `PUT /api/fs/write` — `fs.writeFile` with `recursive: true` (auto-save while editing)
+    - `DELETE /api/fs/delete` — `fs.rm` (file) or `fs.rmdir` (empty dir)
+    - `POST /api/fs/mkdir` — `fs.mkdir` with `recursive: true`
+    - `POST /api/fs/rename` — `fs.rename`
+  - Supabase Storage routes (`/api/sb/*`) — cloud persistence:
+    - `GET /api/sb/list?prefix=` — list files in `resumes` bucket under `{userId}/` prefix
+    - `GET /api/sb/pull?file=` — download from bucket → write to local tmp → return content
+    - `PUT /api/sb/push` — upload `.tex` content from local tmp to bucket (upsert)
+    - `DELETE /api/sb/delete` — delete from bucket + local tmp
+  - All bucket paths scoped to `{userId}/` — user isolation enforced server-side
+  - Shared Supabase admin client in `server/src/lib/supabase.ts`
+  - **~300 LOC**
 
 - [x] **2.2 Kanban API**
   - PostgreSQL via Supabase (free tier). Drizzle ORM for schema + migrations.
@@ -169,27 +177,29 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
 ## Phase 6: Editor Frontend
 
 - [ ] **6.1 File tree**
-  - `<FileTree>` — fetches `GET /api/fs/list`, renders recursive `<FileNode>`
+  - `<FileTree>` — fetches `GET /api/sb/list` (cloud bucket), renders recursive `<FileNode>`
   - Icons: folder open/closed, file (by extension)
-  - Click file → open in editor. Click folder → toggle expand.
+  - Click file → pull from cloud to local tmp, then open in editor
   - Right-click context menu: New File, New Folder, Rename, Delete
   - New/Rename inline input. Delete with confirm dialog.
   - **~300 LOC**
 
 - [ ] **6.2 Monaco editor**
   - `<MonacoEditor>` — `@monaco-editor/react`, LaTeX language mode
-  - `activeFile` from Zustand store → load content via `GET /api/fs/read`
+  - Open flow: `GET /api/sb/pull` (cloud → local tmp) → `GET /api/fs/read` (load into editor)
   - Dirty tracking: compare editor content to last saved state
-  - Auto-save on blur or Ctrl+S → `PUT /api/fs/write`
+  - Auto-save on blur or Ctrl+S → `PUT /api/fs/write` (local tmp only)
+  - Explicit "Save to Cloud" button → `PUT /api/sb/push` (sync tmp → Supabase bucket)
   - File tabs for open files (multi-file workflow)
   - **~200 LOC**
 
 - [ ] **6.3 Toolbar + PDF preview**
-  - `<EditorToolbar>` — Compile button, Download PDF button, compile status badge
-  - Compile → `POST /api/latex/compile`, show spinner → update `pdfUrl` or set `compileErrors`
+  - `<EditorToolbar>` — Compile button, Save to Cloud button, Download PDF button, compile status badge
+  - Compile → `POST /api/latex/compile` (runs on local tmp), show spinner → update `pdfUrl` or set `compileErrors`
+  - Save to Cloud → `PUT /api/sb/push`, syncs `.tex` from local tmp to Supabase bucket
   - `<PdfPreview>` — `react-pdf` `<Document>` + `<Page>`, canvas rendering
   - Resizable panel: editor top, PDF preview bottom
-  - Download → `window.open('/api/latex/download?...')` triggers browser download
+  - Download → `window.open('/api/latex/download?...')` triggers browser download (from local tmp PDF)
   - **~300 LOC**
 
 - [ ] **6.4 Agent panel**
@@ -225,7 +235,7 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
 - [ ] **7.3 First-run experience**
   - On first login, sync user from Supabase Auth → `users` table
   - `ensureUser` creates workspace dir: `~/.switch/{user_id}/resumes/`
-  - Seed `resumes/default/` with a basic LaTeX resume template (`main.tex` + sections)
+  - Seed `resumes/default/` with a basic LaTeX resume template both locally and in Supabase bucket
   - Seed default LLM settings in `user_settings` (empty API key)
   - On frontend first load, if settings have no API key, redirect to `/settings`
   - **~150 LOC**
@@ -237,7 +247,7 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
 | Phase | Tasks | Total LOC (est.) |
 |-------|-------|------------------|
 | 1. Scaffold & Foundation | 4 | ~800 |
-| 2. Backend APIs | 3 | ~600 |
+| 2. Backend APIs | 3 | ~700 |
 | 3. Agent Backend | 3 | ~450 |
 | 4. Settings & State | 2 | ~400 |
 | 5. Kanban Frontend | 3 | ~750 |

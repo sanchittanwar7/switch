@@ -11,13 +11,13 @@ interface ColumnProps {
 
 export default function Column({ column, cards, onCardClick }: ColumnProps) {
   return (
-    <div className="flex-shrink-0 w-[272px] flex flex-col bg-white/5 rounded-lg border border-white/5 max-h-full">
-      <div className="px-4 py-3 border-b border-white/5">
+    <div className="flex-shrink-0 w-[272px] flex flex-col bg-brand-canvas-soft rounded-lg border border-brand-hairline max-h-full">
+      <div className="px-4 py-3 border-b border-brand-hairline">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-medium text-gray-200">
+          <h3 className="text-sm font-medium text-brand-ink">
             {column.title}
           </h3>
-          <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded-full">
+          <span className="text-xs text-brand-mute bg-brand-canvas-soft-2 px-2 py-0.5 rounded-full">
             {column.cardIds.length}
           </span>
         </div>
@@ -29,7 +29,7 @@ export default function Column({ column, cards, onCardClick }: ColumnProps) {
             ref={provided.innerRef}
             {...provided.droppableProps}
             className={`flex-1 overflow-y-auto p-2 min-h-[100px] transition-colors rounded-b-lg ${
-              snapshot.isDraggingOver ? "bg-white/[0.07]" : ""
+              snapshot.isDraggingOver ? "bg-brand-canvas-soft-2" : ""
             }`}
           >
             {cards.map((card, index) => (
@@ -43,7 +43,7 @@ export default function Column({ column, cards, onCardClick }: ColumnProps) {
               />
             ))}
             {cards.length === 0 && !snapshot.isDraggingOver && (
-              <div className="flex items-center justify-center h-20 text-xs text-gray-600">
+              <div className="flex items-center justify-center h-20 text-xs text-brand-mute">
                 No cards yet
               </div>
             )}

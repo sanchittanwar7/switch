@@ -17,27 +17,35 @@ export default function Card({ card, index, onClick }: CardProps) {
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
-          className={`mb-2 rounded-md border transition-shadow flex ${
+          className={`mb-2 rounded-lg border transition-all flex ${
             snapshot.isDragging
-              ? "border-white/20 shadow-lg ring-1 ring-white/20 bg-white/15"
-              : "border-white/5 hover:border-white/10 bg-white/10"
+              ? "border-brand-hairline-strong shadow-lg bg-brand-canvas ring-1 ring-brand-ink/10"
+              : "border-brand-hairline hover:border-brand-hairline-strong bg-brand-canvas-soft-2"
           }`}
+          style={{
+            ...provided.draggableProps.style,
+            boxShadow: snapshot.isDragging
+              ? "0px 1px 1px rgba(0,0,0,0.08), 0px 8px 16px -4px rgba(0,0,0,0.12), inset 0 0 0 1px rgba(0,0,0,0.04)"
+              : "0px 1px 1px rgba(0,0,0,0.04), inset 0 0 0 1px rgba(0,0,0,0.04)",
+          }}
         >
           <div
             onClick={onClick}
             className="flex-1 p-3 cursor-pointer min-w-0"
           >
-            <h4 className="text-sm font-medium text-gray-100 truncate">
+            <h4 className="text-sm font-medium text-brand-ink truncate">
               {card.company}
             </h4>
-            <p className="text-xs text-gray-400 mt-0.5 truncate">{card.role}</p>
+            <p className="text-xs text-brand-body mt-0.5 truncate">
+              {card.role}
+            </p>
 
             {card.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {card.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-[11px] text-gray-400 bg-white/5 px-1.5 py-0.5 rounded-full"
+                    className="text-[11px] text-brand-body bg-brand-canvas-soft px-1.5 py-0.5 rounded-full border border-brand-hairline"
                   >
                     {tag}
                   </span>
@@ -46,7 +54,7 @@ export default function Card({ card, index, onClick }: CardProps) {
             )}
 
             {lastComment && (
-              <p className="text-xs text-gray-500 mt-2 truncate">
+              <p className="text-xs text-brand-mute mt-2 truncate">
                 {lastComment.text}
               </p>
             )}
@@ -54,7 +62,7 @@ export default function Card({ card, index, onClick }: CardProps) {
 
           <div
             {...provided.dragHandleProps}
-            className="flex items-center px-1 text-gray-700 hover:text-gray-400 cursor-grab active:cursor-grabbing transition-colors"
+            className="flex items-center px-1 text-brand-mute/40 hover:text-brand-mute cursor-grab active:cursor-grabbing transition-colors"
           >
             <GripVertical size={16} />
           </div>

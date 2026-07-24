@@ -8,7 +8,7 @@ import LoginPage from "./views/LoginPage";
 
 function ProtectedLayout() {
   return (
-    <div className="flex h-screen bg-gray-950">
+    <div className="flex h-screen bg-brand-canvas">
       <Sidebar />
       <main className="ml-56 flex-1 overflow-auto">
         <Routes>
@@ -26,8 +26,8 @@ function AuthGate() {
 
   if (loading) {
     return (
-      <div className="h-screen flex items-center justify-center bg-gray-950">
-        <div className="text-gray-400">Loading...</div>
+      <div className="h-screen flex items-center justify-center bg-brand-canvas">
+        <div className="text-sm text-brand-mute">Loading...</div>
       </div>
     );
   }

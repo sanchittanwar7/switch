@@ -18,9 +18,9 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 h-full w-56 bg-gray-900 text-gray-300 flex flex-col">
-      <div className="px-5 py-5 border-b border-gray-800">
-        <h1 className="text-lg font-semibold text-white tracking-tight">
+    <aside className="fixed left-0 top-0 h-full w-56 bg-brand-canvas-soft text-brand-body flex flex-col border-r border-brand-hairline">
+      <div className="px-5 py-5 border-b border-brand-hairline">
+        <h1 className="text-lg font-semibold text-brand-ink tracking-tight">
           Switch
         </h1>
       </div>
@@ -34,8 +34,8 @@ export default function Sidebar() {
             className={({ isActive }) =>
               `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                 isActive
-                  ? "bg-gray-800 text-white"
-                  : "hover:bg-gray-800 hover:text-white"
+                  ? "bg-brand-canvas-soft-2 text-brand-ink"
+                  : "hover:bg-brand-canvas-soft-2 hover:text-brand-ink"
               }`
             }
           >
@@ -45,16 +45,16 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      <div className="border-t border-gray-800">
+      <div className="border-t border-brand-hairline">
         {user && (
-          <div className="px-5 py-3 flex items-center gap-2 text-sm text-gray-400">
+          <div className="px-5 py-3 flex items-center gap-2 text-sm text-brand-mute">
             <User size={16} />
             <span className="truncate">{user.email}</span>
           </div>
         )}
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-5 py-3 text-sm text-gray-400 hover:text-white hover:bg-gray-800 transition-colors"
+          className="w-full flex items-center gap-3 px-5 py-3 text-sm text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
         >
           <LogOut size={18} />
           Sign out
