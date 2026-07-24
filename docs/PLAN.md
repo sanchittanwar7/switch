@@ -131,7 +131,7 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
   - Save button → `PUT /api/settings`, show success toast
   - **~150 LOC**
 
-- [ ] **4.2 Frontend stores (Zustand)**
+- [x] **4.2 Frontend stores (Zustand)**
   - `authStore`: user, session, isAuthenticated, login, logout, initFromSession
   - `kanbanStore`: columns, cards, fetchBoard, createCard, updateCard, deleteCard, moveCard, addComment
   - `editorStore`: activeFile, openFiles, fileTree, isDirty, compileStatus, pdfUrl, agentSession
@@ -142,7 +142,7 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
 
 ## Phase 5: Kanban Frontend
 
-- [ ] **5.1 Board layout**
+- [x] **5.1 Board layout**
   - `<KanbanView>` — horizontal scroll container for columns
   - `<BoardHeader>` — "Job Pipeline" title + card count
   - `<Column>` — renders header + card list, droppable zone (via `@hello-pangea/dnd`)
