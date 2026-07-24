@@ -5,9 +5,14 @@ import { resolvePath } from "../utils/paths";
 
 const router = Router();
 
+function getUserId(req: Parameters<Parameters<typeof router.get>[1]>[0]): string {
+  return (req as any).userId!;
+}
+
 router.get("/list", async (req, res) => {
+  const userId = getUserId(req);
   const dir = typeof req.query.dir === "string" ? req.query.dir : "";
-  const absPath = resolvePath(dir);
+  const absPath = resolvePath(dir, userId);
 
   const entries = await fs.readdir(absPath, { withFileTypes: true });
   const result = entries.map((entry) => ({
@@ -19,18 +24,20 @@ router.get("/list", async (req, res) => {
 });
 
 router.get("/read", async (req, res) => {
+  const userId = getUserId(req);
   const file = typeof req.query.file === "string" ? req.query.file : "";
   if (!file) {
     res.status(400).json({ error: "Missing required query param: file" });
     return;
   }
 
-  const absPath = resolvePath(file);
+  const absPath = resolvePath(file, userId);
   const content = await fs.readFile(absPath, "utf-8");
   res.json({ content });
 });
 
 router.put("/write", async (req, res) => {
+  const userId = getUserId(req);
   const { path: filePath, content } = req.body;
 
   if (!filePath || content === undefined) {
@@ -38,13 +45,14 @@ router.put("/write", async (req, res) => {
     return;
   }
 
-  const absPath = resolvePath(filePath);
+  const absPath = resolvePath(filePath, userId);
   await fs.mkdir(path.dirname(absPath), { recursive: true });
   await fs.writeFile(absPath, String(content), "utf-8");
   res.json({ success: true });
 });
 
 router.delete("/delete", async (req, res) => {
+  const userId = getUserId(req);
   const { path: filePath } = req.body;
 
   if (!filePath) {
@@ -52,7 +60,7 @@ router.delete("/delete", async (req, res) => {
     return;
   }
 
-  const absPath = resolvePath(filePath);
+  const absPath = resolvePath(filePath, userId);
   const stat = await fs.stat(absPath);
 
   if (stat.isDirectory()) {
@@ -65,6 +73,7 @@ router.delete("/delete", async (req, res) => {
 });
 
 router.post("/mkdir", async (req, res) => {
+  const userId = getUserId(req);
   const { path: filePath } = req.body;
 
   if (!filePath) {
@@ -72,12 +81,13 @@ router.post("/mkdir", async (req, res) => {
     return;
   }
 
-  const absPath = resolvePath(filePath);
+  const absPath = resolvePath(filePath, userId);
   await fs.mkdir(absPath, { recursive: true });
   res.json({ success: true });
 });
 
 router.post("/rename", async (req, res) => {
+  const userId = getUserId(req);
   const { oldPath, newPath } = req.body;
 
   if (!oldPath || !newPath) {
@@ -85,8 +95,8 @@ router.post("/rename", async (req, res) => {
     return;
   }
 
-  const absOld = resolvePath(oldPath);
-  const absNew = resolvePath(newPath);
+  const absOld = resolvePath(oldPath, userId);
+  const absNew = resolvePath(newPath, userId);
   await fs.rename(absOld, absNew);
   res.json({ success: true });
 });

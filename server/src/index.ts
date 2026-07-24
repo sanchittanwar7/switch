@@ -1,6 +1,8 @@
 import express from "express";
 import cors from "cors";
-import { ensureWorkspace, initializeDatabase } from "./workspace";
+import { initializeDatabase } from "./workspace";
+import { authMiddleware } from "./middleware/auth";
+import authRoutes from "./routes/auth";
 import fsRoutes from "./routes/fs";
 import kanbanRoutes from "./routes/kanban";
 
@@ -14,8 +16,9 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
-app.use("/api/fs", fsRoutes);
-app.use("/api/kanban", kanbanRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/fs", authMiddleware, fsRoutes);
+app.use("/api/kanban", authMiddleware, kanbanRoutes);
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(err.stack);
@@ -23,7 +26,6 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
 });
 
 async function start() {
-  await ensureWorkspace();
   await initializeDatabase();
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);

@@ -1,11 +1,17 @@
 import { Router } from "express";
-import { eq, asc } from "drizzle-orm";
+import { eq, asc, and } from "drizzle-orm";
 import { db } from "../db";
 import { columns, cards, comments } from "../db/schema";
 
 const router = Router();
 
-router.get("/", async (_req, res) => {
+function getUserId(req: Parameters<Parameters<typeof router.get>[1]>[0]): string {
+  return (req as any).userId!;
+}
+
+router.get("/", async (req, res) => {
+  const userId = getUserId(req);
+
   const allColumns = await db
     .select()
     .from(columns)
@@ -14,12 +20,17 @@ router.get("/", async (_req, res) => {
   const allCards = await db
     .select()
     .from(cards)
+    .where(eq(cards.userId, userId))
     .orderBy(asc(cards.position));
 
-  const allComments = await db
-    .select()
-    .from(comments)
-    .orderBy(asc(comments.createdAt));
+  const cardIds = allCards.map((c) => c.id);
+  const allComments = cardIds.length > 0
+    ? await db
+        .select()
+        .from(comments)
+        .where(and(eq(comments.userId, userId)))
+        .orderBy(asc(comments.createdAt))
+    : [];
 
   const cardsWithComments = allCards.map((card) => ({
     ...card,
@@ -42,6 +53,7 @@ router.get("/", async (_req, res) => {
 });
 
 router.put("/", async (req, res) => {
+  const userId = getUserId(req);
   const { columns: updatedColumns } = req.body;
 
   if (!updatedColumns || !Array.isArray(updatedColumns)) {
@@ -55,7 +67,7 @@ router.put("/", async (req, res) => {
         await db
           .update(cards)
           .set({ columnId: col.id, position: i, updatedAt: new Date() })
-          .where(eq(cards.id, col.cardIds[i]));
+          .where(and(eq(cards.id, col.cardIds[i]), eq(cards.userId, userId)));
       }
     }
   }
@@ -64,6 +76,7 @@ router.put("/", async (req, res) => {
 });
 
 router.post("/cards", async (req, res) => {
+  const userId = getUserId(req);
   const { company, role, jobUrl, resumePath, tags, columnId } = req.body;
 
   if (!company || !role || !columnId) {
@@ -74,7 +87,7 @@ router.post("/cards", async (req, res) => {
   const [maxPos] = await db
     .select({ max: cards.position })
     .from(cards)
-    .where(eq(cards.columnId, columnId))
+    .where(and(eq(cards.columnId, columnId), eq(cards.userId, userId)))
     .orderBy(asc(cards.position));
 
   const nextPosition = (maxPos?.max ?? -1) + 1;
@@ -82,6 +95,7 @@ router.post("/cards", async (req, res) => {
   const [created] = await db
     .insert(cards)
     .values({
+      userId,
       company,
       role,
       jobUrl: jobUrl || null,
@@ -96,6 +110,7 @@ router.post("/cards", async (req, res) => {
 });
 
 router.patch("/cards/:id", async (req, res) => {
+  const userId = getUserId(req);
   const { id } = req.params;
   const updates: Record<string, unknown> = {};
 
@@ -116,7 +131,7 @@ router.patch("/cards/:id", async (req, res) => {
   const [updated] = await db
     .update(cards)
     .set(updates)
-    .where(eq(cards.id, id))
+    .where(and(eq(cards.id, id), eq(cards.userId, userId)))
     .returning();
 
   if (!updated) {
@@ -134,11 +149,12 @@ router.patch("/cards/:id", async (req, res) => {
 });
 
 router.delete("/cards/:id", async (req, res) => {
+  const userId = getUserId(req);
   const { id } = req.params;
 
   const [deleted] = await db
     .delete(cards)
-    .where(eq(cards.id, id))
+    .where(and(eq(cards.id, id), eq(cards.userId, userId)))
     .returning();
 
   if (!deleted) {
@@ -150,6 +166,7 @@ router.delete("/cards/:id", async (req, res) => {
 });
 
 router.post("/cards/:id/comments", async (req, res) => {
+  const userId = getUserId(req);
   const { id } = req.params;
   const { text } = req.body;
 
@@ -158,7 +175,10 @@ router.post("/cards/:id/comments", async (req, res) => {
     return;
   }
 
-  const [card] = await db.select().from(cards).where(eq(cards.id, id));
+  const [card] = await db
+    .select()
+    .from(cards)
+    .where(and(eq(cards.id, id), eq(cards.userId, userId)));
   if (!card) {
     res.status(404).json({ error: "Card not found" });
     return;
@@ -166,18 +186,19 @@ router.post("/cards/:id/comments", async (req, res) => {
 
   const [created] = await db
     .insert(comments)
-    .values({ cardId: id, text })
+    .values({ cardId: id, userId, text })
     .returning();
 
   res.status(201).json(created);
 });
 
 router.delete("/comments/:id", async (req, res) => {
+  const userId = getUserId(req);
   const { id } = req.params;
 
   const [deleted] = await db
     .delete(comments)
-    .where(eq(comments.id, id))
+    .where(and(eq(comments.id, id), eq(comments.userId, userId)))
     .returning();
 
   if (!deleted) {
