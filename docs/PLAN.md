@@ -6,7 +6,7 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
 
 ## Phase 1: Project Scaffold & Foundation
 
-- [ ] **1.1 Monorepo scaffold**
+- [x] **1.1 Monorepo scaffold**
   - `package.json` with workspaces (`client/`, `server/`)
   - Vite + React + TypeScript for `client/`
   - Express + TypeScript for `server/`
@@ -15,9 +15,9 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
   - Dev script: `concurrently` runs Vite dev server + Express with tsx watch
   - **~150 LOC**
 
-- [ ] **1.2 Backend foundation**
+- [x] **1.2 Backend foundation**
   - Express server with JSON body parser, CORS, error handler
-  - Workspace init: on startup, ensure `~/.job-portal/{resumes,kanban.json,settings.json}` exist
+  - Workspace init: on startup, ensure `~/.switch/{resumes,kanban.json,settings.json}` exist
   - Settings read/write helpers (`getSettings()`, `updateSettings()`)
   - Path resolution utility: resolve relative path → absolute under workspace root, block `..`
   - **~200 LOC**
@@ -181,7 +181,7 @@ Each task ≤~500 LOC. Check off items as completed across sessions.
   - **~100 LOC**
 
 - [ ] **7.3 First-run experience**
-  - On backend startup, if `~/.job-portal/` doesn't exist, create directory structure
+  - On backend startup, if `~/.switch/` doesn't exist, create directory structure
   - Seed `resumes/default/` with a basic LaTeX resume template (`main.tex` + sections)
   - Seed `kanban.json` with default 7 columns (empty)
   - Seed `settings.json` with defaults (empty API key, `gpt-4o`, default workspace path)

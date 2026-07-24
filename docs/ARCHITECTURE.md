@@ -45,7 +45,7 @@ Single user, local filesystem storage, user-provided LLM API key.
                         │
 ┌───────────────────────┴──────────────────────────────┐
 │              LOCAL FILESYSTEM                         │
-│  ~/.job-portal/                                       │
+│  ~/.switch/                                       │
 │  ├── resumes/            (latex project dirs)         │
 │  ├── kanban.json         (board state)                │
 │  └── settings.json       (LLM keys, prefs)            │
@@ -77,7 +77,7 @@ Single user, local filesystem storage, user-provided LLM API key.
 ## File System Layout
 
 ```
-~/.job-portal/
+~/.switch/
 ├── resumes/
 │   ├── default/                   # "master" resume (user maintains)
 │   │   ├── main.tex
@@ -146,12 +146,12 @@ Columns are fixed. Cards are keyed by UUID. Column `cardIds` arrays define order
 ```json
 {
   "llm": {
-    "provider": "openai",
+    "provider": "openai | gemini | claude | deepseek | qwen",
     "apiKey": "sk-...",
     "baseUrl": "https://api.openai.com/v1",
     "model": "gpt-4o"
   },
-  "workspaceRoot": "~/.job-portal"
+  "workspaceRoot": "~/.switch"
 }
 ```
 

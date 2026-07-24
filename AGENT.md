@@ -2,7 +2,7 @@
 
 ## Architecture
 
-Refer to `docs/vercel/ARCHITECTURE.md` for system design, component contracts, data models, API design, agent design, and file system layout. All architectural decisions are documented there.
+Refer to `docs/ARCHITECTURE.md` for system design, component contracts, data models, API design, agent design, and file system layout. All architectural decisions are documented there.
 
 ## UI Design
 
