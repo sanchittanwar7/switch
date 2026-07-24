@@ -1,5 +1,7 @@
 import { Droppable } from "@hello-pangea/dnd";
 import type { Column as ColumnType, Card } from "../../types";
+import CardComponent from "./Card";
+import AddCardButton from "./AddCardButton";
 
 interface ColumnProps {
   column: ColumnType;
@@ -20,7 +22,7 @@ export default function Column({ column, cards }: ColumnProps) {
         </div>
       </div>
 
-      <Droppable droppableId={column.id}>
+      <Droppable droppableId={column.id} type="CARD">
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}
@@ -29,7 +31,10 @@ export default function Column({ column, cards }: ColumnProps) {
               snapshot.isDraggingOver ? "bg-white/[0.07]" : ""
             }`}
           >
-            {cards.length === 0 && (
+            {cards.map((card, index) => (
+              <CardComponent key={card.id} card={card} index={index} />
+            ))}
+            {cards.length === 0 && !snapshot.isDraggingOver && (
               <div className="flex items-center justify-center h-20 text-xs text-gray-600">
                 No cards yet
               </div>
@@ -38,6 +43,10 @@ export default function Column({ column, cards }: ColumnProps) {
           </div>
         )}
       </Droppable>
+
+      <div className="px-2 pb-2">
+        <AddCardButton columnId={column.id} />
+      </div>
     </div>
   );
 }

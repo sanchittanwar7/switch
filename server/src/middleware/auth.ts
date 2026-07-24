@@ -62,5 +62,8 @@ export async function authMiddleware(
 
   req.userId = data.user.id;
   req.userEmail = data.user.email;
+
+  await ensureUser(data.user.id, data.user.email);
+
   next();
 }

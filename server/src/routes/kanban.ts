@@ -98,9 +98,9 @@ router.post("/cards", async (req, res) => {
       userId,
       company,
       role,
-      jobUrl: jobUrl || null,
-      resumePath: resumePath || null,
-      tags: tags || [],
+      jobUrl: jobUrl?.trim() || null,
+      resumePath: resumePath?.trim() || null,
+      tags: Array.isArray(tags) ? tags : [],
       columnId,
       position: nextPosition,
     })
