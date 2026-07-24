@@ -1,19 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { createClient } from "@supabase/supabase-js";
+import { supabaseAdmin } from "../lib/supabase";
 import { db } from "../db";
 import { users } from "../db/schema";
 import { ensureUserWorkspace } from "../workspace";
-
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_SECRET_KEY = process.env.SUPABASE_SECRET_KEY;
-
-if (!SUPABASE_URL || !SUPABASE_SECRET_KEY) {
-  console.warn("SUPABASE_URL / SUPABASE_SECRET_KEY not set — auth disabled");
-}
-
-const supabaseAdmin = SUPABASE_URL && SUPABASE_SECRET_KEY
-  ? createClient(SUPABASE_URL, SUPABASE_SECRET_KEY)
-  : null;
 
 declare global {
   namespace Express {

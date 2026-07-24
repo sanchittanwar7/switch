@@ -8,6 +8,7 @@ interface EditorStore {
   fileContents: Record<string, string>;
   fileTree: FileEntry[];
   isDirty: boolean;
+  isCloudSynced: boolean;
   compileStatus: "idle" | "compiling" | "success" | "error";
   compileErrors: LaTeXError[];
   pdfUrl: string | null;
@@ -23,11 +24,14 @@ interface EditorStore {
   setFileContent: (path: string, content: string) => void;
   saveFile: (path: string) => Promise<void>;
   fetchFileTree: (dir?: string) => Promise<void>;
+  fetchCloudFileTree: (prefix?: string) => Promise<void>;
   createFile: (path: string, content?: string) => Promise<void>;
   createFolder: (path: string) => Promise<void>;
   deleteEntry: (path: string) => Promise<void>;
   renameEntry: (oldPath: string, newPath: string) => Promise<void>;
   readFile: (path: string) => Promise<string>;
+  pullFromCloud: (path: string) => Promise<void>;
+  syncToCloud: (path: string) => Promise<void>;
   compile: (projectPath: string) => Promise<void>;
   setPdfUrl: (url: string | null) => void;
   startAgentSession: (
@@ -43,6 +47,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   fileContents: {},
   fileTree: [],
   isDirty: false,
+  isCloudSynced: false,
   compileStatus: "idle",
   compileErrors: [],
   pdfUrl: null,
@@ -54,6 +59,13 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   openFile: async (path) => {
     const { fileContents, openFiles } = get();
+
+    try {
+      await apiGet<{ content: string }>(
+        `/api/sb/pull?file=${encodeURIComponent(path)}`,
+      );
+    } catch {}
+
     if (!fileContents[path]) {
       const { content } = await apiGet<{ content: string }>(
         `/api/fs/read?file=${encodeURIComponent(path)}`,
@@ -63,9 +75,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       }));
     }
     if (!openFiles.includes(path)) {
-      set({ openFiles: [...openFiles, path], activeFile: path });
+      set({ openFiles: [...openFiles, path], activeFile: path, isCloudSynced: true });
     } else {
-      set({ activeFile: path });
+      set({ activeFile: path, isCloudSynced: true });
     }
   },
 
@@ -87,6 +99,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set((s) => ({
       fileContents: { ...s.fileContents, [path]: content },
       isDirty: true,
+      isCloudSynced: false,
     }));
   },
 
@@ -137,6 +150,30 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       fileContents: { ...s.fileContents, [path]: content },
     }));
     return content;
+  },
+
+  pullFromCloud: async (path) => {
+    const { content } = await apiGet<{ content: string }>(
+      `/api/sb/pull?file=${encodeURIComponent(path)}`,
+    );
+    set((s) => ({
+      fileContents: { ...s.fileContents, [path]: content },
+      isCloudSynced: true,
+    }));
+  },
+
+  syncToCloud: async (path) => {
+    const content = get().fileContents[path];
+    if (content === undefined) return;
+    await apiPut("/api/sb/push", { path, content });
+    set({ isCloudSynced: true });
+  },
+
+  fetchCloudFileTree: async (prefix = "") => {
+    const data = await apiGet<FileEntry[]>(
+      `/api/sb/list?prefix=${encodeURIComponent(prefix)}`,
+    );
+    set({ fileTree: data });
   },
 
   compile: async (projectPath) => {
