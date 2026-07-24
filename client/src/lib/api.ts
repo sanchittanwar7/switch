@@ -28,11 +28,41 @@ export async function apiGet<T>(path: string): Promise<T> {
   return handleResponse<T>(res);
 }
 
+export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "POST",
+    headers: await getHeaders(),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse<T>(res);
+}
+
+export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
+  const res = await fetch(path, {
+    method: "PATCH",
+    headers: await getHeaders(),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
+  });
+  return handleResponse<T>(res);
+}
+
 export async function apiPut<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "PUT",
     headers: await getHeaders(),
     body: JSON.stringify(body),
+  });
+  return handleResponse<T>(res);
+}
+
+export async function apiDelete<T = { success: boolean }>(
+  path: string,
+  body?: unknown,
+): Promise<T> {
+  const res = await fetch(path, {
+    method: "DELETE",
+    headers: await getHeaders(),
+    body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   return handleResponse<T>(res);
 }
