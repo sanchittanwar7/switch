@@ -176,7 +176,7 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
 
 ## Phase 6: Editor Frontend
 
-- [ ] **6.1 File tree**
+- [x] **6.1 File tree**
   - `<FileTree>` — fetches `GET /api/sb/list` (cloud bucket), renders recursive `<FileNode>`
   - Icons: folder open/closed, file (by extension)
   - Click file → pull from cloud to local tmp, then open in editor
@@ -184,7 +184,7 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
   - New/Rename inline input. Delete with confirm dialog.
   - **~300 LOC**
 
-- [ ] **6.2 Monaco editor**
+- [x] **6.2 Monaco editor**
   - `<MonacoEditor>` — `@monaco-editor/react`, LaTeX language mode
   - Open flow: `GET /api/sb/pull` (cloud → local tmp) → `GET /api/fs/read` (load into editor)
   - Dirty tracking: compare editor content to last saved state
@@ -193,7 +193,7 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
   - File tabs for open files (multi-file workflow)
   - **~200 LOC**
 
-- [ ] **6.3 Toolbar + PDF preview**
+- [x] **6.3 Toolbar + PDF preview**
   - `<EditorToolbar>` — Compile button, Save to Cloud button, Download PDF button, compile status badge
   - Compile → `POST /api/latex/compile` (runs on local tmp), show spinner → update `pdfUrl` or set `compileErrors`
   - Save to Cloud → `PUT /api/sb/push`, syncs `.tex` from local tmp to Supabase bucket
@@ -202,7 +202,7 @@ Dependencies: `ai`, `@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@a
   - Download → `window.open('/api/latex/download?...')` triggers browser download (from local tmp PDF)
   - **~300 LOC**
 
-- [ ] **6.4 Agent panel**
+- [x] **6.4 Agent panel**
   - `<AgentPanel>` — collapsible right sidebar
   - Input: Job URL text field + "Tailor Resume" button
   - On start → `POST /api/agent/tailor`, connect to SSE stream via `EventSource`

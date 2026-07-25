@@ -64,7 +64,7 @@ router.delete("/delete", async (req, res) => {
   const stat = await fs.stat(absPath);
 
   if (stat.isDirectory()) {
-    await fs.rmdir(absPath);
+    await fs.rm(absPath, { recursive: true });
   } else {
     await fs.rm(absPath);
   }
@@ -101,13 +101,37 @@ router.post("/rename", async (req, res) => {
   res.json({ success: true });
 });
 
+router.post("/copy", async (req, res) => {
+  const userId = getUserId(req);
+  const { sourcePath, destPath } = req.body;
+
+  if (!sourcePath || !destPath) {
+    res.status(400).json({ error: "Missing required fields: sourcePath, destPath" });
+    return;
+  }
+
+  const absSrc = resolvePath(sourcePath, userId);
+  const absDest = resolvePath(destPath, userId);
+  await fs.cp(absSrc, absDest, { recursive: true });
+  res.json({ success: true });
+});
+
 router.get("/resumes", async (req, res) => {
   const userId = getUserId(req);
   const resumesDir = resolvePath("resumes", userId);
 
   try {
     const entries = await fs.readdir(resumesDir, { withFileTypes: true });
-    res.json(entries.filter((e) => e.isDirectory()).map((e) => e.name));
+    const dirs = entries.filter((e) => e.isDirectory());
+    const result = await Promise.all(
+      dirs.map(async (e) => {
+        const fullPath = path.join(resumesDir, e.name);
+        const stat = await fs.stat(fullPath);
+        return { name: e.name, mtime: stat.mtime.toISOString() };
+      }),
+    );
+    result.sort((a, b) => new Date(b.mtime).getTime() - new Date(a.mtime).getTime());
+    res.json(result);
   } catch {
     res.json([]);
   }

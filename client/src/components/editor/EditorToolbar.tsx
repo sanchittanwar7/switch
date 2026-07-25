@@ -49,7 +49,7 @@ export default function EditorToolbar({ projectPath }: EditorToolbarProps) {
       <button
         onClick={handleCompile}
         disabled={compileStatus === "compiling"}
-        className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-brand-ink text-brand-on-primary rounded-full text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+        className="inline-flex items-center gap-1.5 px-3 py-1 bg-brand-ink text-brand-on-primary rounded-full text-xs font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
       >
         {compileStatus === "compiling" ? (
           <Loader2 size={14} className="animate-spin" />
@@ -62,7 +62,7 @@ export default function EditorToolbar({ projectPath }: EditorToolbarProps) {
       {pdfUrl && (
         <button
           onClick={handleDownload}
-          className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
+          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
         >
           <Download size={14} />
           PDF

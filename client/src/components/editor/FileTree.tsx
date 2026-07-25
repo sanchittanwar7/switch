@@ -57,7 +57,7 @@ export default function FileTree({ projectPath }: FileTreeProps) {
 
   useEffect(() => {
     setTreeData({});
-    setExpandedDirs(new Set());
+    setExpandedDirs(new Set([projectPath]));
     setLoading(true);
     fetchDir(rootPrefix).finally(() => setLoading(false));
   }, [projectPath, rootPrefix, fetchDir]);
@@ -187,14 +187,10 @@ export default function FileTree({ projectPath }: FileTreeProps) {
 
   const rootEntries = treeData[rootPrefix] || [];
 
+  const rootFolderEntry: FileEntry = { name: projectPath, type: "directory" };
+
   return (
     <div className="h-full flex flex-col bg-brand-canvas">
-      <div className="px-3 py-2.5 border-b border-brand-hairline">
-        <h2 className="text-[11px] font-medium text-brand-mute uppercase tracking-widest font-mono">
-          {projectPath.split("/").pop() || "files"}
-        </h2>
-      </div>
-
       <div className="flex-1 overflow-y-auto py-1">
         {loading ? (
           <div className="px-3 py-2 text-xs text-brand-mute">
@@ -205,24 +201,21 @@ export default function FileTree({ projectPath }: FileTreeProps) {
             No files
           </div>
         ) : (
-          rootEntries.map((entry) => (
-            <FileNode
-              key={entry.name}
-              entry={entry}
-              path={entry.name}
-              depth={0}
-              expandedDirs={expandedDirs}
-              onToggleDir={handleToggleDir}
-              onClickFile={handleClickFile}
-              onContextMenu={handleContextMenu}
-              treeData={treeData}
-              editingPath={editingPath}
-              editValue={editValue}
-              onEditValueChange={setEditValue}
-              onSubmitRename={submitRename}
-              onCancelEdit={() => setEditingPath(null)}
-            />
-          ))
+          <FileNode
+            entry={rootFolderEntry}
+            path={projectPath}
+            depth={0}
+            expandedDirs={expandedDirs}
+            onToggleDir={handleToggleDir}
+            onClickFile={handleClickFile}
+            onContextMenu={handleContextMenu}
+            treeData={treeData}
+            editingPath={editingPath}
+            editValue={editValue}
+            onEditValueChange={setEditValue}
+            onSubmitRename={submitRename}
+            onCancelEdit={() => setEditingPath(null)}
+          />
         )}
 
         {newItem && (
