@@ -48,7 +48,7 @@ app.use("/pdfs", authMiddleware, async (req, res) => {
   }
 
   res.setHeader("Content-Type", "application/pdf");
-  res.sendFile(absPath);
+  res.sendFile(absPath, { dotfiles: "allow" });
 });
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {

@@ -1,13 +1,7 @@
 import { useState, useEffect } from "react";
-import { Save, Key, Globe, Cpu, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
-import { apiGet, apiPut } from "../lib/api";
-
-interface Settings {
-  provider: string;
-  apiKey: string;
-  baseUrl: string;
-  model: string;
-}
+import { Save, Key, Globe, Cpu, CheckCircle, AlertCircle, Loader2, HardDrive, Cloud } from "lucide-react";
+import { useSettingsStore } from "../stores/settingsStore";
+import type { SettingsData } from "../stores/settingsStore";
 
 const PROVIDERS = ["openai", "gemini", "claude", "deepseek", "qwen"] as const;
 
@@ -20,33 +14,39 @@ const PROVIDER_DEFAULTS: Record<string, { baseUrl: string; model: string }> = {
 };
 
 export default function SettingsView() {
-  const [settings, setSettings] = useState<Settings | null>(null);
-  const [form, setForm] = useState<Settings>({
+  const { settings, loading, error: storeError, loadSettings, saveSettings, clearError } = useSettingsStore();
+
+  const [form, setForm] = useState({
     provider: "openai",
     apiKey: "",
     baseUrl: "",
     model: "",
+    storageMode: "local" as "local" | "cloud",
   });
   const [apiKeyDirty, setApiKeyDirty] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
 
   useEffect(() => {
-    apiGet<Settings>("/api/settings")
-      .then((data) => {
-        setSettings(data);
-        setForm({
-          provider: data.provider || "openai",
-          apiKey: data.apiKey || "",
-          baseUrl: data.baseUrl || PROVIDER_DEFAULTS.openai.baseUrl,
-          model: data.model || PROVIDER_DEFAULTS.openai.model,
-        });
-      })
-      .catch(() => setError("Failed to load settings"))
-      .finally(() => setLoading(false));
+    loadSettings();
   }, []);
+
+  useEffect(() => {
+    if (settings) {
+      setForm({
+        provider: settings.provider || "openai",
+        apiKey: settings.apiKey || "",
+        baseUrl: settings.baseUrl || PROVIDER_DEFAULTS.openai.baseUrl,
+        model: settings.model || PROVIDER_DEFAULTS.openai.model,
+        storageMode: settings.storageMode || "local",
+      });
+    }
+  }, [settings]);
+
+  useEffect(() => {
+    if (storeError) setError(storeError);
+  }, [storeError]);
 
   function handleProviderChange(provider: string) {
     const defaults = PROVIDER_DEFAULTS[provider];
@@ -70,19 +70,20 @@ export default function SettingsView() {
     setSaving(true);
 
     try {
-      const payload = {
+      const payload: Partial<SettingsData> = {
         provider: form.provider,
-        apiKey: apiKeyDirty ? form.apiKey : settings?.apiKey || "",
+        apiKey: apiKeyDirty ? form.apiKey : undefined,
         baseUrl: form.baseUrl,
         model: form.model,
+        storageMode: form.storageMode,
       };
-      const saved = await apiPut<Settings>("/api/settings", payload);
-      setSettings(saved);
+      const saved = await saveSettings(payload);
       setForm({
         provider: saved.provider,
         apiKey: saved.apiKey || "",
         baseUrl: saved.baseUrl || PROVIDER_DEFAULTS[saved.provider]?.baseUrl || "",
         model: saved.model || PROVIDER_DEFAULTS[saved.provider]?.model || "",
+        storageMode: saved.storageMode || "local",
       });
       setApiKeyDirty(false);
       setSuccess(true);
@@ -108,7 +109,7 @@ export default function SettingsView() {
         <h2
           className="mb-10 text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-[#171717]"
         >
-          LLM Settings.
+          Settings.
         </h2>
 
         {error && (
@@ -126,6 +127,47 @@ export default function SettingsView() {
         )}
 
         <div className="space-y-5">
+          <div className="pb-4 border-b border-[#ebebeb]">
+            <h3 className="text-[13px] font-medium text-[#888888] uppercase tracking-wider mb-4">
+              Storage
+            </h3>
+            <div className="flex rounded-[8px] bg-[#f0f0f0] p-1 gap-1">
+              <button
+                onClick={() => setForm({ ...form, storageMode: "local" })}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-[6px] px-3 py-2 text-[14px] leading-[20px] font-medium transition-colors ${
+                  form.storageMode === "local"
+                    ? "bg-white text-[#171717] shadow-sm"
+                    : "text-[#888888] hover:text-[#171717]"
+                }`}
+              >
+                <HardDrive size={14} />
+                Local
+              </button>
+              <button
+                onClick={() => setForm({ ...form, storageMode: "cloud" })}
+                className={`flex-1 flex items-center justify-center gap-2 rounded-[6px] px-3 py-2 text-[14px] leading-[20px] font-medium transition-colors ${
+                  form.storageMode === "cloud"
+                    ? "bg-white text-[#171717] shadow-sm"
+                    : "text-[#888888] hover:text-[#171717]"
+                }`}
+              >
+                <Cloud size={14} />
+                Cloud
+              </button>
+            </div>
+            <p className="mt-2 text-[12px] leading-[16px] text-[#888888]">
+              {form.storageMode === "local"
+                ? "Resume files stored on your device."
+                : "Resume files synced to Supabase cloud storage."}
+            </p>
+          </div>
+
+          <div className="pt-1">
+            <h3 className="text-[13px] font-medium text-[#888888] uppercase tracking-wider mb-4">
+              LLM
+            </h3>
+          </div>
+
           <label className="block">
             <span className="flex items-center gap-2 text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-[#171717] mb-1.5">
               <Cpu size={14} />

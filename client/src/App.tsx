@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import { useAuth } from "./contexts/AuthContext";
+import { useSettingsStore } from "./stores/settingsStore";
 import Sidebar from "./components/Sidebar";
 import KanbanView from "./views/KanbanView";
 import EditorView from "./views/EditorView";
@@ -7,6 +9,11 @@ import SettingsView from "./views/SettingsView";
 import LoginPage from "./views/LoginPage";
 
 function ProtectedLayout() {
+  const loadSettings = useSettingsStore((s) => s.loadSettings);
+
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
   return (
     <div className="flex h-screen bg-brand-canvas">
       <Sidebar />

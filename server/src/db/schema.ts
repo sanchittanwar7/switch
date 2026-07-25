@@ -16,6 +16,7 @@ export const userSettings = pgTable("user_settings", {
   apiKey: text("api_key").notNull().default(""),
   baseUrl: text("base_url"),
   model: text("model"),
+  storageMode: text("storage_mode").notNull().default("local"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({

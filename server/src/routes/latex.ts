@@ -3,6 +3,7 @@ import { execFile } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 import { resolvePath } from "../utils/paths";
+import { syncProjectFromSupabase } from "../lib/sbSync";
 
 const router = Router();
 
@@ -46,14 +47,67 @@ function parseLogErrors(logText: string): LaTeXError[] {
   return errors;
 }
 
-function runPdflatex(projectDir: string, mainFile: string): Promise<{ stdout: string; stderr: string }> {
+async function detectEngine(projectDir: string, mainFile: string): Promise<string> {
+  const mainContent = await fs.readFile(path.join(projectDir, mainFile), "utf-8");
+  const fileContents = [mainContent];
+
+  for (const line of mainContent.split("\n")) {
+    const m = line.match(/\\usepackage\{(?:\.\/)?(.+?)\}/);
+    if (m) {
+      const subFile = m[1].replace(/\.sty$/, "") + ".sty";
+      try {
+        const content = await fs.readFile(path.join(projectDir, subFile), "utf-8");
+        fileContents.push(content);
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  const combined = fileContents.join("\n");
+
+  if (/\\usepackage\{emoji\}/.test(combined) || /\\setemojifont/.test(combined)) {
+    return "lualatex";
+  }
+
+  if (/\\usepackage\{fontspec\}/.test(combined) || /\\setmainfont/.test(combined)) {
+    return "lualatex";
+  }
+
+  return "pdflatex";
+}
+
+async function resolveEngine(engine: string): Promise<string> {
+  const texbinCandidates = [
+    path.join("/Library/TeX/texbin", engine),
+    engine,
+  ];
+
+  const dirEntries = await fs.readdir("/usr/local/texlive").catch(() => [] as string[]);
+  for (const entry of dirEntries.sort().reverse()) {
+    texbinCandidates.push(path.join("/usr/local/texlive", entry, "bin/universal-darwin", engine));
+  }
+
+  for (const candidate of texbinCandidates) {
+    try {
+      await fs.access(candidate, fs.constants.X_OK);
+      return candidate;
+    } catch {
+      continue;
+    }
+  }
+
+  return engine;
+}
+
+function runLatex(engine: string, projectDir: string, mainFile: string): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    execFile("pdflatex", [
+    execFile(engine, [
       "-interaction=nonstopmode",
       "-output-directory=" + projectDir,
       mainFile,
     ], { cwd: projectDir, timeout: 30000 }, (error, stdout, stderr) => {
-      if (error && !stdout.includes("output written")) {
+      if (error && !/output written/i.test(stdout)) {
         const logPath = path.join(projectDir, mainFile.replace(/\.tex$/, ".log"));
         fs.readFile(logPath, "utf-8")
           .then((logContent) => {
@@ -70,11 +124,20 @@ function runPdflatex(projectDir: string, mainFile: string): Promise<{ stdout: st
 
 router.post("/compile", async (req, res) => {
   const userId = getUserId(req);
-  const { projectPath } = req.body as { projectPath?: string };
+  const { projectPath, storageMode } = req.body as { projectPath?: string; storageMode?: string };
 
   if (!projectPath) {
     res.status(400).json({ error: "Missing required field: projectPath" });
     return;
+  }
+
+  if (storageMode === "cloud") {
+    try {
+      await syncProjectFromSupabase(userId, projectPath);
+    } catch (err: any) {
+      res.status(502).json({ error: `Failed to sync project from cloud storage: ${err.message}` });
+      return;
+    }
   }
 
   const absProjectDir = resolvePath(projectPath, userId);
@@ -101,9 +164,12 @@ router.post("/compile", async (req, res) => {
   const pdfName = mainFile.replace(/\.tex$/, ".pdf");
   const pdfPath = path.join(projectPath, pdfName);
 
+  const engine = await detectEngine(absProjectDir, mainFile);
+  const enginePath = await resolveEngine(engine);
+
   try {
-    await runPdflatex(absProjectDir, mainFile);
-    await runPdflatex(absProjectDir, mainFile);
+    await runLatex(enginePath, absProjectDir, mainFile);
+    await runLatex(enginePath, absProjectDir, mainFile);
 
     const logPath = path.join(absProjectDir, mainFile.replace(/\.tex$/, ".log"));
     let logContent = "";
@@ -156,10 +222,8 @@ router.get("/download", async (req, res) => {
     return;
   }
 
-  const basename = path.basename(absPath);
   res.setHeader("Content-Type", "application/pdf");
-  res.setHeader("Content-Disposition", `attachment; filename="${basename}"`);
-  res.sendFile(absPath);
+  res.sendFile(absPath, { dotfiles: "allow" });
 });
 
 export default router;

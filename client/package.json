@@ -14,7 +14,7 @@
     "@supabase/supabase-js": "^2.110.8",
     "lucide-react": "^0.475.0",
     "monaco-editor": "^0.52.2",
-    "pdfjs-dist": "^4.10.38",
+    "pdfjs-dist": "4.8.69",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-pdf": "^9.2.1",

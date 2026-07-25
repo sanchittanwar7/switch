@@ -1,5 +1,6 @@
 import { create } from "zustand";
-import { apiGet, apiPost, apiPut, apiDelete } from "../lib/api";
+import { apiGet, apiGetBlob, apiPost, apiPut, apiDelete } from "../lib/api";
+import { useSettingsStore } from "./settingsStore";
 import type { FileEntry, LaTeXError } from "../types";
 
 interface EditorStore {
@@ -11,6 +12,7 @@ interface EditorStore {
   isCloudSynced: boolean;
   compileStatus: "idle" | "compiling" | "success" | "error";
   compileErrors: LaTeXError[];
+  pdfPath: string | null;
   pdfUrl: string | null;
   agentSession: {
     sessionId: string;
@@ -50,6 +52,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   isCloudSynced: false,
   compileStatus: "idle",
   compileErrors: [],
+  pdfPath: null,
   pdfUrl: null,
   agentSession: null,
 
@@ -178,16 +181,23 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
 
   compile: async (projectPath) => {
     set({ compileStatus: "compiling", compileErrors: [] });
+    const storageMode = useSettingsStore.getState().settings?.storageMode || "local";
     try {
       const result = await apiPost<{
         success: boolean;
         pdfPath?: string;
         errors?: LaTeXError[];
-      }>("/api/latex/compile", { projectPath });
+      }>("/api/latex/compile", { projectPath, storageMode });
       if (result.success && result.pdfPath) {
+        const blob = await apiGetBlob(
+          `/api/latex/download?path=${encodeURIComponent(result.pdfPath)}`,
+        );
+        const prevUrl = get().pdfUrl;
+        if (prevUrl?.startsWith("blob:")) URL.revokeObjectURL(prevUrl);
         set({
           compileStatus: "success",
-          pdfUrl: `/pdfs/${encodeURIComponent(result.pdfPath)}`,
+          pdfPath: result.pdfPath,
+          pdfUrl: URL.createObjectURL(blob),
         });
       } else {
         set({ compileStatus: "error", compileErrors: result.errors || [] });

@@ -28,6 +28,21 @@ export async function apiGet<T>(path: string): Promise<T> {
   return handleResponse<T>(res);
 }
 
+export async function apiGetBlob(path: string): Promise<Blob> {
+  const res = await fetch(path, { headers: await getHeaders() });
+  if (!res.ok) {
+    const text = await res.text();
+    let message = text;
+    try {
+      message = JSON.parse(text).error || text;
+    } catch {
+      /* use raw text */
+    }
+    throw new Error(message);
+  }
+  return res.blob();
+}
+
 export async function apiPost<T>(path: string, body?: unknown): Promise<T> {
   const res = await fetch(path, {
     method: "POST",

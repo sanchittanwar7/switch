@@ -15,6 +15,13 @@
       "when": 1784920145317,
       "tag": "0001_famous_microbe",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784915847323,
+      "tag": "0002_add_storage_mode",
+      "breakpoints": false
     }
   ]
 }

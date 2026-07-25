@@ -12,7 +12,7 @@ interface FileNodeProps {
   entry: FileEntry;
   path: string;
   depth: number;
-  expanded: boolean;
+  expandedDirs: Set<string>;
   onToggleDir: (path: string) => void;
   onClickFile: (path: string) => void;
   onContextMenu: (
@@ -48,7 +48,7 @@ export default function FileNode({
   entry,
   path,
   depth,
-  expanded,
+  expandedDirs,
   onToggleDir,
   onClickFile,
   onContextMenu,
@@ -63,6 +63,7 @@ export default function FileNode({
   const isEditing = editingPath === path;
   const childPrefix = `${path}/`;
   const children = treeData[childPrefix] || [];
+  const expanded = expandedDirs.has(path);
 
   const handleClick = () => {
     if (isDir) {
@@ -134,7 +135,7 @@ export default function FileNode({
             entry={child}
             path={child.name}
             depth={depth + 1}
-            expanded={false}
+            expandedDirs={expandedDirs}
             onToggleDir={onToggleDir}
             onClickFile={onClickFile}
             onContextMenu={onContextMenu}

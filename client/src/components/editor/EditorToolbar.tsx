@@ -9,6 +9,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useEditorStore } from "../../stores/editorStore";
+import { apiGetBlob } from "../../lib/api";
 
 interface EditorToolbarProps {
   projectPath: string;
@@ -20,6 +21,7 @@ export default function EditorToolbar({ projectPath }: EditorToolbarProps) {
     compileStatus,
     compileErrors,
     pdfUrl,
+    pdfPath,
     compile,
     syncToCloud,
     isCloudSynced,
@@ -36,14 +38,19 @@ export default function EditorToolbar({ projectPath }: EditorToolbarProps) {
     if (activeFile) syncToCloud(activeFile);
   };
 
-  const handleDownload = () => {
-    if (pdfUrl) {
-      const pdfPath = pdfUrl.replace("/pdfs/", "");
-      window.open(
+  const handleDownload = async () => {
+    if (!pdfPath) return;
+    try {
+      const blob = await apiGetBlob(
         `/api/latex/download?path=${encodeURIComponent(pdfPath)}`,
-        "_blank",
       );
-    }
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = pdfPath.split("/").pop() || "document.pdf";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {}
   };
 
   const hasCloudButton = activeFile !== null;

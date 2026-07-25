@@ -19,14 +19,14 @@ export default function EditorView() {
         </Panel>
         <PanelResizeHandle className="w-px bg-brand-hairline hover:bg-brand-link active:bg-brand-link transition-colors cursor-col-resize" />
         <Panel>
-          <PanelGroup direction="vertical">
+          <PanelGroup direction="horizontal">
             <Panel defaultSize={60} minSize={30}>
               <div className="h-full flex flex-col">
                 <EditorToolbar projectPath={projectPath} />
                 <MonacoEditor />
               </div>
             </Panel>
-            <PanelResizeHandle className="h-px bg-brand-hairline hover:bg-brand-link active:bg-brand-link transition-colors cursor-row-resize" />
+            <PanelResizeHandle className="w-px bg-brand-hairline hover:bg-brand-link active:bg-brand-link transition-colors cursor-col-resize" />
             <Panel defaultSize={40} minSize={20}>
               <PdfPreview pdfUrl={pdfUrl} />
             </Panel>
