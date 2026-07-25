@@ -5,6 +5,7 @@ import { useSettingsStore } from "./stores/settingsStore";
 import Sidebar from "./components/Sidebar";
 import KanbanView from "./views/KanbanView";
 import EditorView from "./views/EditorView";
+import ResumeListView from "./views/ResumeListView";
 import SettingsView from "./views/SettingsView";
 import LoginPage from "./views/LoginPage";
 
@@ -20,7 +21,8 @@ function ProtectedLayout() {
       <main className="ml-56 flex-1 overflow-auto">
         <Routes>
           <Route path="/" element={<KanbanView />} />
-          <Route path="/editor" element={<EditorView />} />
+          <Route path="/resumes" element={<ResumeListView />} />
+          <Route path="/resume" element={<EditorView />} />
           <Route path="/settings" element={<SettingsView />} />
         </Routes>
       </main>

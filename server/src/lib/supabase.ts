@@ -12,4 +12,4 @@ export const supabaseAdmin =
     ? createClient(SUPABASE_URL, SUPABASE_SECRET_KEY)
     : null;
 
-export const STORAGE_BUCKET = "resumes";
+

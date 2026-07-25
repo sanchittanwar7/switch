@@ -8,7 +8,6 @@ import authRoutes from "./routes/auth";
 import fsRoutes from "./routes/fs";
 import kanbanRoutes from "./routes/kanban";
 import latexRoutes from "./routes/latex";
-import sbFsRoutes from "./routes/sb-fs";
 import agentRoutes from "./agent/routes";
 import settingsRoutes from "./routes/settings";
 
@@ -26,7 +25,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/fs", authMiddleware, fsRoutes);
 app.use("/api/kanban", authMiddleware, kanbanRoutes);
 app.use("/api/latex", authMiddleware, latexRoutes);
-app.use("/api/sb", authMiddleware, sbFsRoutes);
 app.use("/api/agent", authMiddleware, agentRoutes);
 app.use("/api/settings", authMiddleware, settingsRoutes);
 

@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   XCircle,
   Download,
-  Cloud,
   Play,
   ExternalLink,
 } from "lucide-react";
@@ -17,25 +16,17 @@ interface EditorToolbarProps {
 
 export default function EditorToolbar({ projectPath }: EditorToolbarProps) {
   const {
-    activeFile,
     compileStatus,
     compileErrors,
     pdfUrl,
     pdfPath,
     compile,
-    syncToCloud,
-    isCloudSynced,
-    isDirty,
   } = useEditorStore();
 
   const [showErrors, setShowErrors] = useState(false);
 
   const handleCompile = () => {
     compile(projectPath);
-  };
-
-  const handleSaveToCloud = () => {
-    if (activeFile) syncToCloud(activeFile);
   };
 
   const handleDownload = async () => {
@@ -53,9 +44,6 @@ export default function EditorToolbar({ projectPath }: EditorToolbarProps) {
     } catch {}
   };
 
-  const hasCloudButton = activeFile !== null;
-  const cloudLabel = isCloudSynced ? "Saved" : isDirty ? "Save" : "Saved";
-
   return (
     <div className="flex items-center gap-2 px-4 py-2 bg-brand-canvas-soft border-b border-brand-hairline shrink-0">
       <button
@@ -70,25 +58,6 @@ export default function EditorToolbar({ projectPath }: EditorToolbarProps) {
         )}
         Compile
       </button>
-
-      {hasCloudButton && (
-        <button
-          onClick={handleSaveToCloud}
-          className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
-            isCloudSynced && !isDirty
-              ? "text-brand-mute hover:text-brand-body"
-              : "bg-brand-canvas-soft-2 text-brand-ink hover:bg-brand-hairline-strong/20"
-          }`}
-        >
-          <Cloud
-            size={14}
-            className={
-              isCloudSynced ? "text-brand-success" : "text-brand-mute"
-            }
-          />
-          {cloudLabel}
-        </button>
-      )}
 
       {pdfUrl && (
         <button

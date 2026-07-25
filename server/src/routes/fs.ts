@@ -101,4 +101,16 @@ router.post("/rename", async (req, res) => {
   res.json({ success: true });
 });
 
+router.get("/resumes", async (req, res) => {
+  const userId = getUserId(req);
+  const resumesDir = resolvePath("resumes", userId);
+
+  try {
+    const entries = await fs.readdir(resumesDir, { withFileTypes: true });
+    res.json(entries.filter((e) => e.isDirectory()).map((e) => e.name));
+  } catch {
+    res.json([]);
+  }
+});
+
 export default router;

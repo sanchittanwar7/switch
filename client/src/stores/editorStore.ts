@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { apiGet, apiGetBlob, apiPost, apiPut, apiDelete } from "../lib/api";
-import { useSettingsStore } from "./settingsStore";
 import type { FileEntry, LaTeXError } from "../types";
 
 interface EditorStore {
@@ -9,7 +8,6 @@ interface EditorStore {
   fileContents: Record<string, string>;
   fileTree: FileEntry[];
   isDirty: boolean;
-  isCloudSynced: boolean;
   compileStatus: "idle" | "compiling" | "success" | "error";
   compileErrors: LaTeXError[];
   pdfPath: string | null;
@@ -26,14 +24,11 @@ interface EditorStore {
   setFileContent: (path: string, content: string) => void;
   saveFile: (path: string) => Promise<void>;
   fetchFileTree: (dir?: string) => Promise<void>;
-  fetchCloudFileTree: (prefix?: string) => Promise<void>;
   createFile: (path: string, content?: string) => Promise<void>;
   createFolder: (path: string) => Promise<void>;
   deleteEntry: (path: string) => Promise<void>;
   renameEntry: (oldPath: string, newPath: string) => Promise<void>;
   readFile: (path: string) => Promise<string>;
-  pullFromCloud: (path: string) => Promise<void>;
-  syncToCloud: (path: string) => Promise<void>;
   compile: (projectPath: string) => Promise<void>;
   setPdfUrl: (url: string | null) => void;
   startAgentSession: (
@@ -49,7 +44,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   fileContents: {},
   fileTree: [],
   isDirty: false,
-  isCloudSynced: false,
   compileStatus: "idle",
   compileErrors: [],
   pdfPath: null,
@@ -63,12 +57,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   openFile: async (path) => {
     const { fileContents, openFiles } = get();
 
-    try {
-      await apiGet<{ content: string }>(
-        `/api/sb/pull?file=${encodeURIComponent(path)}`,
-      );
-    } catch {}
-
     if (!fileContents[path]) {
       const { content } = await apiGet<{ content: string }>(
         `/api/fs/read?file=${encodeURIComponent(path)}`,
@@ -78,9 +66,9 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
       }));
     }
     if (!openFiles.includes(path)) {
-      set({ openFiles: [...openFiles, path], activeFile: path, isCloudSynced: true });
+      set({ openFiles: [...openFiles, path], activeFile: path });
     } else {
-      set({ activeFile: path, isCloudSynced: true });
+      set({ activeFile: path });
     }
   },
 
@@ -102,7 +90,6 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set((s) => ({
       fileContents: { ...s.fileContents, [path]: content },
       isDirty: true,
-      isCloudSynced: false,
     }));
   },
 
@@ -155,39 +142,14 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     return content;
   },
 
-  pullFromCloud: async (path) => {
-    const { content } = await apiGet<{ content: string }>(
-      `/api/sb/pull?file=${encodeURIComponent(path)}`,
-    );
-    set((s) => ({
-      fileContents: { ...s.fileContents, [path]: content },
-      isCloudSynced: true,
-    }));
-  },
-
-  syncToCloud: async (path) => {
-    const content = get().fileContents[path];
-    if (content === undefined) return;
-    await apiPut("/api/sb/push", { path, content });
-    set({ isCloudSynced: true });
-  },
-
-  fetchCloudFileTree: async (prefix = "") => {
-    const data = await apiGet<FileEntry[]>(
-      `/api/sb/list?prefix=${encodeURIComponent(prefix)}`,
-    );
-    set({ fileTree: data });
-  },
-
   compile: async (projectPath) => {
     set({ compileStatus: "compiling", compileErrors: [] });
-    const storageMode = useSettingsStore.getState().settings?.storageMode || "local";
     try {
       const result = await apiPost<{
         success: boolean;
         pdfPath?: string;
         errors?: LaTeXError[];
-      }>("/api/latex/compile", { projectPath, storageMode });
+      }>("/api/latex/compile", { projectPath });
       if (result.success && result.pdfPath) {
         const blob = await apiGetBlob(
           `/api/latex/download?path=${encodeURIComponent(result.pdfPath)}`,

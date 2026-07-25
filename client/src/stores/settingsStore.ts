@@ -6,7 +6,6 @@ export interface SettingsData {
   apiKey: string;
   baseUrl: string;
   model: string;
-  storageMode: "local" | "cloud";
 }
 
 interface SettingsStore {

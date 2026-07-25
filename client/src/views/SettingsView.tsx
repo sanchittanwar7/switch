@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Save, Key, Globe, Cpu, CheckCircle, AlertCircle, Loader2, HardDrive, Cloud } from "lucide-react";
+import { Save, Key, Globe, Cpu, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import { useSettingsStore } from "../stores/settingsStore";
 import type { SettingsData } from "../stores/settingsStore";
 
@@ -21,7 +21,6 @@ export default function SettingsView() {
     apiKey: "",
     baseUrl: "",
     model: "",
-    storageMode: "local" as "local" | "cloud",
   });
   const [apiKeyDirty, setApiKeyDirty] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -39,7 +38,6 @@ export default function SettingsView() {
         apiKey: settings.apiKey || "",
         baseUrl: settings.baseUrl || PROVIDER_DEFAULTS.openai.baseUrl,
         model: settings.model || PROVIDER_DEFAULTS.openai.model,
-        storageMode: settings.storageMode || "local",
       });
     }
   }, [settings]);
@@ -75,7 +73,6 @@ export default function SettingsView() {
         apiKey: apiKeyDirty ? form.apiKey : undefined,
         baseUrl: form.baseUrl,
         model: form.model,
-        storageMode: form.storageMode,
       };
       const saved = await saveSettings(payload);
       setForm({
@@ -83,7 +80,6 @@ export default function SettingsView() {
         apiKey: saved.apiKey || "",
         baseUrl: saved.baseUrl || PROVIDER_DEFAULTS[saved.provider]?.baseUrl || "",
         model: saved.model || PROVIDER_DEFAULTS[saved.provider]?.model || "",
-        storageMode: saved.storageMode || "local",
       });
       setApiKeyDirty(false);
       setSuccess(true);
@@ -127,41 +123,6 @@ export default function SettingsView() {
         )}
 
         <div className="space-y-5">
-          <div className="pb-4 border-b border-[#ebebeb]">
-            <h3 className="text-[13px] font-medium text-[#888888] uppercase tracking-wider mb-4">
-              Storage
-            </h3>
-            <div className="flex rounded-[8px] bg-[#f0f0f0] p-1 gap-1">
-              <button
-                onClick={() => setForm({ ...form, storageMode: "local" })}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-[6px] px-3 py-2 text-[14px] leading-[20px] font-medium transition-colors ${
-                  form.storageMode === "local"
-                    ? "bg-white text-[#171717] shadow-sm"
-                    : "text-[#888888] hover:text-[#171717]"
-                }`}
-              >
-                <HardDrive size={14} />
-                Local
-              </button>
-              <button
-                onClick={() => setForm({ ...form, storageMode: "cloud" })}
-                className={`flex-1 flex items-center justify-center gap-2 rounded-[6px] px-3 py-2 text-[14px] leading-[20px] font-medium transition-colors ${
-                  form.storageMode === "cloud"
-                    ? "bg-white text-[#171717] shadow-sm"
-                    : "text-[#888888] hover:text-[#171717]"
-                }`}
-              >
-                <Cloud size={14} />
-                Cloud
-              </button>
-            </div>
-            <p className="mt-2 text-[12px] leading-[16px] text-[#888888]">
-              {form.storageMode === "local"
-                ? "Resume files stored on your device."
-                : "Resume files synced to Supabase cloud storage."}
-            </p>
-          </div>
-
           <div className="pt-1">
             <h3 className="text-[13px] font-medium text-[#888888] uppercase tracking-wider mb-4">
               LLM

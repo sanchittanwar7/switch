@@ -143,7 +143,7 @@ export default function CardModal({ card, onClose }: CardModalProps) {
               {card.resumePath && (
                 <button
                   onClick={() =>
-                    navigate(`/editor?project=${card.resumePath}`)
+                    navigate(`/resume?project=${card.resumePath}`)
                   }
                   className="flex items-center gap-1.5 px-3 py-2 text-xs text-brand-link hover:text-brand-link-deep bg-brand-canvas-soft-2 hover:bg-brand-canvas-soft border border-brand-hairline rounded-full transition-colors shrink-0 font-medium"
                   title="Open resume in editor"

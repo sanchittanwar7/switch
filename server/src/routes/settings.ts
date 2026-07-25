@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
     .where(eq(userSettings.userId, userId));
 
   if (!row) {
-    res.json({ provider: "openai", apiKey: "", baseUrl: "", model: "", storageMode: "local" });
+    res.json({ provider: "openai", apiKey: "", baseUrl: "", model: "" });
     return;
   }
 
@@ -32,13 +32,12 @@ router.get("/", async (req, res) => {
     apiKey: maskApiKey(row.apiKey),
     baseUrl: row.baseUrl || "",
     model: row.model || "",
-    storageMode: row.storageMode || "local",
   });
 });
 
 router.put("/", async (req, res) => {
   const userId = getUserId(req);
-  const { provider, apiKey, baseUrl, model, storageMode } = req.body;
+  const { provider, apiKey, baseUrl, model } = req.body;
 
   const [existing] = await db
     .select()
@@ -54,7 +53,6 @@ router.put("/", async (req, res) => {
     apiKey: effectiveApiKey,
     baseUrl: baseUrl || null,
     model: model || null,
-    storageMode: storageMode || "local",
     updatedAt: new Date(),
   };
 
@@ -72,7 +70,6 @@ router.put("/", async (req, res) => {
     apiKey: maskApiKey(row.apiKey),
     baseUrl: row.baseUrl || "",
     model: row.model || "",
-    storageMode: row.storageMode || "local",
   });
 });
 

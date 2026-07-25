@@ -3,7 +3,6 @@ import { execFile } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 import { resolvePath } from "../utils/paths";
-import { syncProjectFromSupabase } from "../lib/sbSync";
 
 const router = Router();
 
@@ -124,20 +123,11 @@ function runLatex(engine: string, projectDir: string, mainFile: string): Promise
 
 router.post("/compile", async (req, res) => {
   const userId = getUserId(req);
-  const { projectPath, storageMode } = req.body as { projectPath?: string; storageMode?: string };
+  const { projectPath } = req.body as { projectPath?: string };
 
   if (!projectPath) {
     res.status(400).json({ error: "Missing required field: projectPath" });
     return;
-  }
-
-  if (storageMode === "cloud") {
-    try {
-      await syncProjectFromSupabase(userId, projectPath);
-    } catch (err: any) {
-      res.status(502).json({ error: `Failed to sync project from cloud storage: ${err.message}` });
-      return;
-    }
   }
 
   const absProjectDir = resolvePath(projectPath, userId);

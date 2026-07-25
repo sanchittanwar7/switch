@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { apiGet, apiPut, apiPost, apiDelete } from "../../lib/api";
 import { useEditorStore } from "../../stores/editorStore";
-import { useSettingsStore } from "../../stores/settingsStore";
 import FileNode from "./FileNode";
 import type { FileEntry } from "../../types";
 
@@ -27,9 +26,6 @@ export default function FileTree({ projectPath }: FileTreeProps) {
     fetchFileTree,
   } = useEditorStore();
 
-  const storageMode = useSettingsStore((s) => s.settings?.storageMode) || "local";
-  const isCloud = storageMode === "cloud";
-
   const [treeData, setTreeData] = useState<Record<string, FileEntry[]>>({});
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
@@ -46,25 +42,18 @@ export default function FileTree({ projectPath }: FileTreeProps) {
 
   const fetchDir = useCallback(async (prefix: string) => {
     try {
-      if (isCloud) {
-        const entries = await apiGet<FileEntry[]>(
-          `/api/sb/list?prefix=${encodeURIComponent(prefix)}`,
-        );
-        setTreeData((prev) => ({ ...prev, [prefix]: entries }));
-      } else {
-        const entries = await apiGet<FileEntry[]>(
-          `/api/fs/list?dir=${encodeURIComponent(prefix)}`,
-        );
-        const normalized = entries.map((e) => ({
-          ...e,
-          name: prefix + e.name,
-        }));
-        setTreeData((prev) => ({ ...prev, [prefix]: normalized }));
-      }
+      const entries = await apiGet<FileEntry[]>(
+        `/api/fs/list?dir=${encodeURIComponent(prefix)}`,
+      );
+      const normalized = entries.map((e) => ({
+        ...e,
+        name: prefix + e.name,
+      }));
+      setTreeData((prev) => ({ ...prev, [prefix]: normalized }));
     } catch {
       setTreeData((prev) => ({ ...prev, [prefix]: [] }));
     }
-  }, [isCloud]);
+  }, []);
 
   useEffect(() => {
     setTreeData({});
@@ -144,11 +133,7 @@ export default function FileTree({ projectPath }: FileTreeProps) {
     const fullPath = `${newItem.parentPath}/${newItemName.trim()}`;
     try {
       if (newItem.type === "file") {
-        if (isCloud) {
-          await apiPut("/api/sb/push", { path: fullPath, content: "" });
-        } else {
-          await apiPut("/api/fs/write", { path: fullPath, content: "" });
-        }
+        await apiPut("/api/fs/write", { path: fullPath, content: "" });
       } else {
         await apiPost("/api/fs/mkdir", { path: fullPath });
       }
@@ -180,13 +165,6 @@ export default function FileTree({ projectPath }: FileTreeProps) {
     }
     try {
       await apiPost("/api/fs/rename", { oldPath, newPath });
-      if (isCloud) {
-        await apiDelete("/api/sb/delete", { path: oldPath });
-        const { content } = await apiGet<{ content: string }>(
-          `/api/fs/read?file=${encodeURIComponent(newPath)}`,
-        );
-        await apiPut("/api/sb/push", { path: newPath, content });
-      }
     } catch {}
     setEditingPath(null);
     await refreshTree();
@@ -201,11 +179,7 @@ export default function FileTree({ projectPath }: FileTreeProps) {
   const confirmDelete = async () => {
     if (!deletingPath) return;
     try {
-      if (isCloud) {
-        await apiDelete("/api/sb/delete", { path: deletingPath });
-      } else {
-        await apiDelete("/api/fs/delete", { path: deletingPath });
-      }
+      await apiDelete("/api/fs/delete", { path: deletingPath });
     } catch {}
     setDeletingPath(null);
     await refreshTree();
