@@ -1,5 +1,6 @@
-import fs from "fs/promises";
-import path from "path";
+import { eq } from "drizzle-orm";
+import { db } from "./db";
+import { userSettings } from "./db/schema";
 import { getWorkspaceRoot } from "./utils/paths";
 
 export const LLM_PROVIDERS = ["openai", "gemini", "claude", "deepseek", "qwen"] as const;
@@ -25,37 +26,63 @@ export interface Settings {
   workspaceRoot?: string;
 }
 
-const DEFAULT_SETTINGS: Settings = {
-  llm: {
-    provider: "openai",
-    apiKey: "",
-    baseUrl: PROVIDER_DEFAULTS.openai.baseUrl,
-    model: PROVIDER_DEFAULTS.openai.model,
-  },
-  workspaceRoot: getWorkspaceRoot(),
+const DEFAULT_LLM: LLMSettings = {
+  provider: "openai",
+  apiKey: "",
+  baseUrl: PROVIDER_DEFAULTS.openai.baseUrl,
+  model: PROVIDER_DEFAULTS.openai.model,
 };
 
-function settingsPath(userId: string): string {
-  return path.join(getWorkspaceRoot(userId), "settings.json");
+function fromDbRow(row: typeof userSettings.$inferSelect): LLMSettings {
+  const provider = (row.provider as LLMProvider) || "openai";
+  const defaults = PROVIDER_DEFAULTS[provider] || PROVIDER_DEFAULTS.openai;
+  return {
+    provider,
+    apiKey: row.apiKey || "",
+    baseUrl: row.baseUrl || defaults.baseUrl,
+    model: row.model || defaults.model,
+  };
 }
 
 export async function getSettings(userId: string): Promise<Settings> {
-  try {
-    const raw = await fs.readFile(settingsPath(userId), "utf-8");
-    return JSON.parse(raw);
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
+  const [row] = await db
+    .select()
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId));
+
+  return {
+    llm: row ? fromDbRow(row) : { ...DEFAULT_LLM },
+    workspaceRoot: getWorkspaceRoot(),
+  };
 }
 
 export async function updateSettings(userId: string, partial: Partial<Settings>): Promise<Settings> {
   const current = await getSettings(userId);
-  const merged = {
-    ...current,
-    ...partial,
-    llm: { ...current.llm, ...(partial.llm || {}) },
+  const llm = { ...current.llm, ...(partial.llm || {}) };
+
+  await db
+    .insert(userSettings)
+    .values({
+      userId,
+      provider: llm.provider,
+      apiKey: llm.apiKey,
+      baseUrl: llm.baseUrl || null,
+      model: llm.model || null,
+      updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: [userSettings.userId],
+      set: {
+        provider: llm.provider,
+        apiKey: llm.apiKey,
+        baseUrl: llm.baseUrl || null,
+        model: llm.model || null,
+        updatedAt: new Date(),
+      },
+    });
+
+  return {
+    llm,
+    workspaceRoot: current.workspaceRoot,
   };
-  await fs.mkdir(path.dirname(settingsPath(userId)), { recursive: true });
-  await fs.writeFile(settingsPath(userId), JSON.stringify(merged, null, 2), "utf-8");
-  return merged;
 }
