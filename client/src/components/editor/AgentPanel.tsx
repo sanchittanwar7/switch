@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight } from "lucide-react";
 import { useEditorStore } from "../../stores/editorStore";
+import MarkdownRenderer from "./MarkdownRenderer";
 
 interface ToolEntry {
   type: "tool_entry";
@@ -240,7 +241,9 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
               return (
                 <div key={i} className="flex items-start gap-2">
                   <Bot size={14} className="text-brand-link shrink-0 mt-0.5" />
-                  <p className="text-xs text-brand-ink whitespace-pre-wrap">{entry.text}</p>
+                  <div className="min-w-0 flex-1">
+                    <MarkdownRenderer content={entry.text} />
+                  </div>
                 </div>
               );
             }
