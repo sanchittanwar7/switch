@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight } from "lucide-react";
+import { Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight, Cpu } from "lucide-react";
 import { useEditorStore } from "../../stores/editorStore";
+import { useSettingsStore } from "../../stores/settingsStore";
+import type { AvailableModel } from "../../stores/settingsStore";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 interface ToolEntry {
@@ -36,14 +38,29 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
   const [jobUrl, setJobUrl] = useState("");
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
+  const [selectedModel, setSelectedModel] = useState("");
   const logRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const activeFile = useEditorStore((s) => s.activeFile);
+  const { availableModels, loadAvailableModels } = useSettingsStore();
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
   }, [entries]);
+
+  useEffect(() => {
+    loadAvailableModels();
+  }, []);
+
+  useEffect(() => {
+    if (allModels.length === 0) return;
+    const current = allModels.find((m) => m.model === selectedModel);
+    if (!current) {
+      const firstDefault = availableModels.find((g) => g.defaultModel)?.defaultModel;
+      setSelectedModel(firstDefault || allModels[0].model);
+    }
+  }, [availableModels]);
 
   useEffect(() => {
     return () => {
@@ -54,6 +71,20 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
   const resumeProjectPath = activeFile
     ? activeFile.split("/").slice(0, 2).join("/")
     : projectPath;
+
+  function getSelectedProvider(): string | undefined {
+    if (!selectedModel) return undefined;
+    for (const group of availableModels) {
+      if (group.models.includes(selectedModel)) {
+        return group.provider;
+      }
+    }
+    return undefined;
+  }
+
+  const allModels = availableModels.flatMap((g) =>
+    g.models.map((m) => ({ model: m, provider: g.provider })),
+  );
 
   const resolveStalePendings = useCallback(() => {
     setEntries((prev) =>
@@ -72,6 +103,8 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
     setEntries([]);
     setStatus("running");
 
+    const provider = getSelectedProvider();
+
     try {
       const token = await getAuthToken();
       const res = await fetch("/api/agent/tailor", {
@@ -83,6 +116,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
         body: JSON.stringify({
           jobUrl: jobUrl.trim(),
           resumeProjectPath,
+          ...(provider && selectedModel ? { provider, model: selectedModel } : {}),
         }),
       });
 
@@ -194,7 +228,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
       ]);
       setStatus("error");
     }
-  }, [jobUrl, resumeProjectPath]);
+  }, [jobUrl, resumeProjectPath, selectedModel, availableModels]);
 
   const toggleExpanded = (callId: string) => {
     setEntries((prev) =>
@@ -205,6 +239,8 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
       ),
     );
   };
+
+  const hasModels = allModels.length > 0;
 
   return (
     <div className="h-full flex flex-col bg-brand-canvas">
@@ -314,7 +350,38 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
           )}
         </div>
 
-        <div className="border-t border-brand-hairline p-3">
+        <div className="border-t border-brand-hairline p-3 space-y-2">
+          {hasModels ? (
+            <div className="flex items-center gap-2">
+              <Cpu size={14} className="text-brand-mute shrink-0" />
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="flex-1 bg-brand-canvas-soft-2 text-brand-ink text-xs px-2 py-1.5 rounded-sm border border-brand-hairline outline-none focus:border-brand-link transition-colors"
+              >
+                {availableModels.map((group) => (
+                  <optgroup key={group.provider} label={group.provider.toUpperCase()}>
+                    {group.models.map((m) => (
+                      <option key={`${group.provider}-${m}`} value={m}>
+                        {m}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-xs text-brand-mute">
+              <Cpu size={14} className="shrink-0" />
+              <span>
+                <a href="/settings" className="text-brand-link hover:underline">
+                  Configure a provider
+                </a>
+                {" "}in Settings to select a model.
+              </span>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <input
               type="url"
@@ -330,7 +397,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
             <button
               onClick={handleStart}
               disabled={status === "running" || !jobUrl.trim() || !resumeProjectPath}
-              className="shrink-0 flex items-center justify-center w-7 h-7 rounded-sm bg-brand-ink text-white hover:bg-brand-link transition-colors disabled:opacity-30"
+              className="shrink-0 flex items-center justify-center w-7 h-7 rounded-sm bg-brand-ink text-brand-canvas hover:bg-brand-link transition-colors disabled:opacity-30"
             >
               {status === "running" ? (
                 <Loader2 size={14} className="animate-spin" />

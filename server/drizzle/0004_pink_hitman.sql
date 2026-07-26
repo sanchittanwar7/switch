@@ -1,0 +1,1 @@
+ALTER TABLE "user_providers" ADD COLUMN "default_model" text;

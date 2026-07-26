@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getSettings } from "../settings";
+import { getSettings, getUserProviders, PROVIDER_BASE_URLS, type LLMProvider } from "../settings";
 import { createSession, getSession, deleteSession } from "./session-store";
 import { runAgentStream } from "./orchestrator";
 
@@ -7,7 +7,7 @@ const router = Router();
 
 router.post("/tailor", async (req, res) => {
   try {
-    const { jobUrl, resumeProjectPath, apiKey, model } = req.body;
+    const { jobUrl, resumeProjectPath, apiKey, model, provider } = req.body;
     const userId = req.userId!;
 
     if (!jobUrl || !resumeProjectPath) {
@@ -16,6 +16,39 @@ router.post("/tailor", async (req, res) => {
     }
 
     const settings = await getSettings(userId);
+
+    if (provider && model) {
+      const userProviders = await getUserProviders(userId);
+      const userProvider = userProviders.find((p) => p.provider === provider);
+
+      if (!userProvider) {
+        res.status(400).json({ error: `Provider "${provider}" not configured. Add it in Settings.` });
+        return;
+      }
+
+      if (!userProvider.apiKey) {
+        res.status(400).json({ error: `No API key configured for "${provider}". Set one in Settings.` });
+        return;
+      }
+
+      const llmSettings = {
+        provider: userProvider.provider,
+        apiKey: userProvider.apiKey,
+        baseUrl: PROVIDER_BASE_URLS[userProvider.provider] || "",
+        model,
+      };
+
+      const { sessionId, sessionToken } = createSession(
+        userId,
+        jobUrl,
+        resumeProjectPath,
+        llmSettings,
+      );
+
+      res.json({ sessionId, sessionToken });
+      return;
+    }
+
     const llmSettings = {
       ...settings.llm,
       ...(apiKey ? { apiKey } : {}),
@@ -33,7 +66,7 @@ router.post("/tailor", async (req, res) => {
       userId,
       jobUrl,
       resumeProjectPath,
-      llmSettings
+      llmSettings,
     );
 
     res.json({ sessionId, sessionToken });

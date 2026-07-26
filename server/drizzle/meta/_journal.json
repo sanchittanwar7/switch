@@ -22,6 +22,20 @@
       "when": 1784915847323,
       "tag": "0002_add_storage_mode",
       "breakpoints": false
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785051898730,
+      "tag": "0003_dusty_virginia_dare",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1785052109349,
+      "tag": "0004_pink_hitman",
+      "breakpoints": true
     }
   ]
 }

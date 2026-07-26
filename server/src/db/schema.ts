@@ -23,6 +23,20 @@ export const userSettings = pgTable("user_settings", {
   userIdUnique: uniqueIndex("user_settings_user_id_idx").on(table.userId),
 }));
 
+export const userProviders = pgTable("user_providers", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(),
+  apiKey: text("api_key").notNull().default(""),
+  defaultModel: text("default_model"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userProviderUnique: uniqueIndex("user_providers_user_provider_idx").on(table.userId, table.provider),
+}));
+
 export const columns = pgTable("columns", {
   id: text("id").primaryKey(),
   title: text("title").notNull(),
