@@ -8,14 +8,22 @@ import { Readability } from "@mozilla/readability";
 
 export function createTools(userId: string) {
   return {
-    read_file: tool({
-      description: "Read a file from the resume project directory",
+    read_files: tool({
+      description: "Read one or more files from the resume project directory. Returns content for each file.",
       inputSchema: z.object({
-        path: z.string().describe("Relative path to the file to read"),
+        paths: z.array(z.string()).describe("Relative paths to the files to read"),
       }),
-      execute: async ({ path: relativePath }) => {
-        const absPath = resolvePath(relativePath, userId);
-        return await fs.readFile(absPath, "utf-8");
+      execute: async ({ paths: relativePaths }) => {
+        const results: Record<string, string> = {};
+        for (const relativePath of relativePaths) {
+          try {
+            const absPath = resolvePath(relativePath, userId);
+            results[relativePath] = await fs.readFile(absPath, "utf-8");
+          } catch (err) {
+            results[relativePath] = `Error reading ${relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`;
+          }
+        }
+        return results;
       },
     }),
     write_file: tool({
@@ -26,10 +34,14 @@ export function createTools(userId: string) {
         content: z.string().describe("Content to write to the file"),
       }),
       execute: async ({ path: relativePath, content }) => {
-        const absPath = resolvePath(relativePath, userId);
-        await fs.mkdir(path.dirname(absPath), { recursive: true });
-        await fs.writeFile(absPath, content, "utf-8");
-        return `File written: ${relativePath} (${content.length} chars)`;
+        try {
+          const absPath = resolvePath(relativePath, userId);
+          await fs.mkdir(path.dirname(absPath), { recursive: true });
+          await fs.writeFile(absPath, content, "utf-8");
+          return `File written: ${relativePath} (${content.length} chars)`;
+        } catch (err) {
+          return `Error writing ${relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
       },
     }),
     list_dir: tool({
@@ -38,12 +50,16 @@ export function createTools(userId: string) {
         path: z.string().describe("Relative path to the directory to list"),
       }),
       execute: async ({ path: relativePath }) => {
-        const absPath = resolvePath(relativePath, userId);
-        const entries = await fs.readdir(absPath, { withFileTypes: true });
-        return entries.map((e) => ({
-          name: e.name,
-          type: e.isDirectory() ? "dir" : "file",
-        }));
+        try {
+          const absPath = resolvePath(relativePath, userId);
+          const entries = await fs.readdir(absPath, { withFileTypes: true });
+          return entries.map((e) => ({
+            name: e.name,
+            type: e.isDirectory() ? "dir" : "file",
+          }));
+        } catch (err) {
+          return `Error listing ${relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
       },
     }),
     web_fetch: tool({
@@ -52,15 +68,19 @@ export function createTools(userId: string) {
         url: z.string().describe("The URL to fetch"),
       }),
       execute: async ({ url }) => {
-        const response = await fetch(url);
-        if (!response.ok) {
-          return `Failed to fetch: HTTP ${response.status} ${response.statusText}`;
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            return `Failed to fetch: HTTP ${response.status} ${response.statusText}`;
+          }
+          const html = await response.text();
+          const dom = new JSDOM(html, { url });
+          const reader = new Readability(dom.window.document);
+          const article = reader.parse();
+          return article?.textContent || "Could not extract meaningful content from this page.";
+        } catch (err) {
+          return `Error fetching ${url}: ${err instanceof Error ? err.message : "Unknown error"}`;
         }
-        const html = await response.text();
-        const dom = new JSDOM(html, { url });
-        const reader = new Readability(dom.window.document);
-        const article = reader.parse();
-        return article?.textContent || "Could not extract meaningful content from this page.";
       },
     }),
   };

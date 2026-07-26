@@ -1,13 +1,31 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, CheckCircle, XCircle, Wrench, FileText, Bot } from "lucide-react";
+import { Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight } from "lucide-react";
 import { useEditorStore } from "../../stores/editorStore";
 
-interface StreamEvent {
-  type: "tool_call" | "tool_result" | "message" | "error" | "done";
-  content?: string;
-  tool?: string;
-  args?: string;
+interface ToolEntry {
+  type: "tool_entry";
+  callId: string;
+  tool: string;
+  args: unknown;
+  result: string | null;
+  expanded: boolean;
 }
+
+interface ErrorEntry {
+  type: "error";
+  content?: string;
+}
+
+interface DoneEntry {
+  type: "done";
+}
+
+interface AgentTextEntry {
+  type: "agent_text";
+  text: string;
+}
+
+type LogEntry = ToolEntry | ErrorEntry | DoneEntry | AgentTextEntry;
 
 interface AgentPanelProps {
   projectPath: string;
@@ -15,10 +33,8 @@ interface AgentPanelProps {
 
 export default function AgentPanel({ projectPath }: AgentPanelProps) {
   const [jobUrl, setJobUrl] = useState("");
-  const [events, setEvents] = useState<StreamEvent[]>([]);
+  const [entries, setEntries] = useState<LogEntry[]>([]);
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
-  const [agentText, setAgentText] = useState("");
-  const textRef = useRef("");
   const logRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -26,7 +42,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
-  }, [events, agentText]);
+  }, [entries]);
 
   useEffect(() => {
     return () => {
@@ -38,13 +54,21 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
     ? activeFile.split("/").slice(0, 2).join("/")
     : projectPath;
 
+  const resolveStalePendings = useCallback(() => {
+    setEntries((prev) =>
+      prev.map((entry) =>
+        entry.type === "tool_entry" && entry.result === null
+          ? { ...entry, result: "(No result received)" }
+          : entry,
+      ),
+    );
+  }, []);
+
   const handleStart = useCallback(async () => {
     if (!jobUrl.trim() || !resumeProjectPath) return;
 
     eventSourceRef.current?.close();
-    setEvents([]);
-    setAgentText("");
-    textRef.current = "";
+    setEntries([]);
     setStatus("running");
 
     try {
@@ -63,10 +87,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({ error: "Failed to start agent" }));
-        setEvents((prev) => [
-          ...prev,
-          { type: "error", content: data.error || "Failed to start agent" },
-        ]);
+        setEntries([{ type: "error", content: data.error || "Failed to start agent" }]);
         setStatus("error");
         return;
       }
@@ -81,127 +102,209 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
       es.addEventListener("tool_call", (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data);
-          setEvents((prev) => [
-            ...prev,
-            { type: "tool_call", tool: data.tool, args: data.args },
-          ]);
+          const entry: ToolEntry = {
+            type: "tool_entry",
+            callId: data.id,
+            tool: data.tool,
+            args: data.args,
+            result: null,
+            expanded: false,
+          };
+          setEntries((prev) => [...prev, entry]);
         } catch { /* ignore malformed SSE data */ }
       });
 
       es.addEventListener("tool_result", (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data);
-          setEvents((prev) => [
-            ...prev,
-            { type: "tool_result", content: data.summary || "" },
-          ]);
+          setEntries((prev) => {
+            const idx = prev.findIndex(
+              (entry) => entry.type === "tool_entry" && entry.callId === data.id,
+            );
+            if (idx === -1) return prev;
+            const next = [...prev];
+            const entry = next[idx] as ToolEntry;
+            next[idx] = { ...entry, result: data.summary || "" };
+            return next;
+          });
         } catch { /* ignore malformed SSE data */ }
       });
 
       es.addEventListener("message", (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data);
-          textRef.current += data.text || "";
-          setAgentText(textRef.current);
+          const chunk = data.content || "";
+          if (!chunk) return;
+          setEntries((prev) => {
+            const last = prev[prev.length - 1];
+            if (last && last.type === "agent_text") {
+              const next = [...prev];
+              next[next.length - 1] = { ...last, text: last.text + chunk };
+              return next;
+            }
+            const entry: AgentTextEntry = {
+              type: "agent_text",
+              text: chunk,
+            };
+            return [...prev, entry];
+          });
         } catch { /* ignore malformed SSE data */ }
       });
 
       es.addEventListener("error", (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data);
-          setEvents((prev) => [
+          setEntries((prev) => [
             ...prev,
             { type: "error", content: data.error || "Unknown error" },
           ]);
         } catch {
-          // non-SSE error event (e.g. HTTP error from server before SSE stream starts)
+          setEntries((prev) => [
+            ...prev,
+            { type: "error", content: "Stream error" },
+          ]);
         }
         setStatus("error");
         es.close();
+        resolveStalePendings();
       });
 
       es.addEventListener("done", () => {
+        resolveStalePendings();
+        setEntries((prev) => [...prev, { type: "done" }]);
         setStatus("done");
         es.close();
       });
 
+      let errorHandled = false;
+
       es.onerror = () => {
+        if (errorHandled) return;
         if (es.readyState === EventSource.CLOSED) {
-          setStatus((prev) => (prev === "running" ? "error" : prev));
+          errorHandled = true;
+          resolveStalePendings();
+          setStatus("error");
         }
       };
     } catch (err) {
-      setEvents((prev) => [
-        ...prev,
+      resolveStalePendings();
+      setEntries([
         { type: "error", content: err instanceof Error ? err.message : "Connection failed" },
       ]);
       setStatus("error");
     }
   }, [jobUrl, resumeProjectPath]);
 
-  const eventIcon = (type: StreamEvent["type"]) => {
-    switch (type) {
-      case "tool_call":
-        return <Wrench size={14} className="text-brand-link shrink-0 mt-0.5" />;
-      case "tool_result":
-        return <FileText size={14} className="text-brand-mute shrink-0 mt-0.5" />;
-      case "error":
-        return <XCircle size={14} className="text-brand-error shrink-0 mt-0.5" />;
-      case "done":
-        return <CheckCircle size={14} className="text-brand-link shrink-0 mt-0.5" />;
-      default:
-        return null;
-    }
+  const toggleExpanded = (callId: string) => {
+    setEntries((prev) =>
+      prev.map((entry) =>
+        entry.type === "tool_entry" && entry.callId === callId
+          ? { ...entry, expanded: !entry.expanded }
+          : entry,
+      ),
+    );
   };
 
   return (
     <div className="h-full flex flex-col bg-brand-canvas">
       <div className="flex-1 flex flex-col min-h-0">
-        <div ref={logRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
-          {status === "idle" && events.length === 0 && (
+        <div ref={logRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
+          {status === "idle" && entries.length === 0 && (
             <div className="text-xs text-brand-mute text-center py-4">
               Enter a job posting URL to tailor your resume.
             </div>
           )}
 
-          {events.map((ev, i) => (
-            <div key={i} className="flex items-start gap-2">
-              {eventIcon(ev.type)}
-              <div className="min-w-0 flex-1">
-                {ev.type === "tool_call" && (
-                  <span className="text-xs text-brand-ink">
-                    <span className="text-brand-link font-medium">{ev.tool}</span>
-                    {ev.args && (
-                      <span className="text-brand-mute"> {truncateArgs(ev.args)}</span>
-                    )}
-                  </span>
-                )}
-                {ev.type === "tool_result" && (
-                  <span className="text-xs text-brand-body">
-                    {ev.content}
-                  </span>
-                )}
-                {ev.type === "error" && (
-                  <span className="text-xs text-brand-error">{ev.content}</span>
-                )}
-                {ev.type === "done" && (
+          {entries.map((entry, i) => {
+            if (entry.type === "error") {
+              return (
+                <div key={i} className="flex items-start gap-2">
+                  <XCircle size={14} className="text-brand-error shrink-0 mt-0.5" />
+                  <span className="text-xs text-brand-error">{entry.content}</span>
+                </div>
+              );
+            }
+
+            if (entry.type === "done") {
+              return (
+                <div key={i} className="flex items-start gap-2">
+                  <CheckCircle size={14} className="text-brand-link shrink-0 mt-0.5" />
                   <span className="text-xs text-brand-link font-medium">
                     Resume tailored successfully
                   </span>
+                </div>
+              );
+            }
+
+            if (entry.type === "agent_text") {
+              return (
+                <div key={i} className="flex items-start gap-2">
+                  <Bot size={14} className="text-brand-link shrink-0 mt-0.5" />
+                  <p className="text-xs text-brand-ink whitespace-pre-wrap">{entry.text}</p>
+                </div>
+              );
+            }
+
+            const pending = entry.result === null;
+
+            return (
+              <div key={entry.callId}>
+                <button
+                  onClick={() => toggleExpanded(entry.callId)}
+                  className="flex items-center gap-2 w-full text-left group"
+                >
+                  <span
+                    className={`shrink-0 transition-transform ${
+                      entry.expanded ? "rotate-90" : ""
+                    }`}
+                  >
+                    <ChevronRight size={12} className="text-brand-mute" />
+                  </span>
+                  {pending ? (
+                    <Loader2 size={12} className="animate-spin text-brand-link shrink-0" />
+                  ) : (
+                    <Wrench size={12} className="text-brand-link shrink-0" />
+                  )}
+                  <span className="text-xs text-brand-ink font-medium min-w-0 truncate">
+                    {entry.tool}
+                  </span>
+                  {!pending && !entry.expanded && (
+                    <span className="text-xs text-brand-mute truncate">
+                      {truncateResult(entry.result)}
+                    </span>
+                  )}
+                </button>
+
+                {entry.expanded && (
+                  <div className="ml-5 mt-1 space-y-1.5">
+                    {entry.args !== undefined && entry.args !== null && (
+                      <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
+                        <div className="text-[10px] text-brand-mute mb-0.5 font-medium">
+                          Arguments
+                        </div>
+                        <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
+                          {formatArgs(entry.args)}
+                        </pre>
+                      </div>
+                    )}
+                    {entry.result !== null && (
+                      <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
+                        <div className="text-[10px] text-brand-mute mb-0.5 font-medium">
+                          Result
+                        </div>
+                        <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
+                          {entry.result}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
-
-          {agentText && (
-            <div className="flex items-start gap-2">
-              <Bot size={14} className="text-brand-violet shrink-0 mt-0.5" />
-              <p className="text-xs text-brand-ink whitespace-pre-wrap">{agentText}</p>
-            </div>
-          )}
+            );
+          })}
 
           {status === "running" && (
-            <div className="flex items-center gap-2 text-xs text-brand-mute">
+            <div className="flex items-center gap-2 text-xs text-brand-mute pt-1">
               <Loader2 size={14} className="animate-spin" />
               Working...
             </div>
@@ -239,9 +342,15 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
   );
 }
 
-function truncateArgs(args: unknown): string {
-  const str = typeof args === "string" ? args : JSON.stringify(args);
-  return str.length > 60 ? str.slice(0, 60) + "..." : str;
+function truncateResult(result: string | null): string {
+  if (!result) return "";
+  const firstLine = result.split("\n")[0];
+  return firstLine.length > 50 ? firstLine.slice(0, 50) + "..." : firstLine;
+}
+
+function formatArgs(args: unknown): string {
+  if (typeof args === "string") return args;
+  return JSON.stringify(args, null, 2);
 }
 
 async function getAuthToken(): Promise<string> {

@@ -35,6 +35,7 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
       stopWhen: isStepCount(20),
       onToolExecutionStart: ({ toolCall }) => {
         sendSSE("tool_call", {
+          id: toolCall.toolCallId,
           tool: toolCall.toolName,
           args: toolCall.input,
         });
@@ -47,6 +48,7 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
               : JSON.stringify(toolOutput.output).slice(0, 500)
             : `Error: ${toolOutput.error}`;
         sendSSE("tool_result", {
+          id: toolCall.toolCallId,
           tool: toolCall.toolName,
           summary,
         });
