@@ -80,7 +80,7 @@ export default function EditorToolbar({ projectPath }: EditorToolbarProps) {
         )}
 
         {compileStatus === "success" && (
-          <span className="inline-flex items-center gap-1.5 text-xs text-brand-success">
+          <span className="inline-flex items-center gap-1.5 text-xs text-brand-link">
             <CheckCircle2 size={14} />
             Compiled
             <button

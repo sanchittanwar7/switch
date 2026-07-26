@@ -108,7 +108,7 @@ export default function SettingsView() {
         )}
 
         {success && (
-          <div className="mb-6 flex items-center gap-2 rounded-md bg-brand-warning-soft px-3 py-2 text-[14px] leading-[20px] text-brand-link">
+          <div className="mb-6 flex items-center gap-2 rounded-md bg-brand-link/10 px-3 py-2 text-sm text-brand-link">
             <CheckCircle size={16} />
             Provider added.
           </div>
@@ -170,7 +170,7 @@ export default function SettingsView() {
                     </div>
 
                     <div>
-                      <div className="text-[11px] text-brand-mute font-medium mb-2">
+                      <div className="text-xs text-brand-mute font-medium mb-2">
                         Models — click to set default
                       </div>
                       <div className="flex flex-wrap gap-1.5">
@@ -184,7 +184,7 @@ export default function SettingsView() {
                                   await setDefaultModel(config.id, model);
                                 } catch { /* handled by store */ }
                               }}
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] leading-[18px] font-mono border transition-colors ${
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs leading-[18px] font-mono border transition-colors ${
                                 isDefault
                                   ? "bg-brand-link/15 text-brand-link border-brand-link/30"
                                   : "bg-brand-canvas-soft-2 text-brand-body border-brand-hairline hover:border-brand-hairline-strong"
@@ -205,7 +205,7 @@ export default function SettingsView() {
 
           {unconfiguredProviders.length > 0 && (
             <section>
-              <h3 className="text-[13px] font-medium text-brand-mute mb-4">
+<h3 className="text-sm font-medium text-brand-mute mb-4">
                 Add provider
               </h3>
 

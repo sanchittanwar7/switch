@@ -105,7 +105,7 @@ export default function ResumeListView() {
           {!creating && (
             <button
               onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-1.5 rounded-[100px] bg-brand-ink text-brand-on-primary px-4 h-9 text-[14px] leading-[20px] font-medium hover:opacity-90 transition-opacity"
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand-ink text-brand-on-primary px-4 h-9 text-sm font-medium hover:opacity-90 transition-opacity"
             >
               <Plus size={14} />
               New Resume
@@ -128,12 +128,12 @@ export default function ResumeListView() {
                 }
               }}
               placeholder="resume-name"
-              className="flex-1 rounded-[6px] border border-brand-link bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20"
+              className="flex-1 rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-sm text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
             />
             <button
               onClick={handleCreate}
               disabled={!newName.trim()}
-              className="rounded-[100px] bg-brand-link text-white px-4 h-9 text-[14px] leading-[20px] font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
+              className="rounded-full bg-brand-link text-white px-4 h-9 text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
             >
               Create
             </button>
@@ -142,7 +142,7 @@ export default function ResumeListView() {
                 setNewName("");
                 setCreating(false);
               }}
-              className="rounded-[100px] px-4 h-9 text-[14px] leading-[20px] text-brand-mute hover:text-brand-ink transition-colors"
+              className="rounded-full px-4 h-9 text-sm font-medium text-brand-mute hover:text-brand-ink transition-colors"
             >
               Cancel
             </button>
@@ -162,13 +162,13 @@ export default function ResumeListView() {
           <table className="w-full table-fixed">
             <thead>
               <tr className="border-b border-brand-hairline">
-                <th className="text-left py-2 px-3 text-[11px] font-medium text-brand-mute uppercase tracking-widest font-mono w-1/2">
+                <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono w-1/2">
                   Name
                 </th>
-                <th className="text-left py-2 px-3 text-[11px] font-medium text-brand-mute uppercase tracking-widest font-mono w-1/4">
+                <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono w-1/4">
                   Last Modified
                 </th>
-                <th className="text-right py-2 px-3 text-[11px] font-medium text-brand-mute uppercase tracking-widest font-mono w-1/4">
+                <th className="text-right py-2 px-3 text-xs font-medium text-brand-mute font-mono w-1/4">
                   Actions
                 </th>
               </tr>
@@ -184,7 +184,7 @@ export default function ResumeListView() {
                       <div className="flex items-center gap-1.5">
                         <input
                           autoFocus
-                          className="flex-1 bg-brand-canvas-soft-2 text-brand-ink text-[13px] px-2 py-1 rounded-sm border border-brand-link outline-none"
+                          className="flex-1 bg-brand-canvas-soft-2 text-brand-ink text-sm px-2 py-1 rounded-sm border border-brand-link outline-none"
                           value={editValue}
                           onChange={(e) => setEditValue(e.target.value)}
                           onKeyDown={(e) => {
@@ -208,14 +208,14 @@ export default function ResumeListView() {
                     ) : (
                       <button
                         onClick={() => navigate(`/resume?project=${r.name}`)}
-                        className="flex items-center gap-2 text-[14px] leading-[20px] font-medium text-brand-ink truncate hover:text-brand-link transition-colors"
+                        className="flex items-center gap-2 text-sm font-medium text-brand-ink truncate hover:text-brand-link transition-colors"
                       >
                         <FolderOpen size={16} className="text-brand-mute shrink-0" />
                         {r.name}
                       </button>
                     )}
                   </td>
-                  <td className="py-2.5 px-3 text-[13px] text-brand-mute">
+                  <td className="py-2.5 px-3 text-sm text-brand-mute">
                     {formatDate(r.mtime)}
                   </td>
                   <td className="py-2.5 px-3">

@@ -49,7 +49,7 @@ export default function AddCardButton({ columnId }: AddCardButtonProps) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="w-full mt-1 px-3 py-2 text-xs text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 rounded-md transition-colors flex items-center gap-1.5 justify-center"
+        className="w-full mt-1 px-3 py-2 text-sm text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 rounded-md transition-colors flex items-center gap-1.5 justify-center"
       >
         <Plus size={14} />
         Add card
@@ -64,7 +64,7 @@ export default function AddCardButton({ columnId }: AddCardButtonProps) {
         placeholder="Company"
         value={company}
         onChange={(e) => setCompany(e.target.value)}
-        className="w-full mb-2 px-2 py-1.5 text-xs text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+        className="w-full mb-2 px-2 h-8 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
         autoFocus
       />
       <input
@@ -80,33 +80,33 @@ export default function AddCardButton({ columnId }: AddCardButtonProps) {
             handleCancel();
           }
         }}
-        className="w-full mb-2 px-2 py-1.5 text-xs text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+        className="w-full mb-2 px-2 h-8 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
       />
       <input
         type="url"
         placeholder="Job URL (optional)"
         value={jobUrl}
         onChange={(e) => setJobUrl(e.target.value)}
-        className="w-full mb-2 px-2 py-1.5 text-xs text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+        className="w-full mb-2 px-2 h-8 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
       />
       <input
         type="text"
         placeholder="Tags: remote, frontend (optional)"
         value={tagsInput}
         onChange={(e) => setTagsInput(e.target.value)}
-        className="w-full mb-2 px-2 py-1.5 text-xs text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+        className="w-full mb-2 px-2 h-8 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
       />
       <div className="flex gap-2">
         <button
           onClick={handleSubmit}
           disabled={!company.trim() || !role.trim() || submitting}
-          className="flex-1 px-3 py-1.5 text-xs font-medium text-brand-on-primary bg-brand-ink hover:opacity-90 rounded-full transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+          className="flex-1 px-3 py-1.5 text-sm font-medium text-brand-on-primary bg-brand-ink hover:opacity-90 rounded-full transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
         >
           {submitting ? "Adding..." : "Add"}
         </button>
         <button
           onClick={handleCancel}
-          className="px-3 py-1.5 text-xs font-medium text-brand-mute hover:text-brand-ink rounded-full transition-colors"
+          className="px-3 py-1.5 text-sm font-medium text-brand-mute hover:text-brand-ink rounded-full transition-colors"
         >
           Cancel
         </button>

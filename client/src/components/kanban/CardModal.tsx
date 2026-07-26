@@ -72,7 +72,7 @@ export default function CardModal({ card, onClose }: CardModalProps) {
       onKeyDown={handleKeyDown}
     >
       <div
-        className="w-full max-w-lg bg-brand-canvas-soft border border-brand-hairline rounded-xl max-h-[80vh] flex flex-col"
+        className="w-full max-w-lg bg-brand-canvas border border-brand-hairline rounded-xl max-h-[80vh] flex flex-col"
         style={{
           boxShadow:
             "0px 1px 1px rgba(0,0,0,0.08), 0px 8px 16px -4px rgba(0,0,0,0.12), 0px 24px 32px -8px rgba(0,0,0,0.16), inset 0 0 0 1px rgba(255,255,255,0.04)",
@@ -99,7 +99,7 @@ export default function CardModal({ card, onClose }: CardModalProps) {
               type="text"
               value={company}
               onChange={(e) => setCompany(e.target.value)}
-              className="w-full px-3 py-2 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+              className="w-full px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
             />
           </label>
 
@@ -111,7 +111,7 @@ export default function CardModal({ card, onClose }: CardModalProps) {
               type="text"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full px-3 py-2 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+              className="w-full px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
             />
           </label>
 
@@ -124,7 +124,7 @@ export default function CardModal({ card, onClose }: CardModalProps) {
               value={jobUrl}
               onChange={(e) => setJobUrl(e.target.value)}
               placeholder="https://..."
-              className="w-full px-3 py-2 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+              className="w-full px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
             />
           </label>
 
@@ -138,7 +138,7 @@ export default function CardModal({ card, onClose }: CardModalProps) {
                 value={resumePath}
                 onChange={(e) => setResumePath(e.target.value)}
                 placeholder="resumes/default"
-                className="flex-1 px-3 py-2 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+                className="flex-1 px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
               />
               {card.resumePath && (
                 <button
@@ -164,14 +164,14 @@ export default function CardModal({ card, onClose }: CardModalProps) {
               value={tagsInput}
               onChange={(e) => setTagsInput(e.target.value)}
               placeholder="remote, frontend, senior"
-              className="w-full px-3 py-2 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+              className="w-full px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
             />
             {parsedTags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
                 {parsedTags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-[11px] text-brand-body bg-brand-canvas-soft-2 border border-brand-hairline px-1.5 py-0.5 rounded-full"
+                    className="text-xs text-brand-body bg-brand-canvas-soft-2 border border-brand-hairline px-1.5 py-0.5 rounded-full"
                   >
                     {tag}
                   </span>
@@ -217,7 +217,7 @@ export default function CardModal({ card, onClose }: CardModalProps) {
                   }
                 }}
                 placeholder="Add a comment..."
-                className="flex-1 px-3 py-2 text-xs text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+                className="flex-1 px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
               />
               <button
                 onClick={handleAddComment}

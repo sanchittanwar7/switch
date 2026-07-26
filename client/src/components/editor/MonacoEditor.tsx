@@ -82,7 +82,7 @@ export default function MonacoEditor() {
         {openFiles.map((file) => (
           <div
             key={file}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-[13px] cursor-pointer border-r border-brand-hairline shrink-0 select-none transition-colors ${
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm cursor-pointer border-r border-brand-hairline shrink-0 select-none transition-colors ${
               file === activeFile
                 ? "bg-brand-canvas text-brand-ink"
                 : "text-brand-body hover:bg-brand-canvas-soft-2 hover:text-brand-ink"

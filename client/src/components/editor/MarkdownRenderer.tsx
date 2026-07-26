@@ -55,7 +55,7 @@ const components: Components = {
     const isInline = !className;
     if (isInline) {
       return (
-        <code className="bg-brand-canvas-soft-2 text-brand-body font-mono text-[11px] px-1 py-0.5 rounded-sm">
+        <code className="bg-brand-canvas-soft-2 text-brand-body font-mono text-xs px-1 py-0.5 rounded-sm">
           {children}
         </code>
       );

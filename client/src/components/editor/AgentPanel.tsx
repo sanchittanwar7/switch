@@ -243,7 +243,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
   const hasModels = allModels.length > 0;
 
   return (
-    <div className="h-full flex flex-col bg-brand-canvas">
+    <div className="h-full flex flex-col bg-brand-canvas-soft">
       <div className="flex-1 flex flex-col min-h-0">
         <div ref={logRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
           {status === "idle" && entries.length === 0 && (
@@ -318,7 +318,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
                   <div className="ml-5 mt-1 space-y-1.5">
                     {entry.args !== undefined && entry.args !== null && (
                       <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
-                        <div className="text-[10px] text-brand-mute mb-0.5 font-medium">
+                        <div className="text-xs text-brand-mute mb-0.5 font-medium">
                           Arguments
                         </div>
                         <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
@@ -328,7 +328,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
                     )}
                     {entry.result !== null && (
                       <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
-                        <div className="text-[10px] text-brand-mute mb-0.5 font-medium">
+                        <div className="text-xs text-brand-mute mb-0.5 font-medium">
                           Result
                         </div>
                         <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
@@ -397,7 +397,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
             <button
               onClick={handleStart}
               disabled={status === "running" || !jobUrl.trim() || !resumeProjectPath}
-              className="shrink-0 flex items-center justify-center w-7 h-7 rounded-sm bg-brand-ink text-brand-canvas hover:bg-brand-link transition-colors disabled:opacity-30"
+              className="shrink-0 flex items-center justify-center w-7 h-7 rounded-sm bg-brand-ink text-brand-on-primary hover:bg-brand-link transition-colors disabled:opacity-30"
             >
               {status === "running" ? (
                 <Loader2 size={14} className="animate-spin" />

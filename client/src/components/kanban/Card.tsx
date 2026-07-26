@@ -19,8 +19,8 @@ export default function Card({ card, index, onClick }: CardProps) {
           {...provided.draggableProps}
           className={`mb-2 rounded-lg border transition-all flex ${
             snapshot.isDragging
-              ? "border-brand-hairline-strong shadow-lg bg-brand-canvas ring-1 ring-brand-ink/10"
-              : "border-brand-hairline hover:border-brand-hairline-strong bg-brand-canvas-soft-2"
+              ? "border-brand-hairline-strong bg-brand-canvas ring-1 ring-brand-ink/10"
+              : "border-brand-hairline hover:border-brand-hairline-strong bg-brand-canvas"
           }`}
           style={{
             ...provided.draggableProps.style,
@@ -45,7 +45,7 @@ export default function Card({ card, index, onClick }: CardProps) {
                 {card.tags.map((tag) => (
                   <span
                     key={tag}
-                    className="text-[11px] text-brand-body bg-brand-canvas-soft px-1.5 py-0.5 rounded-full border border-brand-hairline"
+                    className="text-xs text-brand-body bg-brand-canvas-soft-2 px-1.5 py-0.5 rounded-full border border-brand-hairline"
                   >
                     {tag}
                   </span>

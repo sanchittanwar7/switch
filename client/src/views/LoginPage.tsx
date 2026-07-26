@@ -5,9 +5,9 @@ export default function LoginPage() {
   const { login } = useAuth();
 
   return (
-    <div className="h-screen flex items-center justify-center bg-brand-canvas">
+    <div className="h-screen flex items-center justify-center bg-brand-canvas-soft">
       <div className="text-center space-y-6">
-        <h1 className="text-3xl font-semibold text-brand-ink tracking-tight">
+        <h1 className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] text-brand-ink">
           Switch
         </h1>
         <p className="text-sm text-brand-body">

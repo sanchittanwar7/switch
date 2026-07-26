@@ -32,7 +32,7 @@ export default function Sidebar() {
             to={to}
             end={to === "/"}
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              `flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium transition-colors ${
                 isActive
                   ? "bg-brand-canvas-soft-2 text-brand-ink"
                   : "hover:bg-brand-canvas-soft-2 hover:text-brand-ink"

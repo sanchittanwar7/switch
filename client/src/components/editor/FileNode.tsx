@@ -6,6 +6,8 @@ import {
   FileCode,
   FileImage,
 } from "lucide-react";
+
+const ICON_SIZE = 16;
 import type { FileEntry } from "../../types";
 
 interface FileNodeProps {
@@ -34,13 +36,13 @@ function getFileIcon(name: string) {
     case "tex":
     case "sty":
     case "cls":
-      return <FileCode size={15} className="shrink-0 text-brand-link" />;
+      return <FileCode size={ICON_SIZE} className="shrink-0 text-brand-link" />;
     case "pdf":
-      return <FileImage size={15} className="shrink-0 text-brand-error" />;
+      return <FileImage size={ICON_SIZE} className="shrink-0 text-brand-error" />;
     case "bib":
-      return <FileText size={15} className="shrink-0 text-brand-success" />;
+      return <FileText size={ICON_SIZE} className="shrink-0 text-brand-link" />;
     default:
-      return <File size={15} className="shrink-0 text-brand-mute" />;
+      return <File size={ICON_SIZE} className="shrink-0 text-brand-mute" />;
   }
 }
 
@@ -80,13 +82,13 @@ export default function FileNode({
         style={{ paddingLeft: `${12 + depth * 16}px` }}
       >
         {isDir ? (
-          <Folder size={15} className="shrink-0 text-brand-link" />
+          <Folder size={ICON_SIZE} className="shrink-0 text-brand-link" />
         ) : (
           getFileIcon(path.split("/").pop() || "")
         )}
         <input
           autoFocus
-          className="flex-1 bg-brand-canvas-soft-2 text-brand-ink text-xs px-2 py-0.5 rounded-sm border border-brand-link outline-none mr-3"
+          className="flex-1 bg-brand-canvas-soft-2 text-brand-ink text-sm px-2 py-0.5 rounded-sm border border-brand-link outline-none mr-3"
           value={editValue}
           onChange={(e) => onEditValueChange(e.target.value)}
           onKeyDown={(e) => {
@@ -113,16 +115,16 @@ export default function FileNode({
         {isDir ? (
           expanded ? (
             <FolderOpen
-              size={15}
+              size={ICON_SIZE}
               className="shrink-0 text-brand-link"
             />
           ) : (
-            <Folder size={15} className="shrink-0 text-brand-link" />
+            <Folder size={ICON_SIZE} className="shrink-0 text-brand-link" />
           )
         ) : (
           getFileIcon(path.split("/").pop() || "")
         )}
-        <span className="truncate text-[13px] leading-5">
+        <span className="truncate text-sm leading-5">
           {path.split("/").pop()}
         </span>
       </div>

@@ -16,7 +16,7 @@ function ProtectedLayout() {
     loadSettings();
   }, [loadSettings]);
   return (
-    <div className="flex h-screen bg-brand-canvas">
+    <div className="flex h-screen bg-brand-canvas-soft">
       <Sidebar />
       <main className="ml-56 flex-1 overflow-auto">
         <Routes>
