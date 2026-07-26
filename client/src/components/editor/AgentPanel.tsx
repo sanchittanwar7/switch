@@ -9,7 +9,11 @@ interface StreamEvent {
   args?: string;
 }
 
-export default function AgentPanel() {
+interface AgentPanelProps {
+  projectPath: string;
+}
+
+export default function AgentPanel({ projectPath }: AgentPanelProps) {
   const [jobUrl, setJobUrl] = useState("");
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
@@ -32,7 +36,7 @@ export default function AgentPanel() {
 
   const resumeProjectPath = activeFile
     ? activeFile.split("/").slice(0, 2).join("/")
-    : "";
+    : projectPath;
 
   const handleStart = useCallback(async () => {
     if (!jobUrl.trim() || !resumeProjectPath) return;
@@ -75,33 +79,43 @@ export default function AgentPanel() {
       eventSourceRef.current = es;
 
       es.addEventListener("tool_call", (e: MessageEvent) => {
-        const data = JSON.parse(e.data);
-        setEvents((prev) => [
-          ...prev,
-          { type: "tool_call", tool: data.tool, args: data.args },
-        ]);
+        try {
+          const data = JSON.parse(e.data);
+          setEvents((prev) => [
+            ...prev,
+            { type: "tool_call", tool: data.tool, args: data.args },
+          ]);
+        } catch { /* ignore malformed SSE data */ }
       });
 
       es.addEventListener("tool_result", (e: MessageEvent) => {
-        const data = JSON.parse(e.data);
-        setEvents((prev) => [
-          ...prev,
-          { type: "tool_result", content: data.summary || "" },
-        ]);
+        try {
+          const data = JSON.parse(e.data);
+          setEvents((prev) => [
+            ...prev,
+            { type: "tool_result", content: data.summary || "" },
+          ]);
+        } catch { /* ignore malformed SSE data */ }
       });
 
       es.addEventListener("message", (e: MessageEvent) => {
-        const data = JSON.parse(e.data);
-        textRef.current += data.text || "";
-        setAgentText(textRef.current);
+        try {
+          const data = JSON.parse(e.data);
+          textRef.current += data.text || "";
+          setAgentText(textRef.current);
+        } catch { /* ignore malformed SSE data */ }
       });
 
       es.addEventListener("error", (e: MessageEvent) => {
-        const data = JSON.parse(e.data);
-        setEvents((prev) => [
-          ...prev,
-          { type: "error", content: data.error || "Unknown error" },
-        ]);
+        try {
+          const data = JSON.parse(e.data);
+          setEvents((prev) => [
+            ...prev,
+            { type: "error", content: data.error || "Unknown error" },
+          ]);
+        } catch {
+          // non-SSE error event (e.g. HTTP error from server before SSE stream starts)
+        }
         setStatus("error");
         es.close();
       });
@@ -225,14 +239,9 @@ export default function AgentPanel() {
   );
 }
 
-function truncateArgs(args: string): string {
-  try {
-    const parsed = JSON.parse(args);
-    const str = JSON.stringify(parsed);
-    return str.length > 60 ? str.slice(0, 60) + "..." : str;
-  } catch {
-    return args.length > 60 ? args.slice(0, 60) + "..." : args;
-  }
+function truncateArgs(args: unknown): string {
+  const str = typeof args === "string" ? args : JSON.stringify(args);
+  return str.length > 60 ? str.slice(0, 60) + "..." : str;
 }
 
 async function getAuthToken(): Promise<string> {

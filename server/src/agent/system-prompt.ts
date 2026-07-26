@@ -13,7 +13,7 @@ INSTRUCTIONS:
 1. Fetch the job posting URL to understand the role, requirements, and keywords.
 2. If there's a company careers/culture page, fetch that too for context.
 3. Read the current resume project — start with main.tex, then all section files found via list_dir.
-4. Tailor the resume:
+4. Tailor the resume by editing files in-place within ${resumeProjectPath}:
    - Reorder bullet points to highlight the most relevant experience first
    - Emphasize skills and achievements that match the job requirements
    - Incorporate relevant keywords naturally (don't keyword-stuff)
@@ -21,12 +21,7 @@ INSTRUCTIONS:
    - Keep all LaTeX structure, formatting, and commands intact
    - NEVER fabricate experience, skills, or qualifications
    - Keep bullet points concise and achievement-oriented
-5. Write the tailored resume to: resumes/tailored/{company_name}/{job_id}/
-   - For example, if the master is at ${resumeProjectPath} and the job is at Acme Corp,
-     write to resumes/tailored/acme-corp/<job-id>/
-   - Copy all files from the master project, then edit the copies
-   - This ensures the master resume stays untouched
-6. After writing all files, provide a brief summary of:
+5. After editing all files, provide a brief summary of:
    - What key changes you made and why
    - Which skills/experiences you emphasized
    - Any sections you reorganized

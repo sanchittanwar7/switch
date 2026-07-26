@@ -73,7 +73,7 @@ export default function EditorView() {
                 {leftPanel === "files" ? (
                   <FileTree projectPath={resolvedPath} />
                 ) : (
-                  <AgentPanel />
+                  <AgentPanel projectPath={resolvedPath} />
                 )}
               </div>
             </div>

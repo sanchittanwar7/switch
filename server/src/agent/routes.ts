@@ -44,7 +44,11 @@ router.post("/tailor", async (req, res) => {
   }
 });
 
-router.get("/sessions/:id/stream", async (req, res) => {
+export default router;
+
+export const streamRouter = Router();
+
+streamRouter.get("/sessions/:id/stream", async (req, res) => {
   try {
     const { id } = req.params;
     const token = req.query.token as string | undefined;
@@ -60,11 +64,6 @@ router.get("/sessions/:id/stream", async (req, res) => {
       return;
     }
 
-    if (session.userId !== req.userId) {
-      res.status(403).json({ error: "Forbidden" });
-      return;
-    }
-
     await runAgentStream(session, res);
     deleteSession(id);
   } catch (err) {
@@ -75,5 +74,3 @@ router.get("/sessions/:id/stream", async (req, res) => {
     }
   }
 });
-
-export default router;
