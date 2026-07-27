@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "http://140.245.229.238:3000/api/$1"
+    },
+    {
+      "source": "/pdfs/(.*)",
+      "destination": "http://140.245.229.238:3000/pdfs/$1"
+    }
+  ]
+}
