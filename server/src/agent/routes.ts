@@ -1,7 +1,7 @@
 import { Router } from "express";
-import { getSettings, getUserProviders, PROVIDER_BASE_URLS, type LLMProvider } from "../settings";
-import { createSession, getSession, deleteSession, addMessage, listSessions, loadSessionById } from "./session-store";
-import { runAgentStream } from "./orchestrator";
+import { getSettings, getUserProviders, PROVIDER_BASE_URLS, type LLMProvider } from "../settings.js";
+import { createSession, getSession, deleteSession, addMessage, listSessions, loadSessionById } from "./session-store.js";
+import { runAgentStream } from "./orchestrator.js";
 
 const router = Router();
 

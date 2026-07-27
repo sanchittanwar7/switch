@@ -1,5 +1,5 @@
-import { db } from "./index";
-import { columns } from "./schema";
+import { db } from "./index.js";
+import { columns } from "./schema.js";
 
 const DEFAULT_COLUMNS = [
   { id: "wishlist", title: "Wishlist", position: 0 },

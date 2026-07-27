@@ -1,8 +1,8 @@
 import { v4 as uuid } from "uuid";
 import fs from "fs/promises";
 import path from "path";
-import { getWorkspaceRoot } from "../utils/paths";
-import type { LLMSettings } from "../settings";
+import { getWorkspaceRoot } from "../utils/paths.js";
+import type { LLMSettings } from "../settings.js";
 
 export interface AgentMessage {
   role: "user" | "assistant" | "tool_call" | "tool_result";

@@ -1,7 +1,7 @@
 import { and, eq } from "drizzle-orm";
-import { db } from "./db";
-import { userSettings, userProviders } from "./db/schema";
-import { getWorkspaceRoot } from "./utils/paths";
+import { db } from "./db/index.js";
+import { userSettings, userProviders } from "./db/schema.js";
+import { getWorkspaceRoot } from "./utils/paths.js";
 
 export const LLM_PROVIDERS = ["openai", "gemini", "claude", "deepseek", "qwen"] as const;
 export type LLMProvider = (typeof LLM_PROVIDERS)[number];

@@ -1,8 +1,8 @@
 import { Request, Response, NextFunction } from "express";
-import { supabaseAdmin } from "../lib/supabase";
-import { db } from "../db";
-import { users } from "../db/schema";
-import { ensureUserWorkspace } from "../workspace";
+import { supabaseAdmin } from "../lib/supabase.js";
+import { db } from "../db/index.js";
+import { users } from "../db/schema.js";
+import { ensureUserWorkspace } from "../workspace.js";
 
 declare global {
   namespace Express {

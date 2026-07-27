@@ -1,15 +1,15 @@
 import express from "express";
 import cors from "cors";
-import { initializeDatabase } from "./workspace";
-import { authMiddleware } from "./middleware/auth";
-import { resolvePath } from "./utils/paths";
+import { initializeDatabase } from "./workspace.js";
+import { authMiddleware } from "./middleware/auth.js";
+import { resolvePath } from "./utils/paths.js";
 import fs from "fs/promises";
-import authRoutes from "./routes/auth";
-import fsRoutes from "./routes/fs";
-import kanbanRoutes from "./routes/kanban";
-import latexRoutes from "./routes/latex";
-import agentRoutes, { streamRouter } from "./agent/routes";
-import settingsRoutes from "./routes/settings";
+import authRoutes from "./routes/auth.js";
+import fsRoutes from "./routes/fs.js";
+import kanbanRoutes from "./routes/kanban.js";
+import latexRoutes from "./routes/latex.js";
+import agentRoutes, { streamRouter } from "./agent/routes.js";
+import settingsRoutes from "./routes/settings.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
