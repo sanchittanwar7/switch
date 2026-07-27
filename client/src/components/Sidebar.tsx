@@ -3,7 +3,7 @@ import { LayoutDashboard, FileText, Settings, LogOut, User } from "lucide-react"
 import { useAuth } from "../contexts/AuthContext";
 
 const navItems = [
-  { to: "/", icon: LayoutDashboard, label: "Board" },
+  { to: "/board", icon: LayoutDashboard, label: "Board" },
   { to: "/resumes", icon: FileText, label: "Resumes" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
