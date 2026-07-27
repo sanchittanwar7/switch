@@ -9,7 +9,9 @@ if (!DATABASE_URL) {
 }
 
 const pool = new pg.Pool({
-  connectionString: DATABASE_URL,
+  connectionString: process.env.DATABASE_URL!.includes("?")
+    ? process.env.DATABASE_URL! + "&family=4"
+    : process.env.DATABASE_URL! + "?family=4",
 });
 
 export const db = drizzle(pool, { schema });
