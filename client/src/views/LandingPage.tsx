@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { FileText, Bot, LayoutDashboard, ArrowRight, Sparkles, PenTool, Target, Zap } from "lucide-react";
+import { FileText, LayoutDashboard, ArrowRight, Sparkles, PenTool, Target, Zap } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function LandingPage() {
@@ -30,15 +30,8 @@ export default function LandingPage() {
         <nav className="relative z-10 flex items-center justify-between px-6 h-16 border-b border-brand-hairline bg-brand-canvas/80 backdrop-blur-xl">
           <button onClick={() => navigate("/")} className="flex items-center gap-2">
             <span className="text-sm font-semibold tracking-[-0.28px] text-brand-ink">
-              LS
+              Lean Switch
             </span>
-          </button>
-          <button
-            onClick={handleCTA}
-            className="inline-flex items-center gap-1.5 rounded-sm px-3 h-7 text-[13px] font-medium bg-brand-ink text-brand-on-primary hover:opacity-90 transition-opacity"
-          >
-            Sign In
-            <ArrowRight size={12} />
           </button>
         </nav>
 
@@ -58,7 +51,7 @@ export default function LandingPage() {
               onClick={handleCTA}
               className="inline-flex items-center gap-2 rounded-full bg-brand-ink text-brand-on-primary px-6 h-12 text-[16px] font-medium hover:opacity-90 transition-opacity"
             >
-              Get Started
+              Sign In
               <ArrowRight size={16} />
             </button>
             <a
@@ -126,7 +119,7 @@ export default function LandingPage() {
 
       <section className="bg-brand-ink text-brand-on-primary py-24">
         <div className="max-w-[1200px] mx-auto px-6 text-center">
-          <p className="text-[12px] font-mono tracking-normal uppercase text-white/40 mb-6">
+          <p className="text-[12px] font-mono tracking-normal uppercase text-black/40 mb-6">
             How It Works
           </p>
           <h2
@@ -142,13 +135,13 @@ export default function LandingPage() {
               { step: "04", title: "Compile & Apply.", desc: "Review the result, compile the PDF, and send it. Track the application as it moves through your pipeline." },
             ].map((item) => (
               <div key={item.step}>
-                <div className="text-[12px] font-mono text-white/30 mb-3">
+                <div className="text-[12px] font-mono text-black/30 mb-3">
                   {item.step}
                 </div>
                 <h3 className="text-[16px] font-medium leading-[24px] mb-2">
                   {item.title}
                 </h3>
-                <p className="text-[14px] leading-[20px] tracking-[-0.28px] text-white/50">
+                <p className="text-[14px] leading-[20px] tracking-[-0.28px] text-black/50">
                   {item.desc}
                 </p>
               </div>
@@ -172,7 +165,7 @@ export default function LandingPage() {
             onClick={handleCTA}
             className="inline-flex items-center gap-2 rounded-full bg-brand-ink text-brand-on-primary px-8 h-12 text-[16px] font-medium hover:opacity-90 transition-opacity"
           >
-            Get Started
+            Sign In
             <ArrowRight size={16} />
           </button>
         </div>
