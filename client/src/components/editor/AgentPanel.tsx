@@ -3,6 +3,7 @@ import { Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight, Cpu, Us
 import { useEditorStore } from "../../stores/editorStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import type { AvailableModel } from "../../stores/settingsStore";
+import { apiUrl } from "../../lib/api";
 import MarkdownRenderer from "./MarkdownRenderer";
 
 interface ToolEntry {
@@ -147,7 +148,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
     setLoadingSessions(true);
     try {
       const token = await getAuthToken();
-      const res = await fetch(`/api/agent/sessions?resumeProjectPath=${encodeURIComponent(resumeProjectPath)}`, {
+      const res = await fetch(apiUrl(`/api/agent/sessions?resumeProjectPath=${encodeURIComponent(resumeProjectPath)}`), {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -189,7 +190,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
     (sid: string, stoken: string) => {
       eventSourceRef.current?.close();
       const es = new EventSource(
-        `/api/agent/sessions/${sid}/stream?token=${encodeURIComponent(stoken)}`,
+        apiUrl(`/api/agent/sessions/${sid}/stream?token=${encodeURIComponent(stoken)}`),
       );
       eventSourceRef.current = es;
 
@@ -301,7 +302,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
 
       if (!sessionId || !sessionToken) {
         const isUrl = /^https?:\/\//.test(message);
-        const res = await fetch("/api/agent/tailor", {
+        const res = await fetch(apiUrl("/api/agent/tailor"), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -328,7 +329,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
         storeSessionToken(sid, stoken);
         connectSSE(sid, stoken);
       } else {
-        const res = await fetch(`/api/agent/sessions/${sessionId}/messages`, {
+        const res = await fetch(apiUrl(`/api/agent/sessions/${sessionId}/messages`), {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -365,7 +366,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
 
   const loadPastSession = useCallback(async (sid: string, stoken: string) => {
     const token = await getAuthToken();
-    const res = await fetch(`/api/agent/sessions/${sid}`, {
+    const res = await fetch(apiUrl(`/api/agent/sessions/${sid}`), {
       headers: { Authorization: `Bearer ${token}` },
     });
 
