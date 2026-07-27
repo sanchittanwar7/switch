@@ -11,7 +11,7 @@ export default function LoginPage() {
           Switch
         </h1>
         <p className="text-sm text-brand-body">
-          Tailor your resume. Land the job.
+          Intelligent job switching.
         </p>
         <button
           onClick={login}

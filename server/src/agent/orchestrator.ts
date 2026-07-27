@@ -3,12 +3,21 @@ import type { Response } from "express";
 import { createModel } from "./provider-factory";
 import { createTools } from "./tools";
 import { buildSystemPrompt } from "./system-prompt";
+import { addMessage, setProcessing } from "./session-store";
 import type { AgentSession } from "./session-store";
 
 export async function runAgentStream(session: AgentSession, res: Response): Promise<void> {
   const model = createModel(session.settings);
   const tools = createTools(session.userId);
   const systemPrompt = buildSystemPrompt(session.resumeProjectPath);
+
+  if (session.processing) {
+    res.writeHead(409, { "Content-Type": "application/json" });
+    res.end(JSON.stringify({ error: "Session is already processing. Wait for current response to finish." }));
+    return;
+  }
+
+  setProcessing(session.id, true);
 
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
@@ -21,16 +30,16 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
+  let assistantResponse = "";
+
   try {
     const result = streamText({
       model,
       system: systemPrompt,
-      messages: [
-        {
-          role: "user" as const,
-          content: `Tailor my resume at "${session.resumeProjectPath}" for this job: ${session.jobUrl}`,
-        },
-      ],
+      messages: session.messages.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
       tools,
       stopWhen: isStepCount(20),
       onToolExecutionStart: ({ toolCall }) => {
@@ -56,7 +65,12 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
     });
 
     for await (const chunk of result.textStream) {
+      assistantResponse += chunk;
       sendSSE("message", { content: chunk });
+    }
+
+    if (assistantResponse) {
+      addMessage(session.id, "assistant", assistantResponse);
     }
 
     sendSSE("done", { outputPaths: [] });
@@ -70,6 +84,7 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
       message: err instanceof Error ? err.message : "Unknown error",
     });
   } finally {
+    setProcessing(session.id, false);
     if (!res.writableEnded) {
       res.end();
     }

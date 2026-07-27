@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight, Cpu } from "lucide-react";
+import { Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight, Cpu, User, MessageSquare, Plus } from "lucide-react";
 import { useEditorStore } from "../../stores/editorStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import type { AvailableModel } from "../../stores/settingsStore";
@@ -28,22 +28,84 @@ interface AgentTextEntry {
   text: string;
 }
 
-type LogEntry = ToolEntry | ErrorEntry | DoneEntry | AgentTextEntry;
+interface UserTextEntry {
+  type: "user_text";
+  text: string;
+}
+
+type LogEntry = ToolEntry | ErrorEntry | DoneEntry | AgentTextEntry | UserTextEntry;
+
+interface SessionSummary {
+  id: string;
+  createdAt: number;
+  lastActivityAt: number;
+  messageCount: number;
+  firstUserMessage: string;
+}
 
 interface AgentPanelProps {
   projectPath: string;
 }
 
+const LS_SESSIONS_PREFIX = "switch_agent_sessions_";
+const LS_LAST_PREFIX = "switch_agent_last_";
+
+function lsKey(suffix: string, resumePath: string): string {
+  return `${suffix}${resumePath}`;
+}
+
+function loadTokensFromStorage(resumePath: string): Record<string, string> {
+  try {
+    const raw = localStorage.getItem(lsKey(LS_SESSIONS_PREFIX, resumePath));
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveTokensToStorage(resumePath: string, tokens: Record<string, string>): void {
+  try {
+    localStorage.setItem(lsKey(LS_SESSIONS_PREFIX, resumePath), JSON.stringify(tokens));
+  } catch {
+    // ignore quota errors
+  }
+}
+
+function loadLastSessionFromStorage(resumePath: string): { sessionId: string; sessionToken: string } | null {
+  try {
+    const raw = localStorage.getItem(lsKey(LS_LAST_PREFIX, resumePath));
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveLastSessionToStorage(resumePath: string, sessionId: string, sessionToken: string): void {
+  try {
+    localStorage.setItem(lsKey(LS_LAST_PREFIX, resumePath), JSON.stringify({ sessionId, sessionToken }));
+  } catch {
+    // ignore quota errors
+  }
+}
+
 export default function AgentPanel({ projectPath }: AgentPanelProps) {
-  const [jobUrl, setJobUrl] = useState("");
+  const [inputText, setInputText] = useState("");
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [status, setStatus] = useState<"idle" | "running" | "done" | "error">("idle");
   const [selectedModel, setSelectedModel] = useState("");
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessionToken, setSessionToken] = useState<string | null>(null);
+  const [sessionSummaries, setSessionSummaries] = useState<SessionSummary[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
 
   const activeFile = useEditorStore((s) => s.activeFile);
   const { availableModels, loadAvailableModels } = useSettingsStore();
+
+  const resumeProjectPath = activeFile
+    ? activeFile.split("/").slice(0, 2).join("/")
+    : projectPath;
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
@@ -68,9 +130,36 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
     };
   }, []);
 
-  const resumeProjectPath = activeFile
-    ? activeFile.split("/").slice(0, 2).join("/")
-    : projectPath;
+  useEffect(() => {
+    if (!resumeProjectPath) return;
+    loadSessionList();
+
+    const last = loadLastSessionFromStorage(resumeProjectPath);
+    if (last) {
+      loadPastSession(last.sessionId, last.sessionToken)
+        .catch(() => {
+          // session expired, ignore
+        });
+    }
+  }, [resumeProjectPath]);
+
+  const loadSessionList = useCallback(async () => {
+    setLoadingSessions(true);
+    try {
+      const token = await getAuthToken();
+      const res = await fetch(`/api/agent/sessions?resumeProjectPath=${encodeURIComponent(resumeProjectPath)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setSessionSummaries(data);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingSessions(false);
+    }
+  }, [resumeProjectPath]);
 
   function getSelectedProvider(): string | undefined {
     if (!selectedModel) return undefined;
@@ -96,41 +185,11 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
     );
   }, []);
 
-  const handleStart = useCallback(async () => {
-    if (!jobUrl.trim() || !resumeProjectPath) return;
-
-    eventSourceRef.current?.close();
-    setEntries([]);
-    setStatus("running");
-
-    const provider = getSelectedProvider();
-
-    try {
-      const token = await getAuthToken();
-      const res = await fetch("/api/agent/tailor", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          jobUrl: jobUrl.trim(),
-          resumeProjectPath,
-          ...(provider && selectedModel ? { provider, model: selectedModel } : {}),
-        }),
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({ error: "Failed to start agent" }));
-        setEntries([{ type: "error", content: data.error || "Failed to start agent" }]);
-        setStatus("error");
-        return;
-      }
-
-      const { sessionId, sessionToken } = await res.json();
-
+  const connectSSE = useCallback(
+    (sid: string, stoken: string) => {
+      eventSourceRef.current?.close();
       const es = new EventSource(
-        `/api/agent/sessions/${sessionId}/stream?token=${encodeURIComponent(sessionToken)}`,
+        `/api/agent/sessions/${sid}/stream?token=${encodeURIComponent(stoken)}`,
       );
       eventSourceRef.current = es;
 
@@ -209,6 +268,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
         setEntries((prev) => [...prev, { type: "done" }]);
         setStatus("done");
         es.close();
+        loadSessionList();
       });
 
       let errorHandled = false;
@@ -221,14 +281,129 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
           setStatus("error");
         }
       };
+    },
+    [resolveStalePendings, loadSessionList],
+  );
+
+  const handleSend = useCallback(async () => {
+    const message = inputText.trim();
+    if (!message || !resumeProjectPath || status === "running") return;
+
+    setInputText("");
+    const userEntry: UserTextEntry = { type: "user_text", text: message };
+    setEntries((prev) => [...prev, userEntry]);
+    setStatus("running");
+
+    const provider = getSelectedProvider();
+
+    try {
+      const authToken = await getAuthToken();
+
+      if (!sessionId || !sessionToken) {
+        const isUrl = /^https?:\/\//.test(message);
+        const res = await fetch("/api/agent/tailor", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            message,
+            resumeProjectPath,
+            ...(isUrl ? { jobUrl: message } : {}),
+            ...(provider && selectedModel ? { provider, model: selectedModel } : {}),
+          }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Failed to start agent" }));
+          setEntries((prev) => [...prev, { type: "error", content: data.error || "Failed to start agent" }]);
+          setStatus("error");
+          return;
+        }
+
+        const { sessionId: sid, sessionToken: stoken } = await res.json();
+        setSessionId(sid);
+        setSessionToken(stoken);
+        storeSessionToken(sid, stoken);
+        connectSSE(sid, stoken);
+      } else {
+        const res = await fetch(`/api/agent/sessions/${sessionId}/messages`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({ message, token: sessionToken }),
+        });
+
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({ error: "Failed to send message" }));
+          setEntries((prev) => [...prev, { type: "error", content: data.error || "Failed to send message" }]);
+          setStatus("error");
+          return;
+        }
+
+        connectSSE(sessionId, sessionToken);
+      }
     } catch (err) {
       resolveStalePendings();
-      setEntries([
+      setEntries((prev) => [
+        ...prev,
         { type: "error", content: err instanceof Error ? err.message : "Connection failed" },
       ]);
       setStatus("error");
     }
-  }, [jobUrl, resumeProjectPath, selectedModel, availableModels]);
+  }, [inputText, resumeProjectPath, status, sessionId, sessionToken, selectedModel, connectSSE, resolveStalePendings]);
+
+  const storeSessionToken = useCallback((sid: string, stoken: string) => {
+    const tokens = loadTokensFromStorage(resumeProjectPath);
+    tokens[sid] = stoken;
+    saveTokensToStorage(resumeProjectPath, tokens);
+    saveLastSessionToStorage(resumeProjectPath, sid, stoken);
+  }, [resumeProjectPath]);
+
+  const loadPastSession = useCallback(async (sid: string, stoken: string) => {
+    const token = await getAuthToken();
+    const res = await fetch(`/api/agent/sessions/${sid}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      setSessionId(null);
+      setSessionToken(null);
+      return;
+    }
+
+    const data = await res.json();
+    const entriesFromMessages: LogEntry[] = [];
+
+    for (const msg of data.messages) {
+      if (msg.role === "user") {
+        entriesFromMessages.push({ type: "user_text", text: msg.content });
+      } else {
+        entriesFromMessages.push({ type: "agent_text", text: msg.content });
+      }
+    }
+
+    setEntries(entriesFromMessages);
+    setSessionId(data.id);
+    setSessionToken(data.sessionToken);
+    setStatus("done");
+
+    const tokens = loadTokensFromStorage(resumeProjectPath);
+    tokens[data.id] = data.sessionToken;
+    saveTokensToStorage(resumeProjectPath, tokens);
+    saveLastSessionToStorage(resumeProjectPath, data.id, data.sessionToken);
+  }, [resumeProjectPath]);
+
+  const startNewSession = useCallback(() => {
+    eventSourceRef.current?.close();
+    setEntries([]);
+    setSessionId(null);
+    setSessionToken(null);
+    setStatus("idle");
+  }, []);
 
   const toggleExpanded = (callId: string) => {
     setEntries((prev) =>
@@ -242,17 +417,58 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
 
   const hasModels = allModels.length > 0;
 
+  const showSessionList = status === "idle" && !sessionId;
+
   return (
     <div className="h-full flex flex-col bg-brand-canvas-soft">
       <div className="flex-1 flex flex-col min-h-0">
         <div ref={logRef} className="flex-1 overflow-y-auto px-3 py-2 space-y-1.5">
-          {status === "idle" && entries.length === 0 && (
-            <div className="text-xs text-brand-mute text-center py-4">
-              Enter a job posting URL to tailor your resume.
+          {showSessionList && (
+            <div className="space-y-1">
+              {loadingSessions && sessionSummaries.length === 0 && (
+                <div className="text-xs text-brand-mute text-center py-4">
+                  <Loader2 size={14} className="animate-spin inline-block mr-1.5" />
+                  Loading past sessions...
+                </div>
+              )}
+
+              {!loadingSessions && sessionSummaries.length === 0 && (
+                <div className="text-xs text-brand-mute text-center py-4">
+                  No past sessions. Ask the agent to tailor your resume, improve content, or review your drafts.
+                </div>
+              )}
+
+              {sessionSummaries.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    const tokens = loadTokensFromStorage(resumeProjectPath);
+                    const stoken = tokens[s.id];
+                    if (stoken) {
+                      loadPastSession(s.id, stoken);
+                    } else {
+                      setEntries([{ type: "error", content: "Session token not available. Start a new session." }]);
+                    }
+                  }}
+                  className="w-full text-left p-2 rounded-sm border border-brand-hairline bg-brand-canvas hover:border-brand-hairline-strong transition-colors"
+                >
+                  <div className="flex items-start gap-2">
+                    <MessageSquare size={14} className="text-brand-mute shrink-0 mt-0.5" />
+                    <div className="min-w-0 flex-1">
+                      <div className="text-xs text-brand-ink truncate">
+                        {s.firstUserMessage || "Empty session"}
+                      </div>
+                      <div className="text-[10px] text-brand-mute mt-0.5">
+                        {formatDate(s.lastActivityAt)} &middot; {s.messageCount} message{s.messageCount !== 1 ? "s" : ""}
+                      </div>
+                    </div>
+                  </div>
+                </button>
+              ))}
             </div>
           )}
 
-          {entries.map((entry, i) => {
+          {!showSessionList && entries.map((entry, i) => {
             if (entry.type === "error") {
               return (
                 <div key={i} className="flex items-start gap-2">
@@ -262,12 +478,21 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
               );
             }
 
+            if (entry.type === "user_text") {
+              return (
+                <div key={i} className="flex items-start gap-2">
+                  <User size={14} className="text-brand-body shrink-0 mt-0.5" />
+                  <span className="text-xs text-brand-ink whitespace-pre-wrap">{entry.text}</span>
+                </div>
+              );
+            }
+
             if (entry.type === "done") {
               return (
                 <div key={i} className="flex items-start gap-2">
                   <CheckCircle size={14} className="text-brand-link shrink-0 mt-0.5" />
                   <span className="text-xs text-brand-link font-medium">
-                    Resume tailored successfully
+                    Ready. You can send another message to continue.
                   </span>
                 </div>
               );
@@ -376,27 +601,43 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
               <span>
                 <a href="/settings" className="text-brand-link hover:underline">
                   Configure a provider
-                </a>
-                {" "}in Settings to select a model.
+                </a>{" "}
+                in Settings to select a model.
               </span>
+            </div>
+          )}
+
+          {sessionId && (status === "done" || status === "idle") && (
+            <div className="flex gap-2">
+              <button
+                onClick={startNewSession}
+                className="flex items-center gap-1 text-xs text-brand-mute hover:text-brand-ink transition-colors"
+              >
+                <Plus size={12} />
+                New session
+              </button>
             </div>
           )}
 
           <div className="flex gap-2">
             <input
-              type="url"
-              placeholder="Job posting URL..."
-              value={jobUrl}
-              onChange={(e) => setJobUrl(e.target.value)}
+              type="text"
+              placeholder={
+                sessionId
+                  ? "Send a follow-up message..."
+                  : "Paste a job URL or ask the agent anything..."
+              }
+              value={inputText}
+              onChange={(e) => setInputText(e.target.value)}
               disabled={status === "running"}
               onKeyDown={(e) => {
-                if (e.key === "Enter" && status !== "running") handleStart();
+                if (e.key === "Enter" && status !== "running") handleSend();
               }}
               className="flex-1 bg-brand-canvas-soft-2 text-brand-ink text-xs px-2.5 py-1.5 rounded-sm border border-brand-hairline outline-none focus:border-brand-link transition-colors disabled:opacity-50"
             />
             <button
-              onClick={handleStart}
-              disabled={status === "running" || !jobUrl.trim() || !resumeProjectPath}
+              onClick={handleSend}
+              disabled={status === "running" || !inputText.trim() || !resumeProjectPath || !hasModels}
               className="shrink-0 flex items-center justify-center w-7 h-7 rounded-sm bg-brand-ink text-brand-on-primary hover:bg-brand-link transition-colors disabled:opacity-30"
             >
               {status === "running" ? (
@@ -421,6 +662,21 @@ function truncateResult(result: string | null): string {
 function formatArgs(args: unknown): string {
   if (typeof args === "string") return args;
   return JSON.stringify(args, null, 2);
+}
+
+function formatDate(ts: number): string {
+  const d = new Date(ts);
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "Just now";
+  if (diffMins < 60) return `${diffMins}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return d.toLocaleDateString();
 }
 
 async function getAuthToken(): Promise<string> {
