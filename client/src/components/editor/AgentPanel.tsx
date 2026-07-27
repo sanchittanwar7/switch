@@ -381,8 +381,25 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
     for (const msg of data.messages) {
       if (msg.role === "user") {
         entriesFromMessages.push({ type: "user_text", text: msg.content });
-      } else {
+      } else if (msg.role === "assistant") {
         entriesFromMessages.push({ type: "agent_text", text: msg.content });
+      } else if (msg.role === "tool_call") {
+        entriesFromMessages.push({
+          type: "tool_entry",
+          callId: msg.toolCallId || "",
+          tool: msg.toolName || "",
+          args: msg.toolInput,
+          result: null,
+          expanded: false,
+        });
+      } else if (msg.role === "tool_result") {
+        for (let i = entriesFromMessages.length - 1; i >= 0; i--) {
+          const e = entriesFromMessages[i];
+          if (e.type === "tool_entry" && e.callId === msg.toolCallId) {
+            e.result = msg.content;
+            break;
+          }
+        }
       }
     }
 

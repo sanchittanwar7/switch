@@ -5,8 +5,11 @@ import { getWorkspaceRoot } from "../utils/paths";
 import type { LLMSettings } from "../settings";
 
 export interface AgentMessage {
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool_call" | "tool_result";
   content: string;
+  toolCallId?: string;
+  toolName?: string;
+  toolInput?: unknown;
 }
 
 export interface AgentSession {
@@ -45,7 +48,7 @@ function getResumeSessionsDir(userId: string, resumeProjectPath: string): string
   if (normalized.includes("..")) {
     throw new Error("Path traversal not allowed");
   }
-  return path.join(getWorkspaceRoot(userId), "resumes", normalized, "sessions");
+  return path.join(getWorkspaceRoot(userId), normalized, "sessions");
 }
 
 function getSessionPath(userId: string, resumeProjectPath: string, sessionId: string): string {
@@ -207,10 +210,16 @@ export async function listSessions(userId: string, resumeProjectPath: string): P
   }
 }
 
-export function addMessage(sessionId: string, role: "user" | "assistant", content: string): void {
+export function addMessage(
+  sessionId: string,
+  role: AgentMessage["role"],
+  content: string,
+  extra?: Partial<Pick<AgentMessage, "toolCallId" | "toolName" | "toolInput">>,
+): void {
   const session = sessions.get(sessionId);
   if (!session) return;
-  session.messages.push({ role, content });
+  const msg: AgentMessage = { role, content, ...extra };
+  session.messages.push(msg);
   session.lastActivityAt = Date.now();
   persistSession(session);
 }

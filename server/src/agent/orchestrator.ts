@@ -36,13 +36,20 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
     const result = streamText({
       model,
       system: systemPrompt,
-      messages: session.messages.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
+      messages: session.messages
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
       tools,
       stopWhen: isStepCount(20),
       onToolExecutionStart: ({ toolCall }) => {
+        addMessage(session.id, "tool_call", `${toolCall.toolName}(${JSON.stringify(toolCall.input)})`, {
+          toolCallId: toolCall.toolCallId,
+          toolName: toolCall.toolName,
+          toolInput: toolCall.input,
+        });
         sendSSE("tool_call", {
           id: toolCall.toolCallId,
           tool: toolCall.toolName,
@@ -50,16 +57,20 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
         });
       },
       onToolExecutionEnd: ({ toolCall, toolOutput }) => {
-        const summary =
+        const fullResult =
           toolOutput.type === "tool-result"
             ? typeof toolOutput.output === "string"
-              ? toolOutput.output.slice(0, 500)
-              : JSON.stringify(toolOutput.output).slice(0, 500)
+              ? toolOutput.output
+              : JSON.stringify(toolOutput.output)
             : `Error: ${toolOutput.error}`;
+        addMessage(session.id, "tool_result", fullResult, {
+          toolCallId: toolCall.toolCallId,
+          toolName: toolCall.toolName,
+        });
         sendSSE("tool_result", {
           id: toolCall.toolCallId,
           tool: toolCall.toolName,
-          summary,
+          summary: fullResult.slice(0, 500),
         });
       },
     });
