@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, FolderOpen, Trash2, Pencil, Copy, Check, X } from "lucide-react";
 import { apiGet, apiPost, apiDelete } from "../lib/api";
+import NewResumeModal from "../components/NewResumeModal";
 
 interface ResumeEntry {
   name: string;
@@ -11,8 +12,7 @@ interface ResumeEntry {
 export default function ResumeListView() {
   const [resumes, setResumes] = useState<ResumeEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [newName, setNewName] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [deletingName, setDeletingName] = useState<string | null>(null);
@@ -32,15 +32,6 @@ export default function ResumeListView() {
   useEffect(() => {
     fetchResumes();
   }, []);
-
-  const handleCreate = async () => {
-    const trimmed = newName.trim();
-    if (!trimmed) return;
-    await apiPost("/api/fs/mkdir", { path: `resumes/${trimmed}` });
-    setNewName("");
-    setCreating(false);
-    await fetchResumes();
-  };
 
   const handleDelete = async () => {
     if (!deletingName) return;
@@ -102,54 +93,16 @@ export default function ResumeListView() {
           <h2 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-brand-ink">
             Resumes
           </h2>
-          {!creating && (
-            <button
-              onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-1.5 rounded-full bg-brand-ink text-brand-on-primary px-4 h-9 text-sm font-medium hover:opacity-90 transition-opacity"
-            >
-              <Plus size={14} />
-              New Resume
-            </button>
-          )}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-brand-ink text-brand-on-primary px-4 h-9 text-sm font-medium hover:opacity-90 transition-opacity"
+          >
+            <Plus size={14} />
+            New Resume
+          </button>
         </div>
 
-        {creating && (
-          <div className="mb-6 flex items-center gap-3">
-            <input
-              autoFocus
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreate();
-                if (e.key === "Escape") {
-                  setNewName("");
-                  setCreating(false);
-                }
-              }}
-              placeholder="resume-name"
-              className="flex-1 rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-sm text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
-            />
-            <button
-              onClick={handleCreate}
-              disabled={!newName.trim()}
-              className="rounded-full bg-brand-link text-white px-4 h-9 text-sm font-medium hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity"
-            >
-              Create
-            </button>
-            <button
-              onClick={() => {
-                setNewName("");
-                setCreating(false);
-              }}
-              className="rounded-full px-4 h-9 text-sm font-medium text-brand-mute hover:text-brand-ink transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
-        )}
-
-        {resumes.length === 0 && !creating && (
+        {resumes.length === 0 && (
           <div className="text-center py-16">
             <FolderOpen size={32} className="mx-auto mb-3 text-brand-mute" />
             <p className="text-sm text-brand-mute">
@@ -259,6 +212,15 @@ export default function ResumeListView() {
           </table>
         )}
       </div>
+
+      <NewResumeModal
+        open={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        onCreated={() => {
+          setShowCreateModal(false);
+          fetchResumes();
+        }}
+      />
 
       {deletingName && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">

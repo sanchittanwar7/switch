@@ -2,8 +2,11 @@ import { Router } from "express";
 import fs from "fs/promises";
 import path from "path";
 import { resolvePath } from "../utils/paths";
+import { supabaseAdmin } from "../lib/supabase";
 
 const router = Router();
+
+const STORAGE_BUCKET = "resumes";
 
 function getUserId(req: Parameters<Parameters<typeof router.get>[1]>[0]): string {
   return (req as any).userId!;
@@ -135,6 +138,66 @@ router.get("/resumes", async (req, res) => {
   } catch {
     res.json([]);
   }
+});
+
+router.post("/create-blank-resume", async (req, res) => {
+  const userId = getUserId(req);
+  const { name } = req.body;
+
+  if (!name || typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+
+  const trimmed = name.trim();
+  const dirPath = resolvePath(`resumes/${trimmed}`, userId);
+  await fs.mkdir(dirPath, { recursive: true });
+  await fs.writeFile(
+    path.join(dirPath, "main.tex"),
+    "\\documentclass[a4paper,11pt]{article}\n\\begin{document}\n\n\\end{document}\n",
+    "utf-8",
+  );
+
+  res.json({ success: true, name: trimmed });
+});
+
+router.post("/upload-resume", async (req, res) => {
+  const userId = getUserId(req);
+  const { name, files } = req.body as {
+    name?: string;
+    files?: Array<{ path: string; content: string }>;
+  };
+
+  if (!name || typeof name !== "string" || !name.trim()) {
+    res.status(400).json({ error: "name is required" });
+    return;
+  }
+  if (!files || !Array.isArray(files) || files.length === 0) {
+    res.status(400).json({ error: "files array is required" });
+    return;
+  }
+
+  const trimmed = name.trim();
+  const resumeDir = `resumes/${trimmed}`;
+
+  for (const file of files) {
+    if (!file.path || typeof file.content !== "string") continue;
+    const filePath = resolvePath(`${resumeDir}/${file.path}`, userId);
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, file.content, "utf-8");
+
+    if (supabaseAdmin) {
+      const storagePath = `${userId}/${trimmed}/${file.path}`;
+      await supabaseAdmin.storage
+        .from(STORAGE_BUCKET)
+        .upload(storagePath, Buffer.from(file.content, "utf-8"), {
+          contentType: "text/plain",
+          upsert: true,
+        });
+    }
+  }
+
+  res.json({ success: true, name: trimmed, count: files.length });
 });
 
 export default router;
