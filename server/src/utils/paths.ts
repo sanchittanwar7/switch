@@ -1,7 +1,7 @@
 import path from "path";
 import os from "os";
 
-const DEFAULT_WORKSPACE = path.join(os.homedir(), ".switch");
+const DEFAULT_WORKSPACE = path.join(os.homedir(), ".lean-switch");
 
 export function getWorkspaceRoot(userId?: string): string {
   const base = process.env.WORKSPACE_ROOT || DEFAULT_WORKSPACE;

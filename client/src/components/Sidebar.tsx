@@ -21,7 +21,7 @@ export default function Sidebar() {
     <aside className="fixed left-0 top-0 h-full w-56 bg-brand-canvas-soft text-brand-body flex flex-col border-r border-brand-hairline">
       <div className="px-5 py-5 border-b border-brand-hairline">
         <h1 className="text-lg font-semibold text-brand-ink tracking-tight">
-          Switch
+          LS
         </h1>
       </div>
 

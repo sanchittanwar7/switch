@@ -8,7 +8,7 @@ export default function LoginPage() {
     <div className="h-screen flex items-center justify-center bg-brand-canvas-soft">
       <div className="text-center space-y-6">
         <h1 className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] text-brand-ink">
-          Switch
+          Lean Switch
         </h1>
         <p className="text-sm text-brand-body">
           Intelligent job switching.
