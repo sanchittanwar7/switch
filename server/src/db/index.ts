@@ -1,6 +1,9 @@
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
+import dns from "node:dns";
 import * as schema from "./schema";
+
+dns.setDefaultResultOrder("ipv4first");
 
 const DATABASE_URL = process.env.DATABASE_URL;
 
@@ -9,9 +12,7 @@ if (!DATABASE_URL) {
 }
 
 const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL!.includes("?")
-    ? process.env.DATABASE_URL! + "&family=4"
-    : process.env.DATABASE_URL! + "?family=4",
+  connectionString: DATABASE_URL,
 });
 
 export const db = drizzle(pool, { schema });
