@@ -1,8 +1,8 @@
 import fs from "fs/promises";
 import path from "path";
-import { getWorkspaceRoot } from "./utils/paths.js";
-import { runMigrations } from "./db/migrate.js";
-import { seedColumns } from "./db/seed.js";
+import { getWorkspaceRoot } from "./utils/paths";
+import { runMigrations } from "./db/migrate";
+import { seedColumns } from "./db/seed";
 
 export async function ensureUserWorkspace(userId: string): Promise<void> {
   const root = getWorkspaceRoot(userId);

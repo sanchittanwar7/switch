@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, asc, and } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { columns, cards, comments } from "../db/schema.js";
+import { db } from "../db";
+import { columns, cards, comments } from "../db/schema";
 
 const router = Router();
 

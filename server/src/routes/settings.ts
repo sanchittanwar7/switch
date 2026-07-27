@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { userSettings } from "../db/schema.js";
+import { db } from "../db";
+import { userSettings } from "../db/schema";
 import {
   getUserProviders,
   addUserProvider,
@@ -11,7 +11,7 @@ import {
   PROVIDER_MODELS,
   PROVIDER_BASE_URLS,
   type LLMProvider,
-} from "../settings.js";
+} from "../settings";
 
 const router = Router();
 

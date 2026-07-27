@@ -2,7 +2,7 @@ import { Router } from "express";
 import { execFile } from "child_process";
 import fs from "fs/promises";
 import path from "path";
-import { resolvePath } from "../utils/paths.js";
+import { resolvePath } from "../utils/paths";
 
 const router = Router();
 

@@ -1,5 +1,5 @@
-import { runMigrations } from "./migrate.js";
-import { seedColumns } from "./seed.js";
+import { runMigrations } from "./migrate";
+import { seedColumns } from "./seed";
 
 async function main() {
   await runMigrations();

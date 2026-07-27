@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
-import { resolvePath } from "../utils/paths.js";
+import { resolvePath } from "../utils/paths";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 

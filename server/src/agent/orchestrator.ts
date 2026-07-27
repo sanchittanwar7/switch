@@ -1,10 +1,10 @@
 import { streamText, isStepCount } from "ai";
 import type { Response } from "express";
-import { createModel } from "./provider-factory.js";
-import { createTools } from "./tools.js";
-import { buildSystemPrompt } from "./system-prompt.js";
-import { addMessage, setProcessing } from "./session-store.js";
-import type { AgentSession } from "./session-store.js";
+import { createModel } from "./provider-factory";
+import { createTools } from "./tools";
+import { buildSystemPrompt } from "./system-prompt";
+import { addMessage, setProcessing } from "./session-store";
+import type { AgentSession } from "./session-store";
 
 export async function runAgentStream(session: AgentSession, res: Response): Promise<void> {
   const model = createModel(session.settings);

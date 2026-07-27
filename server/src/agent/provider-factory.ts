@@ -2,7 +2,7 @@ import { createOpenAI } from "@ai-sdk/openai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createDeepSeek } from "@ai-sdk/deepseek";
-import type { LLMSettings } from "../settings.js";
+import type { LLMSettings } from "../settings";
 
 export function createModel(settings: LLMSettings) {
   const { provider, apiKey, baseUrl, model } = settings;
