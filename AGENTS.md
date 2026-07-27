@@ -1,3 +1,8 @@
+## Critical Rules
+
+- **NEVER commit or push automatically.** Only commit/push when user explicitly asks.
+- **NEVER generate or guess URLs** unless they are for documentation or code references.
+
 ## Architecture & Design
 
 Refer to `docs/ARCHITECTURE.md` for system design, component contracts, data models, API design, agent design, and file system layout.
