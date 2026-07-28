@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, FolderOpen, Trash2, Pencil, Copy, Check, X } from "lucide-react";
+import { Plus, FolderOpen, Trash2, Pencil, Copy, Check, X, HelpCircle } from "lucide-react";
 import { apiGet, apiPost, apiDelete } from "../lib/api";
 import NewResumeModal from "../components/NewResumeModal";
 
@@ -16,6 +16,7 @@ export default function ResumeListView() {
   const [editingName, setEditingName] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [deletingName, setDeletingName] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
   const navigate = useNavigate();
 
   const fetchResumes = async () => {
@@ -93,13 +94,22 @@ export default function ResumeListView() {
           <h2 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-brand-ink">
             Resumes
           </h2>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-brand-ink text-brand-on-primary px-4 h-9 text-sm font-medium hover:opacity-90 transition-opacity"
-          >
-            <Plus size={14} />
-            New Resume
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setHelpOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border border-brand-hairline text-brand-body px-4 h-9 text-sm font-medium hover:bg-brand-canvas-soft hover:text-brand-ink transition-colors"
+            >
+              <HelpCircle size={14} />
+              Get Help
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="inline-flex items-center gap-1.5 rounded-full bg-brand-ink text-brand-on-primary px-4 h-9 text-sm font-medium hover:opacity-90 transition-opacity"
+            >
+              <Plus size={14} />
+              New Resume
+            </button>
+          </div>
         </div>
 
         {resumes.length === 0 && (
@@ -221,6 +231,101 @@ export default function ResumeListView() {
           fetchResumes();
         }}
       />
+
+      {helpOpen && (
+        <>
+          <div
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm"
+            onClick={() => setHelpOpen(false)}
+          />
+          <div
+            className="fixed top-0 right-0 bottom-0 z-50 w-1/2 bg-brand-canvas border-l border-brand-hairline overflow-y-auto"
+            style={{
+              boxShadow:
+                "-8px 0px 32px -8px rgba(0,0,0,0.4), 0px 1px 1px rgba(0,0,0,0.2), inset 0 0 0 1px rgba(255,255,255,0.04)",
+            }}
+          >
+            <div className="sticky top-0 z-10 flex items-center justify-between px-6 py-4 bg-brand-canvas border-b border-brand-hairline">
+              <h3 className="text-sm font-semibold text-brand-ink tracking-[-0.02em]">
+                How to upload a LaTeX resume
+              </h3>
+              <button
+                onClick={() => setHelpOpen(false)}
+                className="p-1 text-brand-mute hover:text-brand-ink rounded-sm transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="p-6 space-y-8">
+              <div className="rounded-lg overflow-hidden border border-brand-hairline bg-brand-canvas-soft">
+                <iframe
+                  src="https://scribehow.com/embed/How_To_Upload_And_Compile_A_LaTeX_Resume_Template__08ZAMQbRQNae-6leFpGXtQ?scaleMode=cover&as=video"
+                  width="100%"
+                  height="800"
+                  allow="fullscreen"
+                  style={{ aspectRatio: "16 / 12", border: 0, minHeight: 480 }}
+                />
+              </div>
+
+              <div className="space-y-4">
+                <h4 className="text-sm font-semibold text-brand-ink">
+                  Import from Overleaf
+                </h4>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 p-3 rounded-md bg-brand-canvas-soft border border-brand-hairline">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-ink text-brand-canvas text-xs font-semibold shrink-0 mt-0.5">
+                      1
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-brand-ink">
+                        Open your project in Overleaf
+                      </p>
+                      <p className="text-xs text-brand-body mt-0.5">
+                        Go to your Overleaf dashboard and open the resume project
+                        you want to import.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-md bg-brand-canvas-soft border border-brand-hairline">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-ink text-brand-canvas text-xs font-semibold shrink-0 mt-0.5">
+                      2
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-brand-ink">
+                        Download the project as a .zip file
+                      </p>
+                      <p className="text-xs text-brand-body mt-0.5">
+                        Click the <span className="text-brand-ink font-medium font-mono text-[11px]">Menu</span> button
+                        in the top-left corner and select{" "}
+                        <span className="text-brand-ink font-medium font-mono text-[11px]">Download as ZIP</span>.
+                        Extract the downloaded .zip file on your computer.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 rounded-md bg-brand-canvas-soft border border-brand-hairline">
+                    <div className="flex items-center justify-center w-6 h-6 rounded-full bg-brand-ink text-brand-canvas text-xs font-semibold shrink-0 mt-0.5">
+                      3
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-brand-ink">
+                        Create a new resume from your files
+                      </p>
+                      <p className="text-xs text-brand-body mt-0.5">
+                        Click{" "}
+                        <span className="text-brand-ink font-medium font-mono text-[11px]">New Resume</span>{" "}
+                        above, select{" "}
+                        <span className="text-brand-ink font-medium font-mono text-[11px]">Open from Computer</span>,
+                        and upload all the extracted files. The folder structure
+                        will be preserved automatically.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {deletingName && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
