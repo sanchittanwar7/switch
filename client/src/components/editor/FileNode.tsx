@@ -30,6 +30,17 @@ interface FileNodeProps {
   onCancelEdit: () => void;
 }
 
+const HIDDEN_EXTENSIONS = new Set([".pdf", ".log", ".out", ".aux"]);
+const HIDDEN_DIRS = new Set(["sessions"]);
+
+function shouldShow(entry: FileEntry): boolean {
+  if (entry.type === "directory") {
+    return !HIDDEN_DIRS.has(entry.name.split("/").pop() || "");
+  }
+  const ext = entry.name.split(".").pop()?.toLowerCase() || "";
+  return !HIDDEN_EXTENSIONS.has(`.${ext}`);
+}
+
 function getFileIcon(name: string) {
   const ext = name.split(".").pop()?.toLowerCase();
   switch (ext) {
@@ -131,7 +142,7 @@ export default function FileNode({
 
       {isDir &&
         expanded &&
-        children.map((child) => (
+        children.filter(shouldShow).map((child) => (
           <FileNode
             key={child.name}
             entry={child}
