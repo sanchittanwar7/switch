@@ -1,5 +1,4 @@
 import { Draggable } from "@hello-pangea/dnd";
-import { GripVertical } from "lucide-react";
 import type { Card as CardType } from "../../types";
 
 interface CardProps {
@@ -17,6 +16,7 @@ export default function Card({ card, index, onClick }: CardProps) {
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
+          {...provided.dragHandleProps}
           className={`mb-2 rounded-lg border transition-all flex ${
             snapshot.isDragging
               ? "border-brand-hairline-strong bg-brand-canvas ring-1 ring-brand-ink/10"
@@ -58,13 +58,6 @@ export default function Card({ card, index, onClick }: CardProps) {
                 {lastComment.text}
               </p>
             )}
-          </div>
-
-          <div
-            {...provided.dragHandleProps}
-            className="flex items-center px-1 text-brand-mute/40 hover:text-brand-mute cursor-grab active:cursor-grabbing transition-colors"
-          >
-            <GripVertical size={16} />
           </div>
         </div>
       )}
