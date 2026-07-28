@@ -6,6 +6,8 @@ import { resolvePath } from "../utils/paths";
 
 const router = Router();
 
+const DEFAULT_ENGINE_ORDER = ["pdflatex", "xelatex", "lualatex"];
+
 function getUserId(req: Parameters<Parameters<typeof router.get>[1]>[0]): string {
   return (req as any).userId!;
 }
@@ -46,48 +48,55 @@ function parseLogErrors(logText: string): LaTeXError[] {
   return errors;
 }
 
-async function detectEngine(projectDir: string, mainFile: string): Promise<string> {
+async function getEngineOrder(projectDir: string, mainFile: string): Promise<string[]> {
   const mainContent = await fs.readFile(path.join(projectDir, mainFile), "utf-8");
-  const fileContents = [mainContent];
+  const contents = [mainContent];
+
+  const classMatch = mainContent.match(/\\documentclass(?:\[.*?\])?\{(.+?)\}/);
+  if (classMatch) {
+    try {
+      const clsContent = await fs.readFile(path.join(projectDir, classMatch[1].replace(/\.cls$/, "") + ".cls"), "utf-8");
+      contents.push(clsContent);
+    } catch {}
+  }
 
   for (const line of mainContent.split("\n")) {
     const m = line.match(/\\usepackage\{(?:\.\/)?(.+?)\}/);
     if (m) {
-      const subFile = m[1].replace(/\.sty$/, "") + ".sty";
+      const styFile = m[1].replace(/\.sty$/, "") + ".sty";
       try {
-        const content = await fs.readFile(path.join(projectDir, subFile), "utf-8");
-        fileContents.push(content);
+        const styContent = await fs.readFile(path.join(projectDir, styFile), "utf-8");
+        contents.push(styContent);
       } catch {
         continue;
       }
     }
   }
 
-  const combined = fileContents.join("\n");
+  const combined = contents.join("\n");
 
-  if (/\\usepackage\{emoji\}/.test(combined) || /\\setemojifont/.test(combined)) {
-    return "lualatex";
+  if (/\\usepackage\{emoji\}/.test(combined) || /\\RequirePackage(?:\[.*?\])?\{emoji\}/.test(combined) || /\\setemojifont/.test(combined)) {
+    return ["lualatex", "xelatex", "pdflatex"];
   }
 
-  if (/\\usepackage\{fontspec\}/.test(combined) || /\\setmainfont/.test(combined)) {
-    return "lualatex";
+  const hasFontspec = /\\usepackage\{fontspec\}/.test(combined)
+    || /\\RequirePackage(?:\[.*?\])?\{fontspec\}/.test(combined)
+    || /\\setmainfont/.test(combined);
+
+  if (hasFontspec) {
+    return ["xelatex", "lualatex", "pdflatex"];
   }
 
-  return "pdflatex";
+  return DEFAULT_ENGINE_ORDER;
 }
 
 async function resolveEngine(engine: string): Promise<string> {
-  const texbinCandidates = [
+  const candidates = [
     path.join("/Library/TeX/texbin", engine),
     engine,
   ];
 
-  const dirEntries = await fs.readdir("/usr/local/texlive").catch(() => [] as string[]);
-  for (const entry of dirEntries.sort().reverse()) {
-    texbinCandidates.push(path.join("/usr/local/texlive", entry, "bin/universal-darwin", engine));
-  }
-
-  for (const candidate of texbinCandidates) {
+  for (const candidate of candidates) {
     try {
       await fs.access(candidate, fs.constants.X_OK);
       return candidate;
@@ -154,12 +163,20 @@ router.post("/compile", async (req, res) => {
   const pdfName = mainFile.replace(/\.tex$/, ".pdf");
   const pdfPath = path.join(projectPath, pdfName);
 
-  const engine = await detectEngine(absProjectDir, mainFile);
-  const enginePath = await resolveEngine(engine);
+  let lastErrors: LaTeXError[] = [];
 
-  try {
-    await runLatex(enginePath, absProjectDir, mainFile);
-    await runLatex(enginePath, absProjectDir, mainFile);
+  const engineOrder = await getEngineOrder(absProjectDir, mainFile);
+
+  for (const engineName of engineOrder) {
+    const enginePath = await resolveEngine(engineName);
+
+    try {
+      await runLatex(enginePath, absProjectDir, mainFile);
+      await runLatex(enginePath, absProjectDir, mainFile);
+    } catch (err: any) {
+      lastErrors = err.errors || [];
+      continue;
+    }
 
     const logPath = path.join(absProjectDir, mainFile.replace(/\.tex$/, ".log"));
     let logContent = "";
@@ -168,24 +185,20 @@ router.post("/compile", async (req, res) => {
     } catch {
     }
 
-    const errors = parseLogErrors(logContent);
     const hasFatal = /Fatal error/i.test(logContent);
-
-    if (hasFatal || errors.length > 0) {
-      res.json({ success: false, pdfPath, errors });
-      return;
+    if (hasFatal) {
+      lastErrors = parseLogErrors(logContent);
+      continue;
     }
 
     const pdfExists = await fs.stat(resolvePath(pdfPath, userId)).catch(() => null);
-    res.json({
-      success: pdfExists !== null,
-      pdfPath,
-      errors: [],
-    });
-  } catch (err: any) {
-    const errors = err.errors || [];
-    res.json({ success: false, pdfPath, errors });
+    if (pdfExists) {
+      res.json({ success: true, pdfPath, errors: [] });
+      return;
+    }
   }
+
+  res.json({ success: false, pdfPath, errors: lastErrors });
 });
 
 router.get("/download", async (req, res) => {
