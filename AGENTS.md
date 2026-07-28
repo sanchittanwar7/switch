@@ -47,14 +47,16 @@ Run workspace-scoped commands via `-w <workspace>` flag (npm workspaces).
 
 ## Server (`/server`)
 
-- **Dev runtime**: `tsx --env-file=.env src/index.ts` — uses `.env` file directly, not dotenv
+- **Dev runtime**: `NODE_ENV=development tsx watch --env-file=.env src/index.ts` — auto-restarts on file changes, loads `.env` directly (not dotenv)
 - **Framework**: Express 5.x with CORS and JSON body parser
 - **Port**: 3000 (default, overridable via `PORT` env)
 - **DB**: PostgreSQL via Drizzle ORM + `node-postgres`. Migrations and column seeding run automatically on `start()`. Schema: `server/src/db/schema.ts`
 - **Required env vars**: `DATABASE_URL` (throws if missing), `SUPABASE_URL`, `SUPABASE_SECRET_KEY`
 - **Auth**: Supabase JWT verification middleware (`server/src/middleware/auth.ts`). All routes (except `/api/auth/*` and `/api/health`) require `Authorization: Bearer <token>`. User ID extracted from `sub` claim, synced to `users` table on first request via `ensureUser()`.
 - **Filesystem scope**: `~/.switch/{user_id}/resumes/` — per-user workspace. Path traversal (`..`) blocked in `resolvePath()`.
-- **Agent**: Vercel AI SDK v7 (`ai` + `@ai-sdk/*`). Provider factory maps LLM settings to SDK providers. Tools: `read_file`, `write_file`, `list_dir`, `web_fetch` — all scoped to user workspace.
+- **Agent**: Vercel AI SDK v7 (`ai` + `@ai-sdk/*`). Provider factory maps LLM settings to SDK providers (`@ai-sdk/openai`, `@ai-sdk/anthropic`, `@ai-sdk/google`, `@ai-sdk/deepseek`). Tools: `read_files` (takes array of paths), `write_file`, `list_dir`, `web_fetch` — all scoped to user workspace. Max 20 tool-calling steps per run (`stopWhen: isStepCount(20)`).
+- **Agent session model**: Two-step flow — POST `/api/agent/tailor` creates a session + returns a session token, then GET `/api/agent/sessions/:id/stream?token=...` opens the SSE stream. The SSE stream endpoint does NOT use JWT auth; it authenticates via the session token. Sessions expire after 30 min inactivity.
+- **JSON body limit**: 25MB (`express.json({ limit: "25mb" })`).
 
 ### Server directory map
 
@@ -99,3 +101,4 @@ Run workspace-scoped commands via `-w <workspace>` flag (npm workspaces).
 - Agent copies master resume to `tailored/{company}/{job_id}/` before editing — never modifies master.
 - LaTeX compilation runs `pdflatex` twice (needs `texlive` locally). PDFs served as static files under `/pdfs/`.
 - Storage mode: local filesystem by default. `storage_mode` column in `user_settings` suggests cloud option planned but primarily local.
+- **Vercel deploy**: `vercel.json` rewrites `/api/*` and `/pdfs/*` to external server IP. The Vite proxy (`/api` → `localhost:3000`) is dev-only.
