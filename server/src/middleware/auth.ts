@@ -49,10 +49,12 @@ export async function authMiddleware(
     return;
   }
 
-  req.userId = data.user.id;
+  const devUserId = process.env.NODE_ENV === "development" ? `test-${data.user.id}` : data.user.id;
+
+  req.userId = devUserId;
   req.userEmail = data.user.email;
 
-  await ensureUser(data.user.id, data.user.email);
+  await ensureUser(devUserId, data.user.email);
 
   next();
 }

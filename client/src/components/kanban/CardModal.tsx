@@ -1,8 +1,14 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { X, Trash2, ExternalLink, Send } from "lucide-react";
 import { useKanbanStore } from "../../stores/kanbanStore";
+import { apiGet } from "../../lib/api";
 import type { Card as CardType } from "../../types";
+
+interface ResumeEntry {
+  name: string;
+  mtime: string;
+}
 
 interface CardModalProps {
   card: CardType;
@@ -17,12 +23,19 @@ export default function CardModal({ card, onClose }: CardModalProps) {
   const [role, setRole] = useState(card.role);
   const [jobUrl, setJobUrl] = useState(card.jobUrl || "");
   const [resumePath, setResumePath] = useState(card.resumePath || "");
+  const [resumes, setResumes] = useState<ResumeEntry[]>([]);
   const [tagsInput, setTagsInput] = useState(card.tags.join(", "));
   const [commentText, setCommentText] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [commenting, setCommenting] = useState(false);
+
+  useEffect(() => {
+    apiGet<ResumeEntry[]>("/api/fs/resumes")
+      .then(setResumes)
+      .catch(() => setResumes([]));
+  }, []);
 
   const parsedTags = tagsInput
     .split(",")
@@ -133,17 +146,22 @@ export default function CardModal({ card, onClose }: CardModalProps) {
               Resume Path
             </span>
             <div className="flex gap-2">
-              <input
-                type="text"
+              <select
                 value={resumePath}
                 onChange={(e) => setResumePath(e.target.value)}
-                placeholder="resumes/default"
-                className="flex-1 px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
-              />
-              {card.resumePath && (
+                className="flex-1 px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+              >
+                <option value="">None</option>
+                {resumes.map((r) => (
+                  <option key={r.name} value={r.name}>
+                    {r.name}
+                  </option>
+                ))}
+              </select>
+              {resumePath && (
                 <button
                   onClick={() =>
-                    navigate(`/resume?project=${card.resumePath}`)
+                    navigate(`/resume?project=${resumePath}`)
                   }
                   className="flex items-center gap-1.5 px-3 py-2 text-xs text-brand-link hover:text-brand-link-deep bg-brand-canvas-soft-2 hover:bg-brand-canvas-soft border border-brand-hairline rounded-full transition-colors shrink-0 font-medium"
                   title="Open resume in editor"
@@ -206,26 +224,30 @@ export default function CardModal({ card, onClose }: CardModalProps) {
                 ))}
               </div>
             )}
-            <div className="flex gap-2">
-              <input
-                type="text"
+            <div className="flex flex-col gap-2">
+              <textarea
                 value={commentText}
                 onChange={(e) => setCommentText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && commentText.trim()) {
+                  if ((e.metaKey || e.ctrlKey) && e.key === "Enter" && commentText.trim()) {
+                    e.preventDefault();
                     handleAddComment();
                   }
                 }}
                 placeholder="Add a comment..."
-                className="flex-1 px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute"
+                rows={3}
+                className="w-full px-3 py-2 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute resize-y"
               />
-              <button
-                onClick={handleAddComment}
-                disabled={!commentText.trim() || commenting}
-                className="p-2 text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 rounded-full transition-colors disabled:opacity-30"
-              >
-                <Send size={14} />
-              </button>
+              <div className="flex justify-end">
+                <button
+                  onClick={handleAddComment}
+                  disabled={!commentText.trim() || commenting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-link hover:text-brand-link-deep bg-brand-canvas-soft-2 hover:bg-brand-canvas-soft border border-brand-hairline rounded-full transition-colors disabled:opacity-30"
+                >
+                  <Send size={12} />
+                  Submit
+                </button>
+              </div>
             </div>
           </div>
         </div>
