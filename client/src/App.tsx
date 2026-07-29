@@ -1,5 +1,5 @@
+import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { useEffect } from "react";
 import { useAuth } from "./contexts/AuthContext";
 import { useSettingsStore } from "./stores/settingsStore";
 import Sidebar from "./components/Sidebar";
@@ -19,6 +19,7 @@ function LoadingScreen() {
 }
 
 function ProtectedLayout() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const loadSettings = useSettingsStore((s) => s.loadSettings);
 
   useEffect(() => {
@@ -27,8 +28,15 @@ function ProtectedLayout() {
 
   return (
     <div className="flex h-screen bg-brand-canvas-soft">
-      <Sidebar />
-      <main className="ml-56 flex-1 overflow-auto">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
+      />
+      <main
+        className={`flex-1 overflow-auto transition-[margin] duration-200 ${
+          sidebarCollapsed ? "ml-16" : "ml-56"
+        }`}
+      >
         <Outlet />
       </main>
     </div>
