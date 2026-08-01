@@ -161,11 +161,11 @@ npm install date-fns -w client
 ```
 
 **Acceptance**:
-- [ ] Store created with all actions
-- [ ] `fetchEvents` calls `GET /api/calendar?start=X&end=Y`
-- [ ] CRUD actions call correct API endpoints
-- [ ] Navigation helpers work for all 3 view modes
-- [ ] `npm run lint` passes (tsc)
+- [x] Store created with all actions
+- [x] `fetchEvents` calls `GET /api/calendar?start=X&end=Y`
+- [x] CRUD actions call correct API endpoints
+- [x] Navigation helpers work for all 3 view modes
+- [x] `npm run lint` passes (tsc)
 
 ---
 
