@@ -189,10 +189,11 @@ export default function DayView({
                         className="bg-brand-ink text-brand-canvas rounded-md p-1.5 text-[10px] cursor-pointer border border-brand-hairline hover:opacity-80 transition-opacity overflow-hidden"
                         style={eventStyle(event, layout.col, layout.total)}
                       >
-                        <div className="font-medium truncate">{event.name}</div>
-                        <div className="text-brand-mute truncate">
-                          {format(parseISO(event.startTime), "h:mm a")} –{" "}
-                          {format(parseISO(event.endTime), "h:mm a")}
+                        <div className="truncate">
+                          <span className="text-brand-mute">
+                            {format(parseISO(event.startTime), "h:mm a")}
+                          </span>{" "}
+                          <span>{event.name}</span>
                         </div>
                         {(event.company || event.roundName) && (
                           <div className="flex flex-wrap gap-0.5 mt-0.5">
