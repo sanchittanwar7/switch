@@ -67,7 +67,7 @@ function rangeCovers(cachedStart: string | null, cachedEnd: string | null, targe
 export const useCalendarStore = create<CalendarStore>((set, get) => ({
   events: [],
   loading: false,
-  viewMode: "month",
+  viewMode: "week",
   selectedDate: new Date().toISOString(),
 
   cachedEvents: [],

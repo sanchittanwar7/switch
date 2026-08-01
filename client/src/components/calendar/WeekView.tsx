@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import {
   startOfWeek,
   endOfWeek,
@@ -106,6 +106,14 @@ export default function WeekView({
     [],
   );
 
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, []);
+
   const now = new Date();
   const todayInWeek = days.some((d) => isSameDay(d, now));
   const nowMinutesSinceStart =
@@ -142,7 +150,7 @@ export default function WeekView({
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="relative" style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}>
           {hours.map((hour) => (
             <div

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef } from "react";
 import {
   isSameDay,
   parseISO,
@@ -109,6 +109,15 @@ export default function DayView({
 
   const now = new Date();
   const isToday = isSameDay(day, now);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, []);
+
   const nowMinutesSinceStart =
     isToday
       ? (now.getHours() - START_HOUR) * 60 + now.getMinutes()
@@ -133,7 +142,7 @@ export default function DayView({
         </span>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto">
         <div className="relative" style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}>
           {hours.map((hour) => (
             <div
