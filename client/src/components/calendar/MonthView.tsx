@@ -119,7 +119,24 @@ export default function MonthView({
                         }}
                         className="w-full text-left bg-brand-ink text-brand-canvas rounded-full text-[10px] px-2 py-0.5 truncate hover:opacity-80 transition-opacity"
                       >
+                        <span className="font-medium text-brand-mute">
+                          {format(parseISO(event.startTime), "h:mm a")}
+                        </span>{" "}
                         {event.name}
+                        {(event.company || event.roundName) && (
+                          <span className="ml-1">
+                            {event.company && (
+                              <span className="inline-block bg-brand-canvas-soft-2 text-brand-ink rounded-full text-[8px] px-1.5 py-px mr-0.5 align-middle">
+                                {event.company}
+                              </span>
+                            )}
+                            {event.roundName && (
+                              <span className="inline-block bg-brand-canvas-soft-2 text-brand-ink rounded-full text-[8px] px-1.5 py-px align-middle">
+                                {event.roundName}
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </button>
                     ))}
                     {dayEvents.length > MAX_VISIBLE_EVENTS && (

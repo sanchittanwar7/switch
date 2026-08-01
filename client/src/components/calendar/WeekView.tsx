@@ -212,6 +212,20 @@ export default function WeekView({
                           {format(parseISO(event.startTime), "h:mm a")} –{" "}
                           {format(parseISO(event.endTime), "h:mm a")}
                         </div>
+                        {(event.company || event.roundName) && (
+                          <div className="flex flex-wrap gap-0.5 mt-0.5">
+                            {event.company && (
+                              <span className="inline-block bg-brand-canvas-soft-2 text-brand-ink rounded-full text-[8px] px-1.5 py-px">
+                                {event.company}
+                              </span>
+                            )}
+                            {event.roundName && (
+                              <span className="inline-block bg-brand-canvas-soft-2 text-brand-ink rounded-full text-[8px] px-1.5 py-px">
+                                {event.roundName}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </button>
                     );
                   })}
