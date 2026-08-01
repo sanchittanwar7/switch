@@ -372,12 +372,12 @@ Right side:
 - Month: `format(date, "MMMM yyyy")` → "July 2026"
 
 **Acceptance**:
-- [ ] Navigation: today/back/forward buttons work
-- [ ] Date label updates per view mode
-- [ ] View mode toggle (Day/Week/Month) with active state
-- [ ] "+ New Event" button emits `onAddEvent`
-- [ ] Matches dark theme tokens
-- [ ] `npm run lint` passes
+- [x] Navigation: today/back/forward buttons work
+- [x] Date label updates per view mode
+- [x] View mode toggle (Day/Week/Month) with active state
+- [x] "+ New Event" button emits `onAddEvent`
+- [x] Matches dark theme tokens
+- [x] `npm run lint` passes
 
 ---
 
