@@ -96,7 +96,7 @@ Run workspace-scoped commands via `-w <workspace>` flag (npm workspaces).
 ## Key Conventions
 
 - All API routes except auth and health require JWT. Client auto-attaches via `api.ts` helpers.
-- File paths are always relative to user workspace root. Server prepends `~/.switch/{user_id}/`.
+- File paths are always relative to user workspace root. Server prepends `~/.lean-switch/{user_id}/`.
 - Drizzle migrations auto-run on server start. No separate migration step needed for deploy.
 - Agent copies master resume to `tailored/{company}/{job_id}/` before editing — never modifies master.
 - LaTeX compilation runs `pdflatex` twice (needs `texlive` locally). PDFs served as static files under `/pdfs/`.

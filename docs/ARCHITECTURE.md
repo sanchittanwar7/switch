@@ -51,7 +51,7 @@ Multi-user via Google OAuth. Resumes on local filesystem (per-user), kanban data
                         │
 ┌───────────────────────┴──────────────────────────────┐
 │         LOCAL FILESYSTEM + REMOTE DB                  │
-│  ~/.switch/{user_id}/                             │
+│  ~/.lean-switch/{user_id}/                             │
 │  ├── resumes/            (latex project dirs)         │
 │  └── settings/            (per-user LLM prefs in DB)  │
 │                                                       │
@@ -83,7 +83,7 @@ Multi-user via Google OAuth. Resumes on local filesystem (per-user), kanban data
 | LLM calls | openai npm SDK | Works with any OpenAI-compatible endpoint. |
 | SSE streaming | Express raw response | `text/event-stream` content-type. |
 | Database | PostgreSQL (Supabase) + Drizzle ORM | Kanban + settings. Authed via user_id FK on all tables. |
-| File storage | Native `fs` module | Per-user scoped: `~/.switch/{user_id}/resumes/`. |
+| File storage | Native `fs` module | Per-user scoped: `~/.lean-switch/{user_id}/resumes/`. |
 | Web fetch (agent) | fetch + @mozilla/readability | Extract article text, convert to markdown. |
 
 ---
@@ -91,7 +91,7 @@ Multi-user via Google OAuth. Resumes on local filesystem (per-user), kanban data
 ## File System Layout
 
 ```
-~/.switch/{user_id}/
+~/.lean-switch/{user_id}/
 ├── resumes/
 │   ├── default/                   # "master" resume (user maintains)
 │   │   ├── main.tex
@@ -115,7 +115,7 @@ Multi-user via Google OAuth. Resumes on local filesystem (per-user), kanban data
 - One resume project = one directory under `resumes/`.
 - Agent always copies master into `tailored/{company}/{job_id}/` before editing. Master stays pristine.
 - `@mozilla/readability` used to strip boilerplate from fetched pages. Returns clean markdown.
-- Workspace root: `~/.switch/{user_id}/`. User is derived from JWT. No cross-user file access.
+- Workspace root: `~/.lean-switch/{user_id}/`. User is derived from JWT. No cross-user file access.
 - `settings.json` removed — LLM settings stored in DB per user.
 
 ---
@@ -460,7 +460,7 @@ All file paths are relative to workspace root. Backend prepends root and validat
 
 ## Key Design Decisions
 
-1. **Multi-user via Google OAuth.** No passwords. Supabase Auth issues JWT. All DB tables scoped by `user_id`. Filesystem scoped by `~/.switch/{user_id}/`.
+1. **Multi-user via Google OAuth.** No passwords. Supabase Auth issues JWT. All DB tables scoped by `user_id`. Filesystem scoped by `~/.lean-switch/{user_id}/`.
 2. **JWT verification server-side.** Backend Express middleware verifies Supabase JWT using service key. Rejects unauthenticated requests (except health + auth routes).
 3. **Agent tools are backend-only.** Agent loop runs server-side. API keys never exposed to browser after initial submit.
 4. **Master resume is read-only to agent.** Always copies to `tailored/{company}/{job_id}/` before editing.

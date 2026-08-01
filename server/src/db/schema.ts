@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, uniqueIndex } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, integer, uniqueIndex, index } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey(),
@@ -68,3 +68,24 @@ export const comments = pgTable("comments", {
   text: text("text").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const events = pgTable("events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description"),
+  startTime: timestamp("start_time", { withTimezone: true }).notNull(),
+  endTime: timestamp("end_time", { withTimezone: true }).notNull(),
+  company: text("company"),
+  role: text("role"),
+  roundName: text("round_name"),
+  resumePath: text("resume_path"),
+  jobUrl: text("job_url"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("events_user_id_idx").on(table.userId),
+  startTimeIdx: index("events_start_time_idx").on(table.startTime),
+}));

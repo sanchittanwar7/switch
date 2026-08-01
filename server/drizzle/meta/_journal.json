@@ -43,6 +43,13 @@
       "when": 1785245000000,
       "tag": "0005_remove_screening",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785572685383,
+      "tag": "0006_steep_blockbuster",
+      "breakpoints": true
     }
   ]
 }
