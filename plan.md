@@ -262,14 +262,14 @@ interface MonthViewProps {
 Use `date-fns` throughout: `format`, `isSameMonth`, `isSameDay`, `isToday`.
 
 **Acceptance**:
-- [ ] Month grid renders correctly for any month
-- [ ] Events displayed as pills in correct cells (max 3 + overflow)
-- [ ] Day number click switches to day view
-- [ ] Event click opens edit modal
-- [ ] Empty slot click opens create modal
-- [ ] Today highlighted
-- [ ] Non-current-month days muted
-- [ ] `npm run lint` passes
+- [x] Month grid renders correctly for any month
+- [x] Events displayed as pills in correct cells (max 3 + overflow)
+- [x] Day number click switches to day view
+- [x] Event click opens edit modal
+- [x] Empty slot click opens create modal
+- [x] Today highlighted
+- [x] Non-current-month days muted
+- [x] `npm run lint` passes
 
 ---
 
