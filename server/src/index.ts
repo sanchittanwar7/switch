@@ -10,6 +10,7 @@ import kanbanRoutes from "./routes/kanban";
 import latexRoutes from "./routes/latex";
 import agentRoutes, { streamRouter } from "./agent/routes";
 import settingsRoutes from "./routes/settings";
+import calendarRoutes from "./routes/calendar";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -24,6 +25,7 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/fs", authMiddleware, fsRoutes);
 app.use("/api/kanban", authMiddleware, kanbanRoutes);
+app.use("/api/calendar", authMiddleware, calendarRoutes);
 app.use("/api/latex", authMiddleware, latexRoutes);
 app.use("/api/agent", streamRouter);
 app.use("/api/agent", authMiddleware, agentRoutes);

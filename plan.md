@@ -31,9 +31,9 @@ Index: composite unique on `(userId, id)` via Drizzle second-arg callback.
 Run `npm run db:generate -w server` to produce migration SQL.
 
 **Acceptance**:
-- [ ] Table defined in `server/src/db/schema.ts`
-- [ ] Migration SQL generated under `server/src/db/migrations/`
-- [ ] `npm run build -w server` passes
+- [x] Table defined in `server/src/db/schema.ts`
+- [x] Migration SQL generated under `server/src/db/migrations/`
+- [x] `npm run build -w server` passes
 
 ---
 
@@ -66,12 +66,12 @@ app.use("/api/calendar", authMiddleware, calendarRoutes);
 ```
 
 **Acceptance**:
-- [ ] `POST /api/calendar` creates event, returns 201
-- [ ] `GET /api/calendar?start=...&end=...` returns events in range
-- [ ] `PATCH /api/calendar/:id` updates event
-- [ ] `DELETE /api/calendar/:id` deletes event
-- [ ] All routes enforce user ownership
-- [ ] `npm run build -w server` passes
+- [x] `POST /api/calendar` creates event, returns 201
+- [x] `GET /api/calendar?start=...&end=...` returns events in range
+- [x] `PATCH /api/calendar/:id` updates event
+- [x] `DELETE /api/calendar/:id` deletes event
+- [x] All routes enforce user ownership
+- [x] `npm run build -w server` passes
 
 ---
 
