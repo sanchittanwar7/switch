@@ -114,8 +114,8 @@ export type UpdateEventInput = Partial<CreateEventInput>;
 ```
 
 **Acceptance**:
-- [ ] Types added to `client/src/types.ts`
-- [ ] `npm run build -w client` passes
+- [x] Types added to `client/src/types.ts`
+- [x] `npm run build -w client` passes
 
 ---
 

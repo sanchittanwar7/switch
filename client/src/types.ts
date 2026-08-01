@@ -43,3 +43,35 @@ export interface AgentStreamEvent {
   type: "tool_call" | "tool_result" | "message" | "done" | "error";
   data: Record<string, unknown>;
 }
+
+export type ViewMode = "day" | "week" | "month";
+
+export interface CalendarEvent {
+  id: string;
+  userId: string;
+  name: string;
+  description: string | null;
+  startTime: string;
+  endTime: string;
+  company: string | null;
+  role: string | null;
+  roundName: string | null;
+  resumePath: string | null;
+  jobUrl: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEventInput {
+  name: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  company?: string;
+  role?: string;
+  roundName?: string;
+  resumePath?: string;
+  jobUrl?: string;
+}
+
+export type UpdateEventInput = Partial<CreateEventInput>;
