@@ -1,40 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
-import {
-  startOfDay,
-  endOfDay,
-  startOfWeek,
-  endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  parseISO,
-} from "date-fns";
 import { useCalendarStore } from "../stores/calendarStore";
 import CalendarHeader from "../components/calendar/CalendarHeader";
 import MonthView from "../components/calendar/MonthView";
 import WeekView from "../components/calendar/WeekView";
 import DayView from "../components/calendar/DayView";
 import EventModal from "../components/calendar/EventModal";
-import type { CalendarEvent, CreateEventInput, UpdateEventInput, ViewMode } from "../types";
-
-function computeRange(mode: ViewMode, isoDate: string): { start: string; end: string } {
-  const d = parseISO(isoDate);
-  switch (mode) {
-    case "day":
-      return { start: startOfDay(d).toISOString(), end: endOfDay(d).toISOString() };
-    case "week":
-      return {
-        start: startOfWeek(d, { weekStartsOn: 1 }).toISOString(),
-        end: endOfWeek(d, { weekStartsOn: 1 }).toISOString(),
-      };
-    case "month": {
-      const monthStart = startOfMonth(d);
-      const monthEnd = endOfMonth(d);
-      const gridStart = startOfWeek(monthStart, { weekStartsOn: 1 });
-      const gridEnd = endOfWeek(monthEnd, { weekStartsOn: 1 });
-      return { start: gridStart.toISOString(), end: gridEnd.toISOString() };
-    }
-  }
-}
+import type { CalendarEvent, CreateEventInput, UpdateEventInput } from "../types";
 
 export default function CalendarView() {
   const {
@@ -47,7 +18,7 @@ export default function CalendarView() {
     navigateBack,
     navigateForward,
     navigateToday,
-    fetchEvents,
+    initialize,
     createEvent,
     updateEvent,
     deleteEvent,
@@ -57,9 +28,8 @@ export default function CalendarView() {
   const [modalInitialTimes, setModalInitialTimes] = useState<{ start?: string; end?: string }>({});
 
   useEffect(() => {
-    const { start, end } = computeRange(viewMode, selectedDate);
-    fetchEvents(start, end);
-  }, [viewMode, selectedDate, fetchEvents]);
+    initialize();
+  }, []);
 
   const handleSlotClick = useCallback(
     (start: string, end?: string) => {
@@ -105,6 +75,8 @@ export default function CalendarView() {
     setModalInitialTimes({});
   }, []);
 
+  const showLoader = loading && events.length === 0;
+
   return (
     <div className="h-full flex flex-col bg-brand-canvas-soft">
       <CalendarHeader
@@ -117,14 +89,14 @@ export default function CalendarView() {
         onAddEvent={handleAddEvent}
       />
 
-      <div className="flex-1 overflow-hidden">
-        {loading && (
-          <div className="h-full flex items-center justify-center">
+      <div className="flex-1 overflow-hidden relative">
+        {showLoader && (
+          <div className="absolute inset-0 flex items-center justify-center bg-brand-canvas-soft z-10">
             <span className="text-sm text-brand-mute">Loading...</span>
           </div>
         )}
 
-        {!loading && viewMode === "month" && (
+        {viewMode === "month" && (
           <MonthView
             events={events}
             selectedDate={selectedDate}
@@ -134,7 +106,7 @@ export default function CalendarView() {
           />
         )}
 
-        {!loading && viewMode === "week" && (
+        {viewMode === "week" && (
           <WeekView
             events={events}
             selectedDate={selectedDate}
@@ -143,7 +115,7 @@ export default function CalendarView() {
           />
         )}
 
-        {!loading && viewMode === "day" && (
+        {viewMode === "day" && (
           <DayView
             events={events}
             selectedDate={selectedDate}
