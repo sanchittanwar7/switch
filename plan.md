@@ -212,13 +212,13 @@ interface EventModalProps {
 **States**: loading spinner on Save while API call in flight, error display if API fails.
 
 **Acceptance**:
-- [ ] Modal opens in create mode (empty form) and edit mode (pre-filled)
-- [ ] Creates event via `onSave` callback
-- [ ] Updates event via `onSave` callback
-- [ ] Deletes event via `onDelete` callback in edit mode
-- [ ] Form validation (name required, start < end)
-- [ ] Matches DESIGN.md (dark theme, brand tokens, pill buttons, rounded-xl modal)
-- [ ] Click-outside closes modal
+- [x] Modal opens in create mode (empty form) and edit mode (pre-filled)
+- [x] Creates event via `onSave` callback
+- [x] Updates event via `onSave` callback
+- [x] Deletes event via `onDelete` callback in edit mode
+- [x] Form validation (name required, start < end)
+- [x] Matches DESIGN.md (dark theme, brand tokens, pill buttons, rounded-xl modal)
+- [x] Click-outside closes modal
 
 ---
 
