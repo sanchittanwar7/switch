@@ -324,15 +324,15 @@ function eventStyle(event: CalendarEvent): React.CSSProperties {
 **Current time indicator**: Red/mauve horizontal line at current time position (`brand-error` or `brand-warning`).
 
 **Acceptance**:
-- [ ] WeekView renders 7-day grid with correct date headers
-- [ ] DayView renders single-day time grid
-- [ ] Both views show hourly slots 8 AM – 8 PM, scrollable
-- [ ] Events positioned correctly by time (top offset + height)
-- [ ] Event blocks clickable → edit modal
-- [ ] Empty slot click → create modal (pre-fills time)
-- [ ] Current time indicator shown
-- [ ] Matches dark theme tokens
-- [ ] `npm run lint` passes
+- [x] WeekView renders 7-day grid with correct date headers
+- [x] DayView renders single-day time grid
+- [x] Both views show hourly slots 8 AM – 8 PM, scrollable
+- [x] Events positioned correctly by time (top offset + height)
+- [x] Event blocks clickable → edit modal
+- [x] Empty slot click → create modal (pre-fills time)
+- [x] Current time indicator shown
+- [x] Matches dark theme tokens
+- [x] `npm run lint` passes
 
 ---
 
