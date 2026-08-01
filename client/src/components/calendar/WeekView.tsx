@@ -20,8 +20,8 @@ interface WeekViewProps {
   onSlotClick: (start: string, end: string) => void;
 }
 
-const START_HOUR = 8;
-const END_HOUR = 20;
+const START_HOUR = 0;
+const END_HOUR = 24;
 const HOUR_HEIGHT = 60;
 const TOTAL_HOURS = END_HOUR - START_HOUR;
 
@@ -107,8 +107,9 @@ export default function WeekView({
   );
 
   const now = new Date();
+  const todayInWeek = days.some((d) => isSameDay(d, now));
   const nowMinutesSinceStart =
-    now.getHours() >= START_HOUR && now.getHours() < END_HOUR
+    todayInWeek
       ? (now.getHours() - START_HOUR) * 60 + now.getMinutes()
       : null;
 

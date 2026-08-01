@@ -1,6 +1,12 @@
 import { useState, useEffect } from "react";
 import { X, Loader2, Trash2 } from "lucide-react";
+import { apiGet } from "../../lib/api";
 import type { CalendarEvent, CreateEventInput, UpdateEventInput } from "../../types";
+
+interface ResumeEntry {
+  name: string;
+  mtime: string;
+}
 
 interface EventModalProps {
   event?: CalendarEvent | null;
@@ -46,6 +52,13 @@ export default function EventModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resumes, setResumes] = useState<ResumeEntry[]>([]);
+
+  useEffect(() => {
+    apiGet<ResumeEntry[]>("/api/fs/resumes")
+      .then(setResumes)
+      .catch(() => setResumes([]));
+  }, []);
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -217,14 +230,19 @@ export default function EventModal({
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-brand-body mb-1.5">Resume Path</label>
-            <input
-              type="text"
+            <label className="block text-xs font-medium text-brand-body mb-1.5">Resume</label>
+            <select
               value={resumePath}
               onChange={(e) => setResumePath(e.target.value)}
-              placeholder="resumes/my-resume/"
-              className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-sm text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
-            />
+              className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-sm text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+            >
+              <option value="">None</option>
+              {resumes.map((r) => (
+                <option key={r.name} value={r.name}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

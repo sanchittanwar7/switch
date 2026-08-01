@@ -6,6 +6,7 @@ import {
   setHours,
   setMinutes,
   differenceInMinutes,
+  areIntervalsOverlapping,
 } from "date-fns";
 import type { CalendarEvent } from "../../types";
 
@@ -16,12 +17,16 @@ interface DayViewProps {
   onSlotClick: (start: string, end: string) => void;
 }
 
-const START_HOUR = 8;
-const END_HOUR = 20;
+const START_HOUR = 0;
+const END_HOUR = 24;
 const HOUR_HEIGHT = 60;
 const TOTAL_HOURS = END_HOUR - START_HOUR;
 
-function eventStyle(event: CalendarEvent): React.CSSProperties {
+function eventStyle(
+  event: CalendarEvent,
+  column: number,
+  totalColumns: number,
+): React.CSSProperties {
   const start = parseISO(event.startTime);
   const end = parseISO(event.endTime);
   const startOfRange = setMinutes(setHours(start, START_HOUR), 0);
@@ -30,14 +35,54 @@ function eventStyle(event: CalendarEvent): React.CSSProperties {
 
   const top = (topMinutes / 60) * HOUR_HEIGHT;
   const height = Math.max((durationMinutes / 60) * HOUR_HEIGHT, 20);
+  const width = totalColumns > 1 ? `${(1 / totalColumns) * 100}%` : "100%";
+  const left = totalColumns > 1 ? `${(column / totalColumns) * 100}%` : "0";
 
   return {
     position: "absolute",
     top: `${top}px`,
     height: `${height}px`,
-    width: "100%",
+    width,
+    left,
     zIndex: 10,
   };
+}
+
+function computeOverlapColumns(dayEvents: CalendarEvent[]): Map<string, { col: number; total: number }> {
+  const result = new Map<string, { col: number; total: number }>();
+
+  for (const event of dayEvents) {
+    const start = parseISO(event.startTime);
+    const end = parseISO(event.endTime);
+    const overlapping = dayEvents.filter((other) => {
+      if (other.id === event.id) return false;
+      return areIntervalsOverlapping(
+        { start: parseISO(other.startTime), end: parseISO(other.endTime) },
+        { start, end },
+      );
+    });
+
+    const takenCols = new Set<number>();
+    for (const other of overlapping) {
+      const existing = result.get(other.id);
+      if (existing) takenCols.add(existing.col);
+    }
+
+    let col = 0;
+    while (takenCols.has(col)) col++;
+    const total = Math.max(col + 1, overlapping.length + 1);
+
+    for (const other of overlapping) {
+      const existing = result.get(other.id);
+      if (existing) {
+        result.set(other.id, { ...existing, total: Math.max(existing.total, total) });
+      }
+    }
+
+    result.set(event.id, { col, total });
+  }
+
+  return result;
 }
 
 export default function DayView({
@@ -65,9 +110,14 @@ export default function DayView({
   const now = new Date();
   const isToday = isSameDay(day, now);
   const nowMinutesSinceStart =
-    isToday && now.getHours() >= START_HOUR && now.getHours() < END_HOUR
+    isToday
       ? (now.getHours() - START_HOUR) * 60 + now.getMinutes()
       : null;
+
+  const overlapMap = useMemo(
+    () => computeOverlapColumns(dayEvents),
+    [dayEvents],
+  );
 
   const handleGridClick = (hour: number) => {
     const start = setMinutes(setHours(day, hour), 0);
@@ -127,23 +177,26 @@ export default function DayView({
                 />
               ))}
 
-              {dayEvents.map((event) => (
-                <button
-                  key={event.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEventClick(event);
-                  }}
-                  className="bg-brand-ink text-brand-canvas rounded-md p-1.5 text-[10px] cursor-pointer border border-brand-hairline hover:opacity-80 transition-opacity overflow-hidden"
-                  style={eventStyle(event)}
-                >
-                  <div className="font-medium truncate">{event.name}</div>
-                  <div className="text-brand-mute truncate">
-                    {format(parseISO(event.startTime), "h:mm a")} –{" "}
-                    {format(parseISO(event.endTime), "h:mm a")}
-                  </div>
-                </button>
-              ))}
+              {dayEvents.map((event) => {
+                    const layout = overlapMap.get(event.id) ?? { col: 0, total: 1 };
+                    return (
+                      <button
+                        key={event.id}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEventClick(event);
+                        }}
+                        className="bg-brand-ink text-brand-canvas rounded-md p-1.5 text-[10px] cursor-pointer border border-brand-hairline hover:opacity-80 transition-opacity overflow-hidden"
+                        style={eventStyle(event, layout.col, layout.total)}
+                      >
+                        <div className="font-medium truncate">{event.name}</div>
+                        <div className="text-brand-mute truncate">
+                          {format(parseISO(event.startTime), "h:mm a")} –{" "}
+                          {format(parseISO(event.endTime), "h:mm a")}
+                        </div>
+                      </button>
+                    );
+                  })}
             </div>
           </div>
         </div>

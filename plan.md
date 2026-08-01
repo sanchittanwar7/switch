@@ -453,14 +453,14 @@ Add nav item:
 Use `lucide-react` `Calendar` icon (16–20px).
 
 **Acceptance**:
-- [ ] `/calendar` route works, shows CalendarView
-- [ ] Sidebar has Calendar link with icon
-- [ ] View mode switching renders correct sub-view
-- [ ] Date navigation works across all views
-- [ ] Create/edit/delete event flow works end-to-end
-- [ ] Events persist across page navigations (refetch on mount)
-- [ ] `npm run build` passes (both client + server)
-- [ ] `npm run lint` passes (both workspaces)
+- [x] `/calendar` route works, shows CalendarView
+- [x] Sidebar has Calendar link with icon
+- [x] View mode switching renders correct sub-view
+- [x] Date navigation works across all views
+- [x] Create/edit/delete event flow works end-to-end
+- [x] Events persist across page navigations (refetch on mount)
+- [x] `npm run build` passes (both client + server)
+- [x] `npm run lint` passes (both workspaces)
 
 ---
 

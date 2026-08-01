@@ -67,9 +67,12 @@ export default function MonthView({
         ))}
       </div>
 
-      <div className="flex-1 grid grid-rows-[repeat(auto-fill,minmax(0,1fr))]">
+      <div
+        className="flex-1 grid grid-cols-1"
+        style={{ gridTemplateRows: `repeat(${weeks.length}, 1fr)` }}
+      >
         {weeks.map((week, wi) => (
-          <div key={wi} className="grid grid-cols-7 border-b border-brand-hairline last:border-b-0">
+          <div key={wi} className="grid grid-cols-7 border-b border-brand-hairline last:border-b-0 min-h-0">
             {week.map((day, di) => {
               const inMonth = isSameMonth(day, parseISO(selectedDate));
               const today = isToday(day);
