@@ -186,7 +186,7 @@ export default function DayView({
                           e.stopPropagation();
                           onEventClick(event);
                         }}
-                        className="bg-brand-ink text-brand-canvas rounded-md p-1.5 text-[10px] cursor-pointer border border-brand-hairline hover:opacity-80 transition-opacity overflow-hidden"
+                        className="bg-brand-ink text-brand-canvas rounded-md p-1.5 text-[10px] cursor-pointer border border-brand-hairline hover:opacity-80 transition-opacity overflow-hidden text-left"
                         style={eventStyle(event, layout.col, layout.total)}
                       >
                         <div className="truncate">
