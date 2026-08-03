@@ -43,11 +43,16 @@ router.get("/:id", async (req, res) => {
     .where(eq(comments.applicationId, id))
     .orderBy(asc(comments.createdAt));
 
-  const applicationInterviews = await db
-    .select()
-    .from(interviews)
-    .where(eq(interviews.applicationId, id))
-    .orderBy(asc(interviews.createdAt));
+  let applicationInterviews: (typeof interviews.$inferSelect)[] = [];
+  try {
+    applicationInterviews = await db
+      .select()
+      .from(interviews)
+      .where(eq(interviews.applicationId, id))
+      .orderBy(asc(interviews.createdAt));
+  } catch (err) {
+    console.error("Failed to fetch interviews:", (err as any)?.cause?.message || (err as any)?.message || err);
+  }
 
   res.json({
     ...application,

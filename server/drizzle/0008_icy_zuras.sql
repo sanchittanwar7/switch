@@ -1,3 +1,4 @@
+-- Create interviews table for tracking interview rounds per application
 CREATE TABLE "interviews" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"application_id" uuid NOT NULL,

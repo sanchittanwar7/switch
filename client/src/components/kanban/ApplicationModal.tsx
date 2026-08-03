@@ -97,9 +97,9 @@ export default function ApplicationModal({ application, onClose }: ApplicationMo
           </h2>
           <div className="flex items-center gap-1">
             <button
-              onClick={() => window.open(`/application/${application.id}`, "_blank")}
+              onClick={() => navigate(`/application/${application.id}`)}
               className="p-1 rounded-full text-brand-mute hover:text-brand-link hover:bg-brand-canvas-soft-2 transition-colors"
-              title="Open in new tab"
+              title="Open application details"
             >
               <ExternalLink size={18} />
             </button>

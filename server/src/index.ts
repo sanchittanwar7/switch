@@ -55,8 +55,12 @@ app.use("/pdfs", authMiddleware, async (req, res) => {
 });
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: err.message || "Internal server error" });
+  console.error(err);
+  if (err instanceof Error && (err as any).cause) {
+    console.error("Caused by:", (err as any).cause);
+  }
+  const message = (err as any).cause?.message || err.message || "Internal server error";
+  res.status(500).json({ error: message });
 });
 
 async function start() {
