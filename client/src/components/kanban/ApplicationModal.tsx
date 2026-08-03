@@ -3,28 +3,28 @@ import { useNavigate } from "react-router-dom";
 import { X, Trash2, ExternalLink, Send } from "lucide-react";
 import { useKanbanStore } from "../../stores/kanbanStore";
 import { apiGet } from "../../lib/api";
-import type { Card as CardType } from "../../types";
+import type { Application } from "../../types";
 
 interface ResumeEntry {
   name: string;
   mtime: string;
 }
 
-interface CardModalProps {
-  card: CardType;
+interface ApplicationModalProps {
+  application: Application;
   onClose: () => void;
 }
 
-export default function CardModal({ card, onClose }: CardModalProps) {
+export default function ApplicationModal({ application, onClose }: ApplicationModalProps) {
   const navigate = useNavigate();
-  const { updateCard, deleteCard, addComment } = useKanbanStore();
+  const { updateApplication, deleteApplication, addComment } = useKanbanStore();
 
-  const [company, setCompany] = useState(card.company);
-  const [role, setRole] = useState(card.role);
-  const [jobUrl, setJobUrl] = useState(card.jobUrl || "");
-  const [resumePath, setResumePath] = useState(card.resumePath || "");
+  const [company, setCompany] = useState(application.company);
+  const [role, setRole] = useState(application.role);
+  const [jobUrl, setJobUrl] = useState(application.jobUrl || "");
+  const [resumePath, setResumePath] = useState(application.resumePath || "");
   const [resumes, setResumes] = useState<ResumeEntry[]>([]);
-  const [tagsInput, setTagsInput] = useState(card.tags.join(", "));
+  const [tagsInput, setTagsInput] = useState(application.tags.join(", "));
   const [commentText, setCommentText] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -45,7 +45,7 @@ export default function CardModal({ card, onClose }: CardModalProps) {
   const handleSave = async () => {
     if (!company.trim() || !role.trim()) return;
     setSaving(true);
-    await updateCard(card.id, {
+    await updateApplication(application.id, {
       company: company.trim(),
       role: role.trim(),
       jobUrl: jobUrl.trim() || undefined,
@@ -58,14 +58,14 @@ export default function CardModal({ card, onClose }: CardModalProps) {
 
   const handleDelete = async () => {
     setDeleting(true);
-    await deleteCard(card.id);
+    await deleteApplication(application.id);
     onClose();
   };
 
   const handleAddComment = async () => {
     if (!commentText.trim()) return;
     setCommenting(true);
-    await addComment(card.id, commentText.trim());
+    await addComment(application.id, commentText.trim());
     setCommentText("");
     setCommenting(false);
   };
@@ -93,14 +93,23 @@ export default function CardModal({ card, onClose }: CardModalProps) {
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-brand-hairline">
           <h2 className="text-base font-semibold text-brand-ink">
-            Edit Card
+            Edit Application
           </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-full text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => window.open(`/application/${application.id}`, "_blank")}
+              className="p-1 rounded-full text-brand-mute hover:text-brand-link hover:bg-brand-canvas-soft-2 transition-colors"
+              title="Open in new tab"
+            >
+              <ExternalLink size={18} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1 rounded-full text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
@@ -202,11 +211,11 @@ export default function CardModal({ card, onClose }: CardModalProps) {
             <h3 className="text-xs font-medium text-brand-body mb-3">
               Comments
             </h3>
-            {card.comments.length === 0 ? (
+            {application.comments.length === 0 ? (
               <p className="text-xs text-brand-mute">No comments yet.</p>
             ) : (
               <div className="space-y-2.5 mb-3">
-                {card.comments.map((comment) => (
+                {application.comments.map((comment) => (
                   <div key={comment.id} className="text-xs">
                     <p className="text-brand-ink">{comment.text}</p>
                     <p className="text-brand-mute mt-0.5">
@@ -256,7 +265,7 @@ export default function CardModal({ card, onClose }: CardModalProps) {
           {deleteConfirm ? (
             <div className="flex items-center gap-2">
               <span className="text-xs text-brand-mute">
-                Delete this card?
+                Delete this application?
               </span>
               <button
                 onClick={handleDelete}

@@ -1,15 +1,15 @@
 import { Droppable } from "@hello-pangea/dnd";
-import type { Column as ColumnType, Card } from "../../types";
-import CardComponent from "./Card";
-import AddCardButton from "./AddCardButton";
+import type { Column as ColumnType, Application } from "../../types";
+import ApplicationCard from "./ApplicationCard";
+import AddApplicationButton from "./AddApplicationButton";
 
 interface ColumnProps {
   column: ColumnType;
-  cards: Card[];
-  onCardClick?: (cardId: string) => void;
+  applications: Application[];
+  onApplicationClick?: (applicationId: string) => void;
 }
 
-export default function Column({ column, cards, onCardClick }: ColumnProps) {
+export default function Column({ column, applications, onApplicationClick }: ColumnProps) {
   return (
     <div className="flex-shrink-0 w-[272px] flex flex-col bg-brand-canvas-soft rounded-lg border border-brand-hairline max-h-full">
       <div className="px-4 py-3 border-b border-brand-hairline">
@@ -18,7 +18,7 @@ export default function Column({ column, cards, onCardClick }: ColumnProps) {
             {column.title}
           </h3>
           <span className="text-xs text-brand-mute bg-brand-canvas-soft-2 px-2 py-0.5 rounded-full">
-            {column.cardIds.length}
+            {column.applicationIds.length}
           </span>
         </div>
       </div>
@@ -32,19 +32,19 @@ export default function Column({ column, cards, onCardClick }: ColumnProps) {
               snapshot.isDraggingOver ? "bg-brand-canvas-soft-2" : ""
             }`}
           >
-            {cards.map((card, index) => (
-              <CardComponent
-                key={card.id}
-                card={card}
+            {applications.map((application, index) => (
+              <ApplicationCard
+                key={application.id}
+                application={application}
                 index={index}
                 onClick={
-                  onCardClick ? () => onCardClick(card.id) : undefined
+                  onApplicationClick ? () => onApplicationClick(application.id) : undefined
                 }
               />
             ))}
-            {cards.length === 0 && !snapshot.isDraggingOver && (
+            {applications.length === 0 && !snapshot.isDraggingOver && (
               <div className="flex items-center justify-center h-20 text-xs text-brand-mute">
-                No cards yet
+                No applications yet
               </div>
             )}
             {provided.placeholder}
@@ -53,7 +53,7 @@ export default function Column({ column, cards, onCardClick }: ColumnProps) {
       </Droppable>
 
       <div className="px-2 pb-2">
-        <AddCardButton columnId={column.id} />
+        <AddApplicationButton columnId={column.id} />
       </div>
     </div>
   );

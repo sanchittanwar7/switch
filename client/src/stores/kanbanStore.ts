@@ -1,93 +1,93 @@
 import { create } from "zustand";
 import { apiGet, apiPost, apiPatch, apiDelete, apiPut } from "../lib/api";
-import type { Column, Card, Comment } from "../types";
+import type { Column, Application, Comment } from "../types";
 
 interface KanbanStore {
   columns: Column[];
-  cards: Record<string, Card>;
+  applications: Record<string, Application>;
   loading: boolean;
   fetchBoard: () => Promise<void>;
-  createCard: (data: {
+  createApplication: (data: {
     company: string;
     role: string;
     jobUrl?: string;
     resumePath?: string;
     tags?: string[];
     columnId: string;
-  }) => Promise<Card>;
-  updateCard: (
+  }) => Promise<Application>;
+  updateApplication: (
     id: string,
     data: Partial<
       Pick<
-        Card,
+        Application,
         "company" | "role" | "jobUrl" | "resumePath" | "tags" | "columnId"
       >
     >,
   ) => Promise<void>;
-  deleteCard: (id: string) => Promise<void>;
-  moveCard: (columns: { id: string; cardIds: string[] }[]) => Promise<void>;
-  addComment: (cardId: string, text: string) => Promise<void>;
+  deleteApplication: (id: string) => Promise<void>;
+  moveApplication: (columns: { id: string; applicationIds: string[] }[]) => Promise<void>;
+  addComment: (applicationId: string, text: string) => Promise<void>;
 }
 
 interface BoardResponse {
   columns: Column[];
-  cards: Record<string, Card>;
+  applications: Record<string, Application>;
 }
 
 export const useKanbanStore = create<KanbanStore>((set) => ({
   columns: [],
-  cards: {},
+  applications: {},
   loading: false,
 
   fetchBoard: async () => {
     set({ loading: true });
     const data = await apiGet<BoardResponse>("/api/kanban");
-    set({ columns: data.columns, cards: data.cards, loading: false });
+    set({ columns: data.columns, applications: data.applications, loading: false });
   },
 
-  createCard: async (data) => {
-    const card = await apiPost<Card>("/api/kanban/cards", data);
+  createApplication: async (data) => {
+    const application = await apiPost<Application>("/api/kanban/applications", data);
     set((state) => ({
-      cards: { ...state.cards, [card.id]: card },
+      applications: { ...state.applications, [application.id]: application },
       columns: state.columns.map((col) =>
-        col.id === card.columnId
-          ? { ...col, cardIds: [...col.cardIds, card.id] }
+        col.id === application.columnId
+          ? { ...col, applicationIds: [...col.applicationIds, application.id] }
           : col,
       ),
     }));
-    return card;
+    return application;
   },
 
-  updateCard: async (id, data) => {
-    const updated = await apiPatch<Card>(`/api/kanban/cards/${id}`, data);
+  updateApplication: async (id, data) => {
+    const updated = await apiPatch<Application>(`/api/kanban/applications/${id}`, data);
     set((state) => ({
-      cards: { ...state.cards, [id]: updated },
+      applications: { ...state.applications, [id]: updated },
     }));
   },
 
-  deleteCard: async (id) => {
-    await apiDelete(`/api/kanban/cards/${id}`);
+  deleteApplication: async (id) => {
+    await apiDelete(`/api/kanban/applications/${id}`);
     set((state) => {
-      const { [id]: _removed, ...rest } = state.cards;
+      const { [id]: _removed, ...rest } = state.applications;
       return {
-        cards: rest,
+        applications: rest,
         columns: state.columns.map((col) => ({
           ...col,
-          cardIds: col.cardIds.filter((cid) => cid !== id),
+          applicationIds: col.applicationIds.filter((aid) => aid !== id),
         })),
       };
     });
   },
 
-  moveCard: async (columns) => {
+  moveApplication: async (columns) => {
     set((state) => {
-      const newCards = { ...state.cards };
+      const newApplications = { ...state.applications };
       for (const col of columns) {
-        for (let i = 0; i < col.cardIds.length; i++) {
-          const cardId = col.cardIds[i];
-          if (newCards[cardId]) {
-            newCards[cardId] = {
-              ...newCards[cardId],
+        for (let i = 0; i < col.applicationIds.length; i++) {
+          const applicationId = col.applicationIds[i];
+          if (newApplications[applicationId]) {
+            newApplications[applicationId] = {
+              ...newApplications[applicationId],
               columnId: col.id,
               position: i,
             };
@@ -95,10 +95,10 @@ export const useKanbanStore = create<KanbanStore>((set) => ({
         }
       }
       return {
-        cards: newCards,
+        applications: newApplications,
         columns: state.columns.map((col) => {
           const updated = columns.find((c) => c.id === col.id);
-          return updated ? { ...col, cardIds: updated.cardIds } : col;
+          return updated ? { ...col, applicationIds: updated.applicationIds } : col;
         }),
       };
     });
@@ -106,18 +106,18 @@ export const useKanbanStore = create<KanbanStore>((set) => ({
     await apiPut("/api/kanban", { columns });
   },
 
-  addComment: async (cardId, text) => {
+  addComment: async (applicationId, text) => {
     const comment = await apiPost<Comment>(
-      `/api/kanban/cards/${cardId}/comments`,
+      `/api/kanban/applications/${applicationId}/comments`,
       { text },
     );
     set((state) => {
-      const card = state.cards[cardId];
-      if (!card) return state;
+      const application = state.applications[applicationId];
+      if (!application) return state;
       return {
-        cards: {
-          ...state.cards,
-          [cardId]: { ...card, comments: [...card.comments, comment] },
+        applications: {
+          ...state.applications,
+          [applicationId]: { ...application, comments: [...application.comments, comment] },
         },
       };
     });

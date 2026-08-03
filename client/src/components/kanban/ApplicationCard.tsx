@@ -1,17 +1,17 @@
 import { Draggable } from "@hello-pangea/dnd";
-import type { Card as CardType } from "../../types";
+import type { Application as ApplicationType } from "../../types";
 
-interface CardProps {
-  card: CardType;
+interface ApplicationCardProps {
+  application: ApplicationType;
   index: number;
   onClick?: () => void;
 }
 
-export default function Card({ card, index, onClick }: CardProps) {
-  const lastComment = card.comments?.[card.comments.length - 1];
+export default function ApplicationCard({ application, index, onClick }: ApplicationCardProps) {
+  const lastComment = application.comments?.[application.comments.length - 1];
 
   return (
-    <Draggable draggableId={card.id} index={index}>
+    <Draggable draggableId={application.id} index={index}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -34,15 +34,15 @@ export default function Card({ card, index, onClick }: CardProps) {
             className="flex-1 p-3 cursor-pointer min-w-0"
           >
             <h4 className="text-sm font-medium text-brand-ink truncate">
-              {card.company}
+              {application.company}
             </h4>
             <p className="text-xs text-brand-body mt-0.5 truncate">
-              {card.role}
+              {application.role}
             </p>
 
-            {card.tags.length > 0 && (
+            {application.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-2">
-                {card.tags.map((tag) => (
+                {application.tags.map((tag) => (
                   <span
                     key={tag}
                     className="text-xs text-brand-body bg-brand-canvas-soft-2 px-1.5 py-0.5 rounded-full border border-brand-hairline"

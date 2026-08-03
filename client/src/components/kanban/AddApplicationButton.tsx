@@ -2,18 +2,18 @@ import { useState } from "react";
 import { Plus } from "lucide-react";
 import { useKanbanStore } from "../../stores/kanbanStore";
 
-interface AddCardButtonProps {
+interface AddApplicationButtonProps {
   columnId: string;
 }
 
-export default function AddCardButton({ columnId }: AddCardButtonProps) {
+export default function AddApplicationButton({ columnId }: AddApplicationButtonProps) {
   const [open, setOpen] = useState(false);
   const [company, setCompany] = useState("");
   const [role, setRole] = useState("");
   const [jobUrl, setJobUrl] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  const createCard = useKanbanStore((s) => s.createCard);
+  const createApplication = useKanbanStore((s) => s.createApplication);
 
   const handleSubmit = async () => {
     if (!company.trim() || !role.trim()) return;
@@ -22,7 +22,7 @@ export default function AddCardButton({ columnId }: AddCardButtonProps) {
       .split(",")
       .map((t) => t.trim())
       .filter(Boolean);
-    await createCard({
+    await createApplication({
       company: company.trim(),
       role: role.trim(),
       jobUrl: jobUrl.trim() || undefined,
@@ -52,7 +52,7 @@ export default function AddCardButton({ columnId }: AddCardButtonProps) {
         className="w-full mt-1 px-3 py-2 text-sm text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 rounded-md transition-colors flex items-center gap-1.5 justify-center"
       >
         <Plus size={14} />
-        Add card
+        Add application
       </button>
     );
   }

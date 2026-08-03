@@ -50,6 +50,20 @@
       "when": 1785572685383,
       "tag": "0006_steep_blockbuster",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1786000000000,
+      "tag": "0007_rename_cards_to_applications",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1785780198077,
+      "tag": "0008_workable_tarot",
+      "breakpoints": true
     }
   ]
 }

@@ -1,4 +1,5 @@
 import { supabase } from "./supabase";
+import type { Application, Interview, InterviewType, InterviewStatus, QuestionBankEntry } from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
 
@@ -86,4 +87,48 @@ export async function apiDelete<T = { success: boolean }>(
     body: body !== undefined ? JSON.stringify(body) : undefined,
   });
   return handleResponse<T>(res);
+}
+
+export function getApplication(id: string): Promise<Application & { interviews: Interview[]; columnTitle: string }> {
+  return apiGet(`/api/applications/${id}`);
+}
+
+export function createInterview(
+  appId: string,
+  data: {
+    type: InterviewType;
+    status?: InterviewStatus;
+    scheduledAt?: string;
+    question?: string;
+    feedback?: string;
+    notes?: string;
+  },
+): Promise<Interview> {
+  return apiPost(`/api/applications/${appId}/interviews`, data);
+}
+
+export function updateInterview(
+  appId: string,
+  interviewId: string,
+  data: Partial<Interview>,
+): Promise<Interview> {
+  return apiPatch(`/api/applications/${appId}/interviews/${interviewId}`, data);
+}
+
+export function deleteInterview(appId: string, interviewId: string): Promise<{ success: boolean }> {
+  return apiDelete(`/api/applications/${appId}/interviews/${interviewId}`);
+}
+
+export interface QuestionBankFilters {
+  type?: string;
+  company?: string;
+  search?: string;
+}
+
+export function getQuestions(filters?: QuestionBankFilters): Promise<{ interviews: QuestionBankEntry[] }> {
+  const params = new URLSearchParams();
+  if (filters?.type) params.set("type", filters.type);
+  if (filters?.company) params.set("company", filters.company);
+  if (filters?.search) params.set("search", filters.search);
+  return apiGet(`/api/questions?${params.toString()}`);
 }
