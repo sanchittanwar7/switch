@@ -8,6 +8,8 @@ import EditorView from "./views/EditorView";
 import ResumeListView from "./views/ResumeListView";
 import SettingsView from "./views/SettingsView";
 import CalendarView from "./views/CalendarView";
+import ApplicationView from "./views/ApplicationView";
+import QuestionBankView from "./views/QuestionBankView";
 import LoginPage from "./views/LoginPage";
 import LandingPage from "./views/LandingPage";
 
@@ -66,6 +68,8 @@ export default function App() {
         }
       >
         <Route path="/board" element={<KanbanView />} />
+        <Route path="/application/:id" element={<ApplicationView />} />
+        <Route path="/questions" element={<QuestionBankView />} />
         <Route path="/calendar" element={<CalendarView />} />
         <Route path="/resumes" element={<ResumeListView />} />
         <Route path="/resume" element={<EditorView />} />

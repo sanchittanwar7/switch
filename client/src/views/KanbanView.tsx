@@ -4,17 +4,17 @@ import type { DropResult } from "@hello-pangea/dnd";
 import { useKanbanStore } from "../stores/kanbanStore";
 import BoardHeader from "../components/kanban/BoardHeader";
 import Column from "../components/kanban/Column";
-import CardModal from "../components/kanban/CardModal";
+import ApplicationModal from "../components/kanban/ApplicationModal";
 
 export default function KanbanView() {
-  const { columns, cards, loading, fetchBoard, moveCard } = useKanbanStore();
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
+  const { columns, applications, loading, fetchBoard, moveApplication } = useKanbanStore();
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBoard();
   }, [fetchBoard]);
 
-  const selectedCard = selectedCardId ? cards[selectedCardId] : null;
+  const selectedApplication = selectedApplicationId ? applications[selectedApplicationId] : null;
 
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
@@ -29,7 +29,7 @@ export default function KanbanView() {
 
     const newColumns = columns.map((col) => ({
       id: col.id,
-      cardIds: [...col.cardIds],
+      applicationIds: [...col.applicationIds],
     }));
 
     const sourceCol = newColumns.find(
@@ -40,10 +40,10 @@ export default function KanbanView() {
     );
     if (!sourceCol || !destCol) return;
 
-    sourceCol.cardIds.splice(source.index, 1);
-    destCol.cardIds.splice(destination.index, 0, draggableId);
+    sourceCol.applicationIds.splice(source.index, 1);
+    destCol.applicationIds.splice(destination.index, 0, draggableId);
 
-    moveCard(newColumns);
+    moveApplication(newColumns);
   };
 
   if (loading) {
@@ -66,19 +66,19 @@ export default function KanbanView() {
               <Column
                 key={col.id}
                 column={col}
-                cards={col.cardIds
-                  .map((id) => cards[id])
+                applications={col.applicationIds
+                  .map((id) => applications[id])
                   .filter(Boolean)}
-                onCardClick={setSelectedCardId}
+                onApplicationClick={setSelectedApplicationId}
               />
             ))}
         </div>
       </DragDropContext>
 
-      {selectedCard && (
-        <CardModal
-          card={selectedCard}
-          onClose={() => setSelectedCardId(null)}
+      {selectedApplication && (
+        <ApplicationModal
+          application={selectedApplication}
+          onClose={() => setSelectedApplicationId(null)}
         />
       )}
     </div>

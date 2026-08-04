@@ -43,7 +43,7 @@ export const columns = pgTable("columns", {
   position: integer("position").notNull(),
 });
 
-export const cards = pgTable("cards", {
+export const applications = pgTable("applications", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   company: text("company").notNull(),
@@ -61,12 +61,27 @@ export const cards = pgTable("cards", {
 
 export const comments = pgTable("comments", {
   id: uuid("id").defaultRandom().primaryKey(),
-  cardId: uuid("card_id")
+  applicationId: uuid("application_id")
     .notNull()
-    .references(() => cards.id, { onDelete: "cascade" }),
+    .references(() => applications.id, { onDelete: "cascade" }),
   userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
   text: text("text").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const interviews = pgTable("interviews", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  applicationId: uuid("application_id")
+    .notNull()
+    .references(() => applications.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  status: text("status").notNull().default("scheduled"),
+  scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
+  question: text("question"),
+  feedback: text("feedback"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const events = pgTable("events", {

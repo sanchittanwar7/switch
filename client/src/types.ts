@@ -2,18 +2,18 @@ export interface Column {
   id: string;
   title: string;
   position: number;
-  cardIds: string[];
+  applicationIds: string[];
 }
 
 export interface Comment {
   id: string;
-  cardId: string;
+  applicationId: string;
   userId: string;
   text: string;
   createdAt: string;
 }
 
-export interface Card {
+export interface Application {
   id: string;
   userId: string;
   company: string;
@@ -24,8 +24,37 @@ export interface Card {
   columnId: string;
   position: number;
   comments: Comment[];
+  interviews?: Interview[];
+  columnTitle?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type InterviewType = "phone_screen" | "coding" | "technical" | "system_design" | "behavioral" | "onsite" | "final" | "take_home" | "other";
+export type InterviewStatus = "scheduled" | "completed" | "passed" | "failed";
+
+export interface Interview {
+  id: string;
+  applicationId: string;
+  type: InterviewType;
+  status: InterviewStatus;
+  scheduledAt: string | null;
+  question: string | null;
+  feedback: string | null;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface QuestionBankEntry {
+  interviewId: string;
+  type: InterviewType;
+  status: InterviewStatus;
+  question: string;
+  company: string;
+  role: string;
+  applicationId: string;
+  createdAt: string;
 }
 
 export interface FileEntry {

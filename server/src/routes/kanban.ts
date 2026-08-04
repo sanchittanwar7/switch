@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { eq, asc, and } from "drizzle-orm";
 import { db } from "../db";
-import { columns, cards, comments } from "../db/schema";
+import { columns, applications, comments } from "../db/schema";
 
 const router = Router();
 
@@ -17,14 +17,14 @@ router.get("/", async (req, res) => {
     .from(columns)
     .orderBy(asc(columns.position));
 
-  const allCards = await db
+  const allApplications = await db
     .select()
-    .from(cards)
-    .where(eq(cards.userId, userId))
-    .orderBy(asc(cards.position));
+    .from(applications)
+    .where(eq(applications.userId, userId))
+    .orderBy(asc(applications.position));
 
-  const cardIds = allCards.map((c) => c.id);
-  const allComments = cardIds.length > 0
+  const applicationIds = allApplications.map((a) => a.id);
+  const allComments = applicationIds.length > 0
     ? await db
         .select()
         .from(comments)
@@ -32,20 +32,20 @@ router.get("/", async (req, res) => {
         .orderBy(asc(comments.createdAt))
     : [];
 
-  const cardsWithComments = allCards.map((card) => ({
-    ...card,
-    comments: allComments.filter((c) => c.cardId === card.id),
+  const applicationsWithComments = allApplications.map((application) => ({
+    ...application,
+    comments: allComments.filter((c) => c.applicationId === application.id),
   }));
 
   const result = {
     columns: allColumns.map((col) => ({
       ...col,
-      cardIds: cardsWithComments
-        .filter((c) => c.columnId === col.id)
-        .map((c) => c.id),
+      applicationIds: applicationsWithComments
+        .filter((a) => a.columnId === col.id)
+        .map((a) => a.id),
     })),
-    cards: Object.fromEntries(
-      cardsWithComments.map((card) => [card.id, card])
+    applications: Object.fromEntries(
+      applicationsWithComments.map((a) => [a.id, a])
     ),
   };
 
@@ -62,12 +62,12 @@ router.put("/", async (req, res) => {
   }
 
   for (const col of updatedColumns) {
-    if (col.cardIds && Array.isArray(col.cardIds)) {
-      for (let i = 0; i < col.cardIds.length; i++) {
+    if (col.applicationIds && Array.isArray(col.applicationIds)) {
+      for (let i = 0; i < col.applicationIds.length; i++) {
         await db
-          .update(cards)
+          .update(applications)
           .set({ columnId: col.id, position: i, updatedAt: new Date() })
-          .where(and(eq(cards.id, col.cardIds[i]), eq(cards.userId, userId)));
+          .where(and(eq(applications.id, col.applicationIds[i]), eq(applications.userId, userId)));
       }
     }
   }
@@ -75,7 +75,7 @@ router.put("/", async (req, res) => {
   res.json({ success: true });
 });
 
-router.post("/cards", async (req, res) => {
+router.post("/applications", async (req, res) => {
   const userId = getUserId(req);
   const { company, role, jobUrl, resumePath, tags, columnId } = req.body;
 
@@ -85,15 +85,15 @@ router.post("/cards", async (req, res) => {
   }
 
   const [maxPos] = await db
-    .select({ max: cards.position })
-    .from(cards)
-    .where(and(eq(cards.columnId, columnId), eq(cards.userId, userId)))
-    .orderBy(asc(cards.position));
+    .select({ max: applications.position })
+    .from(applications)
+    .where(and(eq(applications.columnId, columnId), eq(applications.userId, userId)))
+    .orderBy(asc(applications.position));
 
   const nextPosition = (maxPos?.max ?? -1) + 1;
 
   const [created] = await db
-    .insert(cards)
+    .insert(applications)
     .values({
       userId,
       company,
@@ -109,7 +109,7 @@ router.post("/cards", async (req, res) => {
   res.status(201).json({ ...created, comments: [] });
 });
 
-router.patch("/cards/:id", async (req, res) => {
+router.patch("/applications/:id", async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
   const updates: Record<string, unknown> = {};
@@ -129,43 +129,43 @@ router.patch("/cards/:id", async (req, res) => {
   updates.updatedAt = new Date();
 
   const [updated] = await db
-    .update(cards)
+    .update(applications)
     .set(updates)
-    .where(and(eq(cards.id, id), eq(cards.userId, userId)))
+    .where(and(eq(applications.id, id), eq(applications.userId, userId)))
     .returning();
 
   if (!updated) {
-    res.status(404).json({ error: "Card not found" });
+    res.status(404).json({ error: "Application not found" });
     return;
   }
 
-  const cardComments = await db
+  const applicationComments = await db
     .select()
     .from(comments)
-    .where(eq(comments.cardId, id))
+    .where(eq(comments.applicationId, id))
     .orderBy(asc(comments.createdAt));
 
-  res.json({ ...updated, comments: cardComments });
+  res.json({ ...updated, comments: applicationComments });
 });
 
-router.delete("/cards/:id", async (req, res) => {
+router.delete("/applications/:id", async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
 
   const [deleted] = await db
-    .delete(cards)
-    .where(and(eq(cards.id, id), eq(cards.userId, userId)))
+    .delete(applications)
+    .where(and(eq(applications.id, id), eq(applications.userId, userId)))
     .returning();
 
   if (!deleted) {
-    res.status(404).json({ error: "Card not found" });
+    res.status(404).json({ error: "Application not found" });
     return;
   }
 
   res.json({ success: true });
 });
 
-router.post("/cards/:id/comments", async (req, res) => {
+router.post("/applications/:id/comments", async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
   const { text } = req.body;
@@ -175,18 +175,18 @@ router.post("/cards/:id/comments", async (req, res) => {
     return;
   }
 
-  const [card] = await db
+  const [application] = await db
     .select()
-    .from(cards)
-    .where(and(eq(cards.id, id), eq(cards.userId, userId)));
-  if (!card) {
-    res.status(404).json({ error: "Card not found" });
+    .from(applications)
+    .where(and(eq(applications.id, id), eq(applications.userId, userId)));
+  if (!application) {
+    res.status(404).json({ error: "Application not found" });
     return;
   }
 
   const [created] = await db
     .insert(comments)
-    .values({ cardId: id, userId, text })
+    .values({ applicationId: id, userId, text })
     .returning();
 
   res.status(201).json(created);

@@ -130,7 +130,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-left">
             {[
               { step: "01", title: "Create Your Master.", desc: "Upload your LaTeX resume or start from a blank template. Edit in our code editor with live PDF preview." },
-              { step: "02", title: "Save a Job.", desc: "Paste a job URL on your kanban board. The card stores the role, company, and links to your tailored resume." },
+              { step: "02", title: "Save a Job.", desc: "Paste a job URL on your kanban board. The application stores the role, company, and links to your tailored resume." },
               { step: "03", title: "Let AI Tailor It.", desc: "The agent reads the job description and rewrites your resume — emphasizing matching skills without fabricating anything." },
               { step: "04", title: "Compile & Apply.", desc: "Review the result, compile the PDF, and send it. Track the application as it moves through your pipeline." },
             ].map((item) => (

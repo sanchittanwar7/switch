@@ -11,6 +11,8 @@ import latexRoutes from "./routes/latex";
 import agentRoutes, { streamRouter } from "./agent/routes";
 import settingsRoutes from "./routes/settings";
 import calendarRoutes from "./routes/calendar";
+import applicationsRouter from "./routes/applications";
+import questionsRouter from "./routes/questions";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -25,6 +27,8 @@ app.get("/api/health", (_req, res) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/fs", authMiddleware, fsRoutes);
 app.use("/api/kanban", authMiddleware, kanbanRoutes);
+app.use("/api/applications", authMiddleware, applicationsRouter);
+app.use("/api/questions", authMiddleware, questionsRouter);
 app.use("/api/calendar", authMiddleware, calendarRoutes);
 app.use("/api/latex", authMiddleware, latexRoutes);
 app.use("/api/agent", streamRouter);
@@ -53,8 +57,12 @@ app.use("/pdfs", authMiddleware, async (req, res) => {
 });
 
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err.stack);
-  res.status(500).json({ error: err.message || "Internal server error" });
+  console.error(err);
+  if (err instanceof Error && (err as any).cause) {
+    console.error("Caused by:", (err as any).cause);
+  }
+  const message = (err as any).cause?.message || err.message || "Internal server error";
+  res.status(500).json({ error: message });
 });
 
 async function start() {
