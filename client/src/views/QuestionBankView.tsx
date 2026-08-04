@@ -121,7 +121,7 @@ export default function QuestionBankView() {
 
   return (
     <div className="h-full overflow-auto">
-      <div className="max-w-4xl mx-auto py-16 px-8">
+      <div className="max-w-6xl mx-auto py-16 px-8">
         <h2 className="text-[24px] font-semibold leading-[32px] tracking-[-0.96px] text-brand-ink mb-2">
           Question Bank
         </h2>

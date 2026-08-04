@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { getApplication } from "../lib/api";
 import ApplicationDetailCard from "../components/application/ApplicationDetailCard";
 import InterviewsSection from "../components/application/InterviewsSection";
+import CommentsSection from "../components/application/CommentsSection";
 import type { Application, Interview } from "../types";
 
 type ApplicationDetail = Application & { interviews: Interview[]; columnTitle: string };
@@ -77,7 +78,7 @@ export default function ApplicationView() {
   }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-8">
+    <div className="p-6 max-w-6xl mx-auto space-y-8">
       <button
         onClick={() => navigate("/board")}
         className="flex items-center gap-1.5 text-sm text-brand-mute hover:text-brand-ink transition-colors font-medium"
@@ -87,17 +88,18 @@ export default function ApplicationView() {
       </button>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <ApplicationDetailCard
-            application={application}
+        <div className="lg:col-span-2 space-y-8">
+          <ApplicationDetailCard application={application} />
+          <InterviewsSection
+            applicationId={application.id}
+            interviews={application.interviews ?? []}
             onRefresh={fetchApplication}
           />
         </div>
 
         <div className="lg:col-span-1">
-          <InterviewsSection
-            applicationId={application.id}
-            interviews={application.interviews ?? []}
+          <CommentsSection
+            application={application}
             onRefresh={fetchApplication}
           />
         </div>
