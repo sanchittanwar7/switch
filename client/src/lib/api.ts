@@ -123,6 +123,7 @@ export interface QuestionBankFilters {
   type?: string;
   company?: string;
   search?: string;
+  status?: string;
 }
 
 export function getQuestions(filters?: QuestionBankFilters): Promise<{ interviews: QuestionBankEntry[] }> {
@@ -130,5 +131,6 @@ export function getQuestions(filters?: QuestionBankFilters): Promise<{ interview
   if (filters?.type) params.set("type", filters.type);
   if (filters?.company) params.set("company", filters.company);
   if (filters?.search) params.set("search", filters.search);
+  if (filters?.status) params.set("status", filters.status);
   return apiGet(`/api/questions?${params.toString()}`);
 }

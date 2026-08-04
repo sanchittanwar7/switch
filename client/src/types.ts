@@ -49,6 +49,7 @@ export interface Interview {
 export interface QuestionBankEntry {
   interviewId: string;
   type: InterviewType;
+  status: InterviewStatus;
   question: string;
   company: string;
   role: string;

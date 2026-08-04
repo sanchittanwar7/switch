@@ -12,6 +12,7 @@ import agentRoutes, { streamRouter } from "./agent/routes";
 import settingsRoutes from "./routes/settings";
 import calendarRoutes from "./routes/calendar";
 import applicationsRouter from "./routes/applications";
+import questionsRouter from "./routes/questions";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -27,6 +28,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/fs", authMiddleware, fsRoutes);
 app.use("/api/kanban", authMiddleware, kanbanRoutes);
 app.use("/api/applications", authMiddleware, applicationsRouter);
+app.use("/api/questions", authMiddleware, questionsRouter);
 app.use("/api/calendar", authMiddleware, calendarRoutes);
 app.use("/api/latex", authMiddleware, latexRoutes);
 app.use("/api/agent", streamRouter);
