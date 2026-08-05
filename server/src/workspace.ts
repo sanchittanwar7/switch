@@ -19,9 +19,9 @@ async function ensureInterviewsTable(): Promise<void> {
       "type" text NOT NULL,
       "status" text DEFAULT 'scheduled' NOT NULL,
       "scheduled_at" timestamp with time zone,
-      "question" text,
+      "question_title" text,
       "feedback" text,
-      "notes" text,
+      "question_detail" text,
       "created_at" timestamp with time zone DEFAULT now() NOT NULL,
       "updated_at" timestamp with time zone DEFAULT now() NOT NULL
     )

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, X, ExternalLink } from "lucide-react";
+import { Search, X, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
 import { getQuestions } from "../lib/api";
 import type { QuestionBankEntry, InterviewType, InterviewStatus } from "../types";
 
@@ -72,6 +72,7 @@ export default function QuestionBankView() {
   const [statusFilter, setStatusFilter] = useState("");
   const [searchInput, setSearchInput] = useState("");
   const [appliedSearch, setAppliedSearch] = useState("");
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const filters: { type?: string; company?: string; status?: string; search?: string } = {};
@@ -117,6 +118,18 @@ export default function QuestionBankView() {
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") handleSearch();
+  };
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   return (
@@ -221,44 +234,73 @@ export default function QuestionBankView() {
 
         {!loading && !error && questions.length > 0 && (
           <div className="space-y-4">
-            {questions.map((q) => (
-              <button
-                key={q.interviewId}
-                onClick={() => navigate(`/application/${q.applicationId}`)}
-                className="w-full text-left bg-brand-canvas border border-brand-hairline rounded-lg p-6 hover:border-brand-hairline-strong transition-colors group"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center flex-wrap gap-2">
-                      <h4 className="text-sm font-medium text-brand-ink">
-                        {q.company}
-                      </h4>
-                      <span className="inline-flex items-center text-xs text-brand-body bg-brand-canvas-soft px-1.5 py-0.5 rounded-full border border-brand-hairline shrink-0">
-                        {TYPE_LABELS[q.type]}
-                      </span>
-                      {q.role && (
-                        <span className="inline-flex items-center text-xs text-brand-body bg-brand-canvas-soft px-1.5 py-0.5 rounded-full border border-brand-hairline shrink-0">
-                          {q.role}
-                        </span>
-                      )}
-                      <span className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded-full border shrink-0 ${STATUS_COLORS[q.status]}`}>
-                        {STATUS_LABELS[q.status]}
-                      </span>
+            {questions.map((q) => {
+              const isExpanded = expandedIds.has(q.interviewId);
+              return (
+                <div
+                  key={q.interviewId}
+                  className="bg-brand-canvas border border-brand-hairline rounded-lg hover:border-brand-hairline-strong transition-colors"
+                >
+                  <button
+                    onClick={() => navigate(`/application/${q.applicationId}`)}
+                    className="w-full text-left p-6 group"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center flex-wrap gap-2">
+                          <h4 className="text-sm font-medium text-brand-ink">
+                            {q.company}
+                          </h4>
+                          <span className="inline-flex items-center text-xs text-brand-body bg-brand-canvas-soft px-1.5 py-0.5 rounded-full border border-brand-hairline shrink-0">
+                            {TYPE_LABELS[q.type]}
+                          </span>
+                          {q.role && (
+                            <span className="inline-flex items-center text-xs text-brand-body bg-brand-canvas-soft px-1.5 py-0.5 rounded-full border border-brand-hairline shrink-0">
+                              {q.role}
+                            </span>
+                          )}
+                          <span className={`inline-flex items-center text-xs px-1.5 py-0.5 rounded-full border shrink-0 ${STATUS_COLORS[q.status]}`}>
+                            {STATUS_LABELS[q.status]}
+                          </span>
+                        </div>
+                        <p className="text-sm text-brand-body mt-2 leading-relaxed">
+                          {q.questionTitle}
+                        </p>
+                        <p className="text-xs text-brand-mute mt-2">
+                          {formatDate(q.createdAt)}
+                        </p>
+                      </div>
+                      <ExternalLink
+                        size={16}
+                        className="text-brand-mute group-hover:text-brand-link transition-colors shrink-0 mt-0.5"
+                      />
                     </div>
-                    <p className="text-sm text-brand-body mt-2 leading-relaxed">
-                      {q.question}
-                    </p>
-                    <p className="text-xs text-brand-mute mt-2">
-                      {formatDate(q.createdAt)}
-                    </p>
-                  </div>
-                  <ExternalLink
-                    size={16}
-                    className="text-brand-mute group-hover:text-brand-link transition-colors shrink-0 mt-0.5"
-                  />
+                  </button>
+                  {q.questionDetail && (
+                    <>
+                      <div className="border-t border-brand-hairline" />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpand(q.interviewId);
+                        }}
+                        className="w-full flex items-center justify-between px-6 py-2.5 text-xs font-medium text-brand-mute hover:text-brand-body hover:bg-brand-canvas-soft transition-colors rounded-b-lg"
+                      >
+                        <span>Question Detail</span>
+                        {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                      </button>
+                      {isExpanded && (
+                        <div className="px-6 pb-5">
+                          <p className="text-sm text-brand-body whitespace-pre-wrap leading-relaxed">
+                            {q.questionDetail}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              </button>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

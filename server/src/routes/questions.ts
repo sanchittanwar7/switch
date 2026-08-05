@@ -15,7 +15,7 @@ router.get("/", async (req, res) => {
 
   const conditions = [
     eq(applications.userId, userId),
-    isNotNull(interviews.question),
+    isNotNull(interviews.questionTitle),
   ];
 
   if (typeof type === "string" && type) {
@@ -27,7 +27,7 @@ router.get("/", async (req, res) => {
   }
 
   if (typeof search === "string" && search) {
-    conditions.push(ilike(interviews.question, `%${search}%`));
+    conditions.push(ilike(interviews.questionTitle, `%${search}%`));
   }
 
   if (typeof status === "string" && status) {
@@ -39,7 +39,8 @@ router.get("/", async (req, res) => {
       interviewId: interviews.id,
       type: interviews.type,
       status: interviews.status,
-      question: interviews.question,
+      questionTitle: interviews.questionTitle,
+      questionDetail: interviews.questionDetail,
       company: applications.company,
       role: applications.role,
       applicationId: applications.id,
@@ -50,7 +51,7 @@ router.get("/", async (req, res) => {
     .where(and(...conditions))
     .orderBy(desc(interviews.createdAt));
 
-  res.json({ interviews: results.map((r) => ({ ...r, question: r.question! })) });
+  res.json({ interviews: results.map((r) => ({ ...r, questionTitle: r.questionTitle! })) });
 });
 
 export default router;

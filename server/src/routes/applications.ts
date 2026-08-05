@@ -87,7 +87,7 @@ router.get("/:id/interviews", async (req, res) => {
 router.post("/:id/interviews", async (req, res) => {
   const userId = getUserId(req);
   const { id } = req.params;
-  const { type, status, scheduledAt, question, feedback, notes } = req.body;
+  const { type, status, scheduledAt, questionTitle, feedback, questionDetail } = req.body;
 
   if (!type) {
     res.status(400).json({ error: "Missing required field: type" });
@@ -111,9 +111,9 @@ router.post("/:id/interviews", async (req, res) => {
       type,
       status: status || "scheduled",
       scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-      question: question?.trim() || null,
+      questionTitle: questionTitle?.trim() || null,
       feedback: feedback?.trim() || null,
-      notes: notes?.trim() || null,
+      questionDetail: questionDetail?.trim() || null,
     })
     .returning();
 
@@ -135,13 +135,13 @@ router.patch("/:id/interviews/:interviewId", async (req, res) => {
   }
 
   const updates: Record<string, unknown> = {};
-  const allowedFields = ["type", "status", "scheduledAt", "question", "feedback", "notes"];
+  const allowedFields = ["type", "status", "scheduledAt", "questionTitle", "feedback", "questionDetail"];
 
   for (const field of allowedFields) {
     if (req.body[field] !== undefined) {
       if (field === "scheduledAt" && req.body[field] !== null) {
         updates[field] = new Date(req.body[field]);
-      } else if (field === "question" || field === "feedback" || field === "notes") {
+      } else if (field === "questionTitle" || field === "feedback" || field === "questionDetail") {
         updates[field] = req.body[field]?.trim?.() ?? req.body[field];
       } else {
         updates[field] = req.body[field];

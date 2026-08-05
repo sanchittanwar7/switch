@@ -99,9 +99,9 @@ export function createInterview(
     type: InterviewType;
     status?: InterviewStatus;
     scheduledAt?: string;
-    question?: string;
+    questionTitle?: string;
     feedback?: string;
-    notes?: string;
+    questionDetail?: string;
   },
 ): Promise<Interview> {
   return apiPost(`/api/applications/${appId}/interviews`, data);

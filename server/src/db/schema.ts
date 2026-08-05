@@ -77,9 +77,9 @@ export const interviews = pgTable("interviews", {
   type: text("type").notNull(),
   status: text("status").notNull().default("scheduled"),
   scheduledAt: timestamp("scheduled_at", { withTimezone: true }),
-  question: text("question"),
+  questionTitle: text("question_title"),
   feedback: text("feedback"),
-  notes: text("notes"),
+  questionDetail: text("question_detail"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
