@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { FileText, LayoutDashboard, ArrowRight, Sparkles, PenTool, Target, Zap } from "lucide-react";
+import { ArrowRight, Building2, LayoutDashboard, Sparkles, CalendarDays, FileText, Share2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export default function LandingPage() {
@@ -39,19 +39,18 @@ export default function LandingPage() {
           <h1
             className="text-[48px] font-semibold leading-[48px] tracking-[-2.4px] text-brand-ink max-w-[720px] mx-auto"
           >
-            Your resume, tailored for every job.
+            Switch jobs, smarter.
           </h1>
-          <p className="mt-6 text-[18px] leading-[28px] text-brand-body max-w-[560px] mx-auto">
-            Lean Switch is an AI-powered resume assistant that tailors your LaTeX
-            resume for each job description, tracks your applications on a kanban
-            board, and helps you land more interviews.
+          <p className="mt-6 text-[18px] leading-[28px] text-brand-body max-w-[600px] mx-auto">
+            From company research to tailored resumes, interview prep to offer
+            tracking — the complete toolkit for your next career move.
           </p>
           <div className="mt-10 flex items-center justify-center gap-3">
             <button
               onClick={handleCTA}
               className="inline-flex items-center gap-2 rounded-full bg-brand-ink text-brand-on-primary px-6 h-12 text-[16px] font-medium hover:opacity-90 transition-opacity"
             >
-              Sign In
+              Get Started
               <ArrowRight size={16} />
             </button>
             <a
@@ -83,65 +82,65 @@ export default function LandingPage() {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <FeatureCard
-            icon={<Sparkles size={20} />}
-            title="AI Resume Tailoring."
-            description="Our AI agent reads the job description and rewrites your LaTeX resume to highlight relevant experience, skills, and keywords — without losing your voice."
-          />
-          <FeatureCard
-            icon={<PenTool size={20} />}
-            title="LaTeX Editor with Live Preview."
-            description="Edit your resume in a full Monaco editor with syntax highlighting, auto-compile, and a real-time PDF preview. No local setup required."
+            icon={<Building2 size={20} />}
+            title="Company Research."
+            description="Research companies before you apply. Gather insights on culture, tech stack, and recent developments — make informed decisions about your next move."
           />
           <FeatureCard
             icon={<LayoutDashboard size={20} />}
             title="Kanban Job Tracker."
-            description="Track every application through your pipeline — from bookmark to applied, phone screen, interview, offer, and beyond. Drag and drop to update."
+            description="Track every application through your pipeline. Drag and drop cards across columns from 'Saved' to 'Offer' — always know where you stand."
+          />
+          <FeatureCard
+            icon={<Sparkles size={20} />}
+            title="AI Resume Tailoring."
+            description="Let the AI agent customize your LaTeX resume for each job description. Your master resume stays untouched while each application gets a tailored version."
           />
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
           <FeatureCard
-            icon={<Target size={20} />}
-            title="One Master, Many Tailored."
-            description="Keep a single master resume and generate tailored versions per role. The agent copies and edits — your original stays untouched."
-          />
-          <FeatureCard
-            icon={<Zap size={20} />}
-            title="Instant Compilation."
-            description="Compile your LaTeX resume in seconds with our server-side compiler. Download the PDF or preview it instantly in your browser."
+            icon={<CalendarDays size={20} />}
+            title="Interview Calendar."
+            description="Schedule and track every interview round. Phone screens, technicals, on-sites — all on one calendar linked to your applications."
           />
           <FeatureCard
             icon={<FileText size={20} />}
-            title="Multiple Resumes, One Place."
-            description="Manage different resume templates for different industries. Upload existing LaTeX projects or start from a blank template."
+            title="Interview Documentation."
+            description="Log every question and piece of feedback from your interviews. Build your personal prep archive and track what works."
+          />
+          <FeatureCard
+            icon={<Share2 size={20} />}
+            title="Community Question Bank."
+            description="Share your interview experiences and tap into thousands of real questions. Learn what companies are asking and help others prepare."
           />
         </div>
       </section>
 
       <section className="bg-brand-ink text-brand-on-primary py-24">
         <div className="max-w-[1200px] mx-auto px-6 text-center">
-          <p className="text-[12px] font-mono tracking-normal uppercase text-black/40 mb-6">
+          <p className="text-[12px] font-mono tracking-normal uppercase text-brand-on-primary/30 mb-6">
             How It Works
           </p>
           <h2
             className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] mb-16"
           >
-            From job post to tailored resume in minutes.
+            From research to offer, all in one place.
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 text-left">
             {[
-              { step: "01", title: "Create Your Master.", desc: "Upload your LaTeX resume or start from a blank template. Edit in our code editor with live PDF preview." },
-              { step: "02", title: "Save a Job.", desc: "Paste a job URL on your kanban board. The application stores the role, company, and links to your tailored resume." },
-              { step: "03", title: "Let AI Tailor It.", desc: "The agent reads the job description and rewrites your resume — emphasizing matching skills without fabricating anything." },
-              { step: "04", title: "Compile & Apply.", desc: "Review the result, compile the PDF, and send it. Track the application as it moves through your pipeline." },
+              { step: "01", title: "Research & Save.", desc: "Find companies you're excited about. Save job postings and organize them on your kanban board." },
+              { step: "02", title: "Tailor & Apply.", desc: "Let AI customize your resume for each role. Track applications as they move through your pipeline." },
+              { step: "03", title: "Prepare & Interview.", desc: "Schedule interviews on your calendar. Log questions and feedback from every round." },
+              { step: "04", title: "Share & Grow.", desc: "Contribute to the community question bank and learn from fellow job seekers." },
             ].map((item) => (
               <div key={item.step}>
-                <div className="text-[12px] font-mono text-black/30 mb-3">
+                <div className="text-[12px] font-mono text-brand-on-primary/30 mb-3">
                   {item.step}
                 </div>
                 <h3 className="text-[16px] font-medium leading-[24px] mb-2">
                   {item.title}
                 </h3>
-                <p className="text-[14px] leading-[20px] tracking-[-0.28px] text-black/50">
+                <p className="text-[14px] leading-[20px] tracking-[-0.28px] text-brand-on-primary/50">
                   {item.desc}
                 </p>
               </div>
@@ -154,18 +153,18 @@ export default function LandingPage() {
         <h2
           className="text-[32px] font-semibold leading-[40px] tracking-[-1.28px] text-brand-ink max-w-[600px] mx-auto"
         >
-          Stop writing resumes manually.
+          Ready to land your next role?
         </h2>
         <p className="mt-4 text-[16px] leading-[24px] text-brand-body max-w-[480px] mx-auto">
-          Join thousands of job seekers who use Lean Switch to tailor their
-          resumes with AI and track their applications.
+          Join job seekers who use Lean Switch to manage their entire job search
+          — from research to offer.
         </p>
         <div className="mt-8 flex items-center justify-center">
           <button
             onClick={handleCTA}
             className="inline-flex items-center gap-2 rounded-full bg-brand-ink text-brand-on-primary px-8 h-12 text-[16px] font-medium hover:opacity-90 transition-opacity"
           >
-            Sign In
+            Get Started
             <ArrowRight size={16} />
           </button>
         </div>
