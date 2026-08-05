@@ -48,8 +48,8 @@ export default function ApplicationModal({ application, onClose }: ApplicationMo
     await updateApplication(application.id, {
       company: company.trim(),
       role: role.trim(),
-      jobUrl: jobUrl.trim() || undefined,
-      resumePath: resumePath.trim() || undefined,
+      jobUrl: jobUrl.trim() || null,
+      resumePath: resumePath.trim() || null,
       tags: parsedTags,
     });
     setSaving(false);
