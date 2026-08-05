@@ -7,6 +7,7 @@ import {
   addUserProvider,
   deleteUserProvider,
   setDefaultModel,
+  setSharePreference,
   LLM_PROVIDERS,
   PROVIDER_MODELS,
   PROVIDER_BASE_URLS,
@@ -33,7 +34,7 @@ router.get("/", async (req, res) => {
     .where(eq(userSettings.userId, userId));
 
   if (!row) {
-    res.json({ provider: "openai", apiKey: "", baseUrl: "", model: "" });
+    res.json({ provider: "openai", apiKey: "", baseUrl: "", model: "", shareQuestions: false });
     return;
   }
 
@@ -42,12 +43,13 @@ router.get("/", async (req, res) => {
     apiKey: maskApiKey(row.apiKey),
     baseUrl: row.baseUrl || "",
     model: row.model || "",
+    shareQuestions: row.shareQuestions ?? false,
   });
 });
 
 router.put("/", async (req, res) => {
   const userId = getUserId(req);
-  const { provider, apiKey, baseUrl, model } = req.body;
+  const { provider, apiKey, baseUrl, model, shareQuestions } = req.body;
 
   const [existing] = await db
     .select()
@@ -64,6 +66,7 @@ router.put("/", async (req, res) => {
     baseUrl: baseUrl || null,
     model: model || null,
     updatedAt: new Date(),
+    ...(shareQuestions !== undefined ? { shareQuestions } : {}),
   };
 
   const [row] = await db
@@ -75,11 +78,16 @@ router.put("/", async (req, res) => {
     })
     .returning();
 
+  if (shareQuestions === true && !existing?.shareQuestions) {
+    await setSharePreference(userId, true);
+  }
+
   res.json({
     provider: row.provider,
     apiKey: maskApiKey(row.apiKey),
     baseUrl: row.baseUrl || "",
     model: row.model || "",
+    shareQuestions: row.shareQuestions ?? false,
   });
 });
 

@@ -6,6 +6,7 @@ export interface SettingsData {
   apiKey: string;
   baseUrl: string;
   model: string;
+  shareQuestions: boolean;
 }
 
 export interface ProviderConfig {

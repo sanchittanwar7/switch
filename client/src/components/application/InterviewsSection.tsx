@@ -195,13 +195,13 @@ export default function InterviewsSection({ applicationId, interviews, onRefresh
                   </div>
                 )}
 
-                {interview.question && (
+                {interview.questionTitle && (
                   <div>
                     <p className="text-xs font-medium text-brand-body mb-1">
-                      Question
+                      Question Title
                     </p>
                     <p className="text-sm text-brand-ink whitespace-pre-wrap">
-                      {interview.question}
+                      {interview.questionTitle}
                     </p>
                   </div>
                 )}
@@ -217,13 +217,13 @@ export default function InterviewsSection({ applicationId, interviews, onRefresh
                   </div>
                 )}
 
-                {interview.notes && (
+                {interview.questionDetail && (
                   <div>
                     <p className="text-xs font-medium text-brand-body mb-1">
-                      Notes
+                      Question Detail
                     </p>
                     <p className="text-sm text-brand-ink whitespace-pre-wrap">
-                      {interview.notes}
+                      {interview.questionDetail}
                     </p>
                   </div>
                 )}

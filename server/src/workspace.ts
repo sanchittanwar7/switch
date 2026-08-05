@@ -19,9 +19,9 @@ async function ensureInterviewsTable(): Promise<void> {
       "type" text NOT NULL,
       "status" text DEFAULT 'scheduled' NOT NULL,
       "scheduled_at" timestamp with time zone,
-      "question" text,
+      "question_title" text,
       "feedback" text,
-      "notes" text,
+      "question_detail" text,
       "created_at" timestamp with time zone DEFAULT now() NOT NULL,
       "updated_at" timestamp with time zone DEFAULT now() NOT NULL
     )
@@ -40,6 +40,34 @@ async function ensureInterviewsTable(): Promise<void> {
   `);
 }
 
+async function ensureShareQuestionsColumn(): Promise<void> {
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'user_settings' AND column_name = 'share_questions'
+      ) THEN
+        ALTER TABLE "user_settings" ADD COLUMN "share_questions" boolean DEFAULT false NOT NULL;
+      END IF;
+    END $$;
+  `);
+}
+
+async function ensureSharedColumn(): Promise<void> {
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'interviews' AND column_name = 'shared'
+      ) THEN
+        ALTER TABLE "interviews" ADD COLUMN "shared" boolean DEFAULT false NOT NULL;
+      END IF;
+    END $$;
+  `);
+}
+
 export async function initializeDatabase(): Promise<void> {
   try {
     await runMigrations();
@@ -48,4 +76,6 @@ export async function initializeDatabase(): Promise<void> {
   }
   await seedColumns();
   await ensureInterviewsTable();
+  await ensureShareQuestionsColumn();
+  await ensureSharedColumn();
 }

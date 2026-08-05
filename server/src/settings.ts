@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { db } from "./db";
 import { userSettings, userProviders } from "./db/schema";
 import { getWorkspaceRoot } from "./utils/paths";
@@ -90,6 +90,7 @@ export interface UserProvider {
 export interface Settings {
   llm: LLMSettings;
   workspaceRoot?: string;
+  shareQuestions: boolean;
 }
 
 const DEFAULT_LLM: LLMSettings = {
@@ -119,12 +120,14 @@ export async function getSettings(userId: string): Promise<Settings> {
   return {
     llm: row ? fromDbRow(row) : { ...DEFAULT_LLM },
     workspaceRoot: getWorkspaceRoot(),
+    shareQuestions: row?.shareQuestions ?? false,
   };
 }
 
 export async function updateSettings(userId: string, partial: Partial<Settings>): Promise<Settings> {
   const current = await getSettings(userId);
   const llm = { ...current.llm, ...(partial.llm || {}) };
+  const shareQuestions = partial.shareQuestions !== undefined ? partial.shareQuestions : current.shareQuestions;
 
   await db
     .insert(userSettings)
@@ -134,6 +137,7 @@ export async function updateSettings(userId: string, partial: Partial<Settings>)
       apiKey: llm.apiKey,
       baseUrl: llm.baseUrl || null,
       model: llm.model || null,
+      shareQuestions,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -143,6 +147,7 @@ export async function updateSettings(userId: string, partial: Partial<Settings>)
         apiKey: llm.apiKey,
         baseUrl: llm.baseUrl || null,
         model: llm.model || null,
+        shareQuestions,
         updatedAt: new Date(),
       },
     });
@@ -150,7 +155,39 @@ export async function updateSettings(userId: string, partial: Partial<Settings>)
   return {
     llm,
     workspaceRoot: current.workspaceRoot,
+    shareQuestions,
   };
+}
+
+export async function getSharePreference(userId: string): Promise<boolean> {
+  const [row] = await db
+    .select({ shareQuestions: userSettings.shareQuestions })
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId));
+
+  return row?.shareQuestions ?? false;
+}
+
+export async function setSharePreference(userId: string, share: boolean): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(userSettings)
+      .values({ userId, shareQuestions: share })
+      .onConflictDoUpdate({
+        target: [userSettings.userId],
+        set: { shareQuestions: share, updatedAt: new Date() },
+      });
+
+    if (share) {
+      await tx.execute(sql`
+        UPDATE "interviews" SET "shared" = true
+        FROM "applications"
+        WHERE "interviews"."application_id" = "applications"."id"
+          AND "applications"."user_id" = ${userId}
+          AND "interviews"."shared" = false
+      `);
+    }
+  });
 }
 
 export async function getUserProviders(userId: string): Promise<UserProvider[]> {

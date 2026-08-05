@@ -34,9 +34,9 @@ export default function InterviewForm({ applicationId, interview, onSave, onCanc
   const [type, setType] = useState<InterviewType>(interview?.type ?? "phone_screen");
   const [status, setStatus] = useState<InterviewStatus>(interview?.status ?? "scheduled");
   const [scheduledAt, setScheduledAt] = useState(interview?.scheduledAt ? toDatetimeLocal(interview.scheduledAt) : "");
-  const [question, setQuestion] = useState(interview?.question ?? "");
+  const [questionTitle, setQuestionTitle] = useState(interview?.questionTitle ?? "");
   const [feedback, setFeedback] = useState(interview?.feedback ?? "");
-  const [notes, setNotes] = useState(interview?.notes ?? "");
+  const [questionDetail, setQuestionDetail] = useState(interview?.questionDetail ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -49,9 +49,9 @@ export default function InterviewForm({ applicationId, interview, onSave, onCanc
       type,
       status,
       scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
-      question: question.trim() || undefined,
+      questionTitle: questionTitle.trim() || undefined,
       feedback: feedback.trim() || undefined,
-      notes: notes.trim() || undefined,
+      questionDetail: questionDetail.trim() || undefined,
     };
 
     try {
@@ -135,10 +135,10 @@ export default function InterviewForm({ applicationId, interview, onSave, onCanc
       </label>
 
       <label className="block">
-        <span className="text-xs font-medium text-brand-body mb-1.5 block">Question</span>
+        <span className="text-xs font-medium text-brand-body mb-1.5 block">Question Title</span>
         <textarea
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
+          value={questionTitle}
+          onChange={(e) => setQuestionTitle(e.target.value)}
           placeholder="What was asked?"
           rows={2}
           className="w-full px-3 py-2 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute resize-y"
@@ -157,12 +157,12 @@ export default function InterviewForm({ applicationId, interview, onSave, onCanc
       </label>
 
       <label className="block">
-        <span className="text-xs font-medium text-brand-body mb-1.5 block">Notes</span>
+        <span className="text-xs font-medium text-brand-body mb-1.5 block">Question Detail</span>
         <textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          placeholder="Your personal notes"
-          rows={2}
+          value={questionDetail}
+          onChange={(e) => setQuestionDetail(e.target.value)}
+          placeholder="Detailed question description"
+          rows={4}
           className="w-full px-3 py-2 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link placeholder:text-brand-mute resize-y"
         />
       </label>

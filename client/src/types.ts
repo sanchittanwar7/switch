@@ -39,9 +39,9 @@ export interface Interview {
   type: InterviewType;
   status: InterviewStatus;
   scheduledAt: string | null;
-  question: string | null;
+  questionTitle: string | null;
   feedback: string | null;
-  notes: string | null;
+  questionDetail: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,10 +50,20 @@ export interface QuestionBankEntry {
   interviewId: string;
   type: InterviewType;
   status: InterviewStatus;
-  question: string;
+  questionTitle: string;
+  questionDetail: string | null;
   company: string;
   role: string;
   applicationId: string;
+  createdAt: string;
+}
+
+export interface SharedQuestionEntry {
+  interviewId: string;
+  type: InterviewType;
+  questionTitle: string;
+  questionDetail: string | null;
+  company: string;
   createdAt: string;
 }
 
