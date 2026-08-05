@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import type { Application, Interview, InterviewType, InterviewStatus, QuestionBankEntry } from "../types";
+import type { Application, Interview, InterviewType, InterviewStatus, QuestionBankEntry, SharedQuestionEntry } from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
 
@@ -133,4 +133,18 @@ export function getQuestions(filters?: QuestionBankFilters): Promise<{ interview
   if (filters?.search) params.set("search", filters.search);
   if (filters?.status) params.set("status", filters.status);
   return apiGet(`/api/questions?${params.toString()}`);
+}
+
+export interface SharedQuestionFilters {
+  type?: string;
+  company?: string;
+  search?: string;
+}
+
+export function getSharedQuestions(filters?: SharedQuestionFilters): Promise<{ interviews: SharedQuestionEntry[] }> {
+  const params = new URLSearchParams();
+  if (filters?.type) params.set("type", filters.type);
+  if (filters?.company) params.set("company", filters.company);
+  if (filters?.search) params.set("search", filters.search);
+  return apiGet(`/api/questions/shared?${params.toString()}`);
 }

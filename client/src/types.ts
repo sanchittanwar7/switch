@@ -58,6 +58,15 @@ export interface QuestionBankEntry {
   createdAt: string;
 }
 
+export interface SharedQuestionEntry {
+  interviewId: string;
+  type: InterviewType;
+  questionTitle: string;
+  questionDetail: string | null;
+  company: string;
+  createdAt: string;
+}
+
 export interface FileEntry {
   name: string;
   type: "file" | "directory";

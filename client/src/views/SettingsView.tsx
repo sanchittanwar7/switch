@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Plus, Key, Trash2, Cpu, AlertCircle, CheckCircle, Loader2, Star } from "lucide-react";
+import { Plus, Key, Trash2, Cpu, AlertCircle, CheckCircle, Loader2, Star, Globe } from "lucide-react";
 import { useSettingsStore } from "../stores/settingsStore";
 
 const PROVIDERS = [
@@ -12,9 +12,12 @@ const PROVIDERS = [
 
 export default function SettingsView() {
   const {
+    settings,
     providers,
     loading,
     error: storeError,
+    loadSettings,
+    saveSettings,
     loadProviders,
     addProvider,
     deleteProvider,
@@ -28,8 +31,10 @@ export default function SettingsView() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [shareToggling, setShareToggling] = useState(false);
 
   useEffect(() => {
+    loadSettings();
     loadProviders();
   }, []);
 
@@ -69,6 +74,17 @@ export default function SettingsView() {
       setError(err instanceof Error ? err.message : "Failed to remove provider");
     } finally {
       setDeletingId(null);
+    }
+  }
+
+  async function handleToggleShare() {
+    setShareToggling(true);
+    try {
+      await saveSettings({ shareQuestions: !settings?.shareQuestions });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update sharing");
+    } finally {
+      setShareToggling(false);
     }
   }
 
@@ -115,6 +131,45 @@ export default function SettingsView() {
         )}
 
         <div className="space-y-8">
+          <section>
+            <h3 className="text-[13px] font-medium text-brand-mute mb-4">
+              Sharing
+            </h3>
+
+            <div className="rounded-xl bg-brand-canvas border border-brand-hairline p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Globe size={16} className="text-brand-body" />
+                    <span className="text-[14px] leading-[20px] font-medium text-brand-ink">
+                      Question sharing
+                    </span>
+                  </div>
+                  <p className="text-[13px] leading-[20px] text-brand-mute">
+                    When enabled, your interview questions appear in the "All Questions" tab for other users.
+                    You can browse questions shared by others too. Only the question title, type, company,
+                    and date are shared — your application details and status remain private.
+                  </p>
+                </div>
+                <button
+                  onClick={handleToggleShare}
+                  disabled={shareToggling}
+                  className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full transition-colors ${
+                    settings?.shareQuestions
+                      ? "bg-brand-link"
+                      : "bg-brand-canvas-soft-2 border border-brand-hairline"
+                  } disabled:opacity-50`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform ${
+                      settings?.shareQuestions ? "translate-x-6" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+            </div>
+          </section>
+
           <section>
             <h3 className="text-[13px] font-medium text-brand-mute mb-4">
               Providers

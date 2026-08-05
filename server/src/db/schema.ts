@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, uniqueIndex, index } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, integer, uniqueIndex, index, boolean } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey(),
@@ -17,6 +17,7 @@ export const userSettings = pgTable("user_settings", {
   baseUrl: text("base_url"),
   model: text("model"),
   storageMode: text("storage_mode").notNull().default("local"),
+  shareQuestions: boolean("share_questions").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
@@ -80,6 +81,7 @@ export const interviews = pgTable("interviews", {
   questionTitle: text("question_title"),
   feedback: text("feedback"),
   questionDetail: text("question_detail"),
+  shared: boolean("shared").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
