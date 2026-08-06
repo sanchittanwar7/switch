@@ -9,6 +9,7 @@ import fsRoutes from "./routes/fs";
 import kanbanRoutes from "./routes/kanban";
 import latexRoutes from "./routes/latex";
 import agentRoutes, { streamRouter } from "./agent/routes";
+import researchRoutes, { researchStreamRouter } from "./agent/research-routes";
 import settingsRoutes from "./routes/settings";
 import calendarRoutes from "./routes/calendar";
 import applicationsRouter from "./routes/applications";
@@ -33,6 +34,8 @@ app.use("/api/calendar", authMiddleware, calendarRoutes);
 app.use("/api/latex", authMiddleware, latexRoutes);
 app.use("/api/agent", streamRouter);
 app.use("/api/agent", authMiddleware, agentRoutes);
+app.use("/api/research", researchStreamRouter);
+app.use("/api/research", authMiddleware, researchRoutes);
 app.use("/api/settings", authMiddleware, settingsRoutes);
 
 app.use("/pdfs", authMiddleware, async (req, res) => {

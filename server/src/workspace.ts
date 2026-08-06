@@ -68,6 +68,20 @@ async function ensureSharedColumn(): Promise<void> {
   `);
 }
 
+async function ensureResearchInstructionsColumn(): Promise<void> {
+  await db.execute(sql`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'user_settings' AND column_name = 'research_instructions'
+      ) THEN
+        ALTER TABLE "user_settings" ADD COLUMN "research_instructions" text;
+      END IF;
+    END $$;
+  `);
+}
+
 export async function initializeDatabase(): Promise<void> {
   try {
     await runMigrations();
@@ -78,4 +92,5 @@ export async function initializeDatabase(): Promise<void> {
   await ensureInterviewsTable();
   await ensureShareQuestionsColumn();
   await ensureSharedColumn();
+  await ensureResearchInstructionsColumn();
 }
