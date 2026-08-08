@@ -3,22 +3,50 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Components } from "react-markdown";
 
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .trim()
+    .replace(/^-|-$/g, "");
+}
+
+function extractHeadingId(children: React.ReactNode): string {
+  if (typeof children === "string") return slugify(children);
+  if (Array.isArray(children)) {
+    const text = children.map((c) => (typeof c === "string" ? c : "")).join("");
+    return slugify(text);
+  }
+  return "";
+}
+
 const components: Components = {
-  h1: ({ children }) => (
-    <h1 className="text-base font-semibold text-brand-ink mt-4 mb-2 tracking-[-0.02em]">
-      {children}
-    </h1>
-  ),
-  h2: ({ children }) => (
-    <h2 className="text-sm font-semibold text-brand-ink mt-3 mb-1.5 tracking-[-0.01em]">
-      {children}
-    </h2>
-  ),
-  h3: ({ children }) => (
-    <h3 className="text-xs font-semibold text-brand-ink mt-2 mb-1">
-      {children}
-    </h3>
-  ),
+  h1: ({ children }) => {
+    const id = extractHeadingId(children);
+    return (
+      <h1 id={id || undefined} className="text-base font-semibold text-brand-ink mt-4 mb-2 tracking-[-0.02em]">
+        {children}
+      </h1>
+    );
+  },
+  h2: ({ children }) => {
+    const id = extractHeadingId(children);
+    return (
+      <h2 id={id || undefined} className="text-sm font-semibold text-brand-ink mt-3 mb-1.5 tracking-[-0.01em]">
+        {children}
+      </h2>
+    );
+  },
+  h3: ({ children }) => {
+    const id = extractHeadingId(children);
+    return (
+      <h3 id={id || undefined} className="text-xs font-semibold text-brand-ink mt-2 mb-1">
+        {children}
+      </h3>
+    );
+  },
   p: ({ children }) => (
     <p className="text-xs text-brand-body leading-relaxed mb-2 last:mb-0">{children}</p>
   ),

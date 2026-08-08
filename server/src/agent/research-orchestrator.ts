@@ -47,7 +47,7 @@ export async function runResearchStream(session: ResearchSession, res: Response)
           content: m.content,
         })),
       tools,
-      stopWhen: isStepCount(30),
+      stopWhen: isStepCount(50),
       onToolExecutionStart: ({ toolCall }) => {
         addResearchMessage(session.id, "tool_call", `${toolCall.toolName}(${JSON.stringify(toolCall.input)})`, {
           toolCallId: toolCall.toolCallId,

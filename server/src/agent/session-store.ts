@@ -41,7 +41,6 @@ interface SessionIndexEntry {
 }
 
 const sessions = new Map<string, AgentSession>();
-const SESSION_TTL = 30 * 60 * 1000;
 
 function getResumeSessionsDir(userId: string, resumeProjectPath: string): string {
   const normalized = path.normalize(resumeProjectPath);
@@ -100,7 +99,7 @@ async function removeSessionFiles(session: AgentSession): Promise<void> {
   }
 }
 
-async function loadSessionFromDisk(sessionId: string): Promise<AgentSession | null> {
+async function loadSessionFromDisk(sessionId: string, userId?: string): Promise<AgentSession | null> {
   try {
     const indexRaw = await fs.readFile(getIndexPath(sessionId), "utf-8");
     const index: SessionIndexEntry = JSON.parse(indexRaw);
@@ -111,7 +110,45 @@ async function loadSessionFromDisk(sessionId: string): Promise<AgentSession | nu
     );
     return JSON.parse(sessionRaw) as AgentSession;
   } catch {
+    if (userId) {
+      try {
+        const userRoot = getWorkspaceRoot(userId);
+        const dirs = await fs.readdir(userRoot, { withFileTypes: true });
+        for (const dir of dirs) {
+          if (!dir.isDirectory()) continue;
+          try {
+            const sessionRaw = await fs.readFile(
+              path.join(userRoot, dir.name, "sessions", `${sessionId}.json`),
+              "utf-8",
+            );
+            const session = JSON.parse(sessionRaw) as AgentSession;
+            persistIndexForSession(session);
+            return session;
+          } catch {
+            // this directory doesn't have the session
+          }
+        }
+      } catch {
+        // user dir not found
+      }
+    }
     return null;
+  }
+}
+
+async function persistIndexForSession(session: AgentSession): Promise<void> {
+  try {
+    const indexDir = getIndexDir();
+    await fs.mkdir(indexDir, { recursive: true });
+    const indexEntry: SessionIndexEntry = {
+      userId: session.userId,
+      resumeProjectPath: session.resumeProjectPath,
+      sessionToken: session.sessionToken,
+      lastActivityAt: session.lastActivityAt,
+    };
+    await fs.writeFile(getIndexPath(session.id), JSON.stringify(indexEntry), "utf-8");
+  } catch {
+    // best-effort
   }
 }
 
@@ -154,11 +191,6 @@ export async function getSession(sessionId: string, token: string): Promise<Agen
   const cached = sessions.get(sessionId);
   if (cached) {
     if (cached.sessionToken !== token) return undefined;
-    if (Date.now() - cached.lastActivityAt > SESSION_TTL) {
-      sessions.delete(sessionId);
-      removeSessionFiles(cached);
-      return undefined;
-    }
     cached.lastActivityAt = Date.now();
     persistSession(cached);
     return cached;
@@ -166,17 +198,13 @@ export async function getSession(sessionId: string, token: string): Promise<Agen
 
   const loaded = await loadSessionFromDisk(sessionId);
   if (!loaded || loaded.sessionToken !== token) return undefined;
-  if (Date.now() - loaded.lastActivityAt > SESSION_TTL) {
-    removeSessionFiles(loaded);
-    return undefined;
-  }
   loaded.lastActivityAt = Date.now();
   sessions.set(sessionId, loaded);
   return loaded;
 }
 
-export async function loadSessionById(sessionId: string): Promise<AgentSession | null> {
-  return loadSessionFromDisk(sessionId);
+export async function loadSessionById(sessionId: string, userId?: string): Promise<AgentSession | null> {
+  return loadSessionFromDisk(sessionId, userId);
 }
 
 export async function listSessions(userId: string, resumeProjectPath: string): Promise<SessionSummary[]> {
@@ -190,7 +218,6 @@ export async function listSessions(userId: string, resumeProjectPath: string): P
       try {
         const raw = await fs.readFile(path.join(dir, entry.name), "utf-8");
         const session = JSON.parse(raw) as AgentSession;
-        if (Date.now() - session.lastActivityAt > SESSION_TTL) continue;
         summaries.push({
           id: session.id,
           createdAt: session.createdAt,
@@ -238,13 +265,3 @@ export function deleteSession(sessionId: string): void {
   }
   sessions.delete(sessionId);
 }
-
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, session] of sessions) {
-    if (now - session.lastActivityAt > SESSION_TTL) {
-      sessions.delete(id);
-      removeSessionFiles(session);
-    }
-  }
-}, 5 * 60 * 1000);

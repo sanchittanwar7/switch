@@ -43,7 +43,6 @@ interface IndexEntry {
 }
 
 const sessions = new Map<string, ResearchSession>();
-const SESSION_TTL = 30 * 60 * 1000;
 
 function getResearchDir(userId: string): string {
   return path.join(getWorkspaceRoot(userId), "research");
@@ -169,47 +168,51 @@ export function createResearchSession(
 export async function getResearchSession(
   sessionId: string,
   token: string,
+  userId?: string,
 ): Promise<ResearchSession | undefined> {
   const cached = sessions.get(sessionId);
   if (cached) {
     if (cached.sessionToken !== token) return undefined;
-    if (Date.now() - cached.lastActivityAt > SESSION_TTL) {
-      sessions.delete(sessionId);
-      removeSessionFiles(cached);
-      return undefined;
-    }
     cached.lastActivityAt = Date.now();
     persistSession(cached);
     return cached;
   }
 
-  const loaded = await loadResearchSessionById(sessionId);
-  if (!loaded || loaded.sessionToken !== token) return undefined;
-  if (Date.now() - loaded.lastActivityAt > SESSION_TTL) {
-    removeSessionFiles(loaded);
-    return undefined;
+  let session: ResearchSession | null = null;
+
+  if (userId) {
+    session = await loadResearchSessionByIdAndUserId(sessionId, userId);
+  } else {
+    const found = await findSessionOnDisk(sessionId);
+    if (found) session = found.session;
   }
-  loaded.lastActivityAt = Date.now();
-  sessions.set(sessionId, loaded);
-  return loaded;
+
+  if (!session || session.sessionToken !== token) return undefined;
+  session.lastActivityAt = Date.now();
+  sessions.set(sessionId, session);
+  return session;
 }
 
-export async function loadResearchSessionById(sessionId: string): Promise<ResearchSession | null> {
-  const cached = sessions.get(sessionId);
-  if (cached) return cached;
-
+async function findSessionOnDisk(sessionId: string): Promise<{ session: ResearchSession; userId: string } | null> {
+  const base = getWorkspaceRoot();
+  let dirs: string[] = [];
   try {
-    // We need to find the session on disk. Since we don't know the userId,
-    // we scan the index file from all possible user directories.
-    // Instead, we look up via the in-memory cache first, then fall back to
-    // reading the global index. But for simplicity, we store sessions in-memory
-    // on startup by reading index files.
-    // Since we don't know userId from just sessionId, the caller (route) must
-    // provide userId. So this function is used differently.
-    return null;
+    dirs = await fs.readdir(base);
   } catch {
     return null;
   }
+
+  for (const userId of dirs) {
+    try {
+      const raw = await fs.readFile(getSessionJsonPath(userId, sessionId), "utf-8");
+      const session = JSON.parse(raw) as ResearchSession;
+      return { session, userId };
+    } catch {
+      continue;
+    }
+  }
+
+  return null;
 }
 
 export async function loadResearchSessionByIdAndUserId(
@@ -222,10 +225,6 @@ export async function loadResearchSessionByIdAndUserId(
   try {
     const raw = await fs.readFile(getSessionJsonPath(userId, sessionId), "utf-8");
     const session = JSON.parse(raw) as ResearchSession;
-    if (Date.now() - session.lastActivityAt > SESSION_TTL) {
-      removeSessionFiles(session);
-      return null;
-    }
     sessions.set(sessionId, session);
     return session;
   } catch {
@@ -234,22 +233,49 @@ export async function loadResearchSessionByIdAndUserId(
 }
 
 export async function listResearchSessions(userId: string): Promise<ResearchSessionSummary[]> {
-  const indexPath = getIndexPath(userId);
+  const researchDir = getResearchDir(userId);
+  let dirs: string[] = [];
   try {
-    const raw = await fs.readFile(indexPath, "utf-8");
-    const entries: IndexEntry[] = JSON.parse(raw);
-    return entries
-      .filter((e) => Date.now() - e.lastActivityAt <= SESSION_TTL)
-      .map((e) => ({
-        id: e.id,
-        title: e.title,
-        createdAt: e.createdAt,
-        lastActivityAt: e.lastActivityAt,
-        messageCount: 0, // loaded from session.json if needed
-      }));
+    dirs = await fs.readdir(researchDir);
   } catch {
     return [];
   }
+
+  const summaries: ResearchSessionSummary[] = [];
+
+  for (const dirName of dirs) {
+    const sessionJsonPath = getSessionJsonPath(userId, dirName);
+    try {
+      const raw = await fs.readFile(sessionJsonPath, "utf-8");
+      const session = JSON.parse(raw) as ResearchSession;
+      summaries.push({
+        id: session.id,
+        title: session.title,
+        createdAt: session.createdAt,
+        lastActivityAt: session.lastActivityAt,
+        messageCount: session.messages?.length ?? 0,
+      });
+    } catch {
+      // session.json missing or corrupted — skip this directory
+    }
+  }
+
+  summaries.sort((a, b) => b.lastActivityAt - a.lastActivityAt);
+
+  // refresh index from filesystem
+  const indexEntries: IndexEntry[] = summaries.map((s) => ({
+    id: s.id,
+    title: s.title,
+    createdAt: s.createdAt,
+    lastActivityAt: s.lastActivityAt,
+  }));
+  try {
+    await fs.writeFile(getIndexPath(userId), JSON.stringify(indexEntries), "utf-8");
+  } catch {
+    // best-effort
+  }
+
+  return summaries;
 }
 
 export function addResearchMessage(
@@ -350,13 +376,3 @@ export async function setResearchInstructions(
   });
 }
 
-// cleanup stale sessions every 5 minutes
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, session] of sessions) {
-    if (now - session.lastActivityAt > SESSION_TTL) {
-      sessions.delete(id);
-      removeSessionFiles(session);
-    }
-  }
-}, 5 * 60 * 1000);

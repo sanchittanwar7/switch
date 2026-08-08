@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight,
-  Cpu, User, Plus, Trash2, FlaskConical, Settings,
+  Cpu, User, Plus, Trash2, FlaskConical, Settings, PanelLeft,
 } from "lucide-react";
+import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useResearchStore } from "../stores/researchStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import MarkdownRenderer from "../components/editor/MarkdownRenderer";
@@ -256,232 +257,239 @@ export default function ResearchView() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-w-0">
-        {!hasActiveSession ? (
-          <div className="flex-1 flex items-center justify-center">
-        <div className="text-center w-full max-w-2xl px-8">
-              <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-brand-canvas border border-brand-hairline mx-auto mb-4">
-                <FlaskConical size={22} className="text-brand-link" />
-              </div>
-              <h2 className="text-base font-semibold text-brand-ink tracking-[-0.02em] mb-1">
-                Company Research.
-              </h2>
-              <p className="text-sm text-brand-body mb-1">
-                Select a past session or start new research.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div
-            ref={logRef}
-            className="flex-1 overflow-y-auto px-4 py-3 space-y-2"
-          >
-            {store.entries.map((entry, i) => {
-              if (entry.type === "error") {
-                return (
-                  <div key={i} className="flex items-start gap-2">
-                    <XCircle size={14} className="text-brand-error shrink-0 mt-0.5" />
-                    <span className="text-xs text-brand-error">{entry.content}</span>
-                  </div>
-                );
-              }
-
-              if (entry.type === "user_text") {
-                return (
-                  <div key={i} className="flex items-start gap-2">
-                    <User size={14} className="text-brand-body shrink-0 mt-0.5" />
-                    <span className="text-xs text-brand-ink whitespace-pre-wrap">{entry.text}</span>
-                  </div>
-                );
-              }
-
-              if (entry.type === "done") {
-                return (
-                  <div key={i} className="flex items-start gap-2">
-                    <CheckCircle size={14} className="text-brand-link shrink-0 mt-0.5" />
-                    <span className="text-xs text-brand-link font-medium">
-                      Ready. Send another message to continue.
-                    </span>
-                  </div>
-                );
-              }
-
-              if (entry.type === "agent_text") {
-                return (
-                  <div key={i} className="flex items-start gap-2">
-                    <Bot size={14} className="text-brand-link shrink-0 mt-0.5" />
-                    <div className="min-w-0 flex-1">
-                      <MarkdownRenderer content={entry.text} />
+      <div className="flex-1 min-w-0">
+        <PanelGroup direction="horizontal">
+          <Panel defaultSize={store.reportPanelOpen ? 70 : 100} minSize={30}>
+            <div className="h-full flex flex-col">
+              {!hasActiveSession ? (
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center w-full max-w-2xl px-8">
+                    <div className="flex items-center justify-center w-16 h-16 rounded-2xl bg-brand-canvas border border-brand-hairline mx-auto mb-6">
+                      <FlaskConical size={28} className="text-brand-link" />
                     </div>
+                    <h2 className="text-lg font-semibold text-brand-ink tracking-[-0.02em] mb-2">
+                      Research companies.
+                    </h2>
+                    <p className="text-sm text-brand-body mb-8">
+                      Research companies to prepare for interviews. The agent gathers information from the web and builds a structured report.
+                    </p>
                   </div>
-                );
-              }
-
-              const pending = entry.result === null;
-
-              return (
-                <div key={entry.callId}>
-                  <button
-                    onClick={() => toggleEntry(entry.callId)}
-                    className="flex items-center gap-2 w-full text-left group"
-                  >
-                    <span
-                      className={`shrink-0 transition-transform ${
-                        entry.expanded ? "rotate-90" : ""
-                      }`}
-                    >
-                      <ChevronRight size={12} className="text-brand-mute" />
-                    </span>
-                    {pending ? (
-                      <Loader2 size={12} className="animate-spin text-brand-link shrink-0" />
-                    ) : (
-                      <Wrench size={12} className="text-brand-link shrink-0" />
-                    )}
-                    <span className="text-xs text-brand-ink font-medium min-w-0 truncate">
-                      {entry.tool}
-                    </span>
-                    {!pending && !entry.expanded && (
-                      <span className="text-xs text-brand-mute truncate">
-                        {truncateResult(entry.result)}
-                      </span>
-                    )}
-                  </button>
-
-                  {entry.expanded && (
-                    <div className="ml-5 mt-1 space-y-1.5">
-                      {entry.args !== undefined && entry.args !== null && (
-                        <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
-                          <div className="text-xs text-brand-mute mb-0.5 font-medium">
-                            Arguments
-                          </div>
-                          <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
-                            {formatArgs(entry.args)}
-                          </pre>
+                </div>
+              ) : (
+                <div
+                  ref={logRef}
+                  className="flex-1 overflow-y-auto px-4 py-3 space-y-2"
+                >
+                  {store.entries.map((entry, i) => {
+                    if (entry.type === "error") {
+                      return (
+                        <div key={i} className="flex items-start gap-2">
+                          <XCircle size={14} className="text-brand-error shrink-0 mt-0.5" />
+                          <span className="text-xs text-brand-error">{entry.content}</span>
                         </div>
-                      )}
-                      {entry.result !== null && (
-                        <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
-                          <div className="text-xs text-brand-mute mb-0.5 font-medium">
-                            Result
-                          </div>
-                          <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
-                            {entry.result}
-                          </pre>
+                      );
+                    }
+
+                    if (entry.type === "user_text") {
+                      return (
+                        <div key={i} className="flex items-start gap-2">
+                          <User size={14} className="text-brand-body shrink-0 mt-0.5" />
+                          <span className="text-xs text-brand-ink whitespace-pre-wrap">{entry.text}</span>
                         </div>
-                      )}
+                      );
+                    }
+
+                    if (entry.type === "done") {
+                      return (
+                        <div key={i} className="flex items-start gap-2">
+                          <CheckCircle size={14} className="text-brand-link shrink-0 mt-0.5" />
+                          <span className="text-xs text-brand-link font-medium">
+                            Ready. Send another message to continue.
+                          </span>
+                        </div>
+                      );
+                    }
+
+                    if (entry.type === "agent_text") {
+                      return (
+                        <div key={i} className="flex items-start gap-2">
+                          <Bot size={14} className="text-brand-link shrink-0 mt-0.5" />
+                          <div className="min-w-0 flex-1">
+                            <MarkdownRenderer content={entry.text} />
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    const pending = entry.result === null;
+
+                    return (
+                      <div key={entry.callId}>
+                        <button
+                          onClick={() => toggleEntry(entry.callId)}
+                          className="flex items-center gap-2 w-full text-left group"
+                        >
+                          <span
+                            className={`shrink-0 transition-transform ${
+                              entry.expanded ? "rotate-90" : ""
+                            }`}
+                          >
+                            <ChevronRight size={12} className="text-brand-mute" />
+                          </span>
+                          {pending ? (
+                            <Loader2 size={12} className="animate-spin text-brand-link shrink-0" />
+                          ) : (
+                            <Wrench size={12} className="text-brand-link shrink-0" />
+                          )}
+                          <span className="text-xs text-brand-ink font-medium min-w-0 truncate">
+                            {entry.tool}
+                          </span>
+                          {!pending && !entry.expanded && (
+                            <span className="text-xs text-brand-mute truncate">
+                              {truncateResult(entry.result)}
+                            </span>
+                          )}
+                        </button>
+
+                        {entry.expanded && (
+                          <div className="ml-5 mt-1 space-y-1.5">
+                            {entry.args !== undefined && entry.args !== null && (
+                              <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
+                                <div className="text-xs text-brand-mute mb-0.5 font-medium">
+                                  Arguments
+                                </div>
+                                <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
+                                  {formatArgs(entry.args)}
+                                </pre>
+                              </div>
+                            )}
+                            {entry.result !== null && (
+                              <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
+                                <div className="text-xs text-brand-mute mb-0.5 font-medium">
+                                  Result
+                                </div>
+                                <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
+                                  {entry.result}
+                                </pre>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+
+                  {isRunning && (
+                    <div className="flex items-center gap-2 text-xs text-brand-mute pt-1">
+                      <Loader2 size={14} className="animate-spin" />
+                      Working...
                     </div>
                   )}
                 </div>
-              );
-            })}
+              )}
+              <div className="border-t border-brand-hairline p-3 space-y-2">
+                  {!hasModels && (
+                    <div className="flex items-center gap-2 text-xs text-brand-mute">
+                      <Cpu size={14} className="shrink-0" />
+                      <span>
+                        <a href="/settings" className="text-brand-link hover:underline">
+                          Configure a provider
+                        </a>
+                        {" "}in Settings to select a model.
+                      </span>
+                    </div>
+                  )}
 
-            {isRunning && (
-              <div className="flex items-center gap-2 text-xs text-brand-mute pt-1">
-                <Loader2 size={14} className="animate-spin" />
-                Working...
-              </div>
-            )}
-          </div>
-        )}
+                  {hasModels && (
+                    <div className="px-[15%]">
+                      <div className="w-full flex items-center gap-1 bg-brand-canvas border border-brand-hairline rounded-xl focus-within:border-brand-link focus-within:ring-2 focus-within:ring-brand-link/20 transition-colors">
+                      <input
+                        type="text"
+                        placeholder={hasActiveSession ? "Send a follow-up message..." : "e.g. Research Stripe..."}
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        disabled={isRunning}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !isRunning) handleSend();
+                        }}
+                        className="flex-1 min-w-0 bg-transparent text-brand-ink text-sm px-4 h-12 outline-none placeholder:text-brand-mute disabled:opacity-50"
+                      />
 
-        <div className="border-t border-brand-hairline p-3 space-y-2">
-          {!hasModels && (
-            <div className="flex items-center gap-2 text-xs text-brand-mute">
-              <Cpu size={14} className="shrink-0" />
-              <span>
-                <a href="/settings" className="text-brand-link hover:underline">
-                  Configure a provider
-                </a>
-                {" "}in Settings to select a model.
-              </span>
+                      <select
+                        value={store.selectedModel}
+                        onChange={(e) => store.setSelectedModel(e.target.value)}
+                        className="shrink-0 bg-transparent text-brand-ink text-xs px-2 h-8 outline-none max-w-[160px] truncate rounded-sm hover:bg-brand-canvas-soft-2 transition-colors"
+                      >
+                        {availableModels.map((group) => (
+                          <optgroup key={group.provider} label={group.provider.toUpperCase()}>
+                            {group.models.map((m) => (
+                              <option key={`${group.provider}-${m}`} value={m}>
+                                {m.split("/").pop()}
+                              </option>
+                            ))}
+                          </optgroup>
+                        ))}
+                      </select>
+
+                      <button
+                        onClick={() => setInstructionsModalOpen(true)}
+                        className="relative shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
+                        title="Research Instructions"
+                      >
+                        <Settings size={16} />
+                        {store.instructions && (
+                          <span className="absolute top-1 right-1 w-2 h-2 bg-brand-link rounded-full" />
+                        )}
+                      </button>
+
+                      <button
+                        onClick={handleSend}
+                        disabled={isRunning || !inputText.trim()}
+                        className="shrink-0 flex items-center justify-center w-9 h-9 mr-1 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
+                      >
+                        {isRunning ? (
+                          <Loader2 size={16} className="animate-spin" />
+                        ) : (
+                          <Send size={16} />
+                        )}
+                      </button>
+                    </div>
+                    </div>
+                  )}
+
+                  {hasActiveSession && (store.status === "done" || store.status === "idle") && (
+                    <button
+                      onClick={handleStartNew}
+                      className="flex items-center gap-1 text-xs text-brand-mute hover:text-brand-ink transition-colors"
+                    >
+                      <Plus size={12} />
+                      New session
+                    </button>
+                  )}
+                </div>
             </div>
-          )}
+          </Panel>
 
-          {hasModels && (
-            <div className="px-[15%]">
-              <div className="w-full flex items-center gap-1 bg-brand-canvas border border-brand-hairline rounded-xl focus-within:border-brand-link focus-within:ring-2 focus-within:ring-brand-link/20 transition-colors">
-              <input
-                type="text"
-                placeholder={hasActiveSession ? "Send a follow-up message..." : "e.g. Research Stripe..."}
-                value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
-                disabled={isRunning}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isRunning) handleSend();
-                }}
-                className="flex-1 min-w-0 bg-transparent text-brand-ink text-sm px-4 h-12 outline-none placeholder:text-brand-mute disabled:opacity-50"
-              />
-
-              <select
-                value={store.selectedModel}
-                onChange={(e) => store.setSelectedModel(e.target.value)}
-                className="shrink-0 bg-transparent text-brand-ink text-xs px-2 h-8 outline-none max-w-[160px] truncate rounded-sm hover:bg-brand-canvas-soft-2 transition-colors"
-              >
-                {availableModels.map((group) => (
-                  <optgroup key={group.provider} label={group.provider.toUpperCase()}>
-                    {group.models.map((m) => (
-                      <option key={`${group.provider}-${m}`} value={m}>
-                        {m.split("/").pop()}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-
+          {store.reportPanelOpen ? (
+            <>
+              <PanelResizeHandle className="w-px bg-brand-hairline hover:bg-brand-link active:bg-brand-link transition-colors cursor-col-resize" />
+              <Panel defaultSize={30} minSize={15}>
+                <ReportPanel onCollapse={store.closeReportPanel} />
+              </Panel>
+            </>
+          ) : (
+            <div className="w-8 shrink-0 flex items-start pt-4 border-l border-brand-hairline bg-brand-canvas-soft">
               <button
-                onClick={() => setInstructionsModalOpen(true)}
-                className="relative shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
-                title="Research Instructions"
+                onClick={store.openReportPanel}
+                className="p-1 text-brand-mute hover:text-brand-ink rounded-sm transition-colors"
+                title="Show report"
               >
-                <Settings size={16} />
-                {store.instructions && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-brand-link rounded-full" />
-                )}
-              </button>
-
-              <button
-                onClick={handleSend}
-                disabled={isRunning || !inputText.trim()}
-                className="shrink-0 flex items-center justify-center w-9 h-9 mr-1 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
-              >
-                {isRunning ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Send size={16} />
-                )}
+                <PanelLeft size={14} className="rotate-180" />
               </button>
             </div>
-            </div>
           )}
-
-          {hasActiveSession && (store.status === "done" || store.status === "idle") && (
-            <button
-              onClick={handleStartNew}
-              className="flex items-center gap-1 text-xs text-brand-mute hover:text-brand-ink transition-colors"
-            >
-              <Plus size={12} />
-              New session
-            </button>
-          )}
-        </div>
+        </PanelGroup>
       </div>
-
-      {store.reportPanelOpen ? (
-        <ReportPanel />
-      ) : (
-        <button
-          onClick={store.openReportPanel}
-          className="shrink-0 flex items-center justify-center w-8 border-l border-brand-hairline hover:bg-brand-canvas-soft-2 transition-colors group"
-          title="Open Report"
-        >
-          <span
-            className="text-[10px] font-medium text-brand-mute group-hover:text-brand-ink tracking-widest"
-            style={{ writingMode: "vertical-rl" }}
-          >
-            REPORT
-          </span>
-        </button>
-      )}
 
       {instructionsModalOpen && (
         <InstructionsModal

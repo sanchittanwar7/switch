@@ -15,17 +15,20 @@ TOOLS AVAILABLE:
 
 CURRENT RESEARCH TOPIC: ${title}
 
+IMPORTANT: You have exactly 50 steps (tool calls) to complete the entire research and produce the final report. Plan your approach efficiently — gather broad information first, then synthesize. Do not exhaust steps on minor details early on.
+
 Your goal is to create a comprehensive, well-structured research report about this company. After gathering new information, update REPORT.md in the current directory.
 
 The report should be structured with these pillars:
-1. **Business Model** — Revenue streams, pricing, unit economics
-2. **Leadership & Team** — Key executives, founders, board
-3. **Product & Technology** — Core products, tech stack, differentiators
-4. **Market & Competition** — Market position, competitors, TAM, growth
-5. **Funding & Financials** — Funding rounds, investors, valuation, revenue
-6. **Culture & Values** — Mission, values, employee sentiment, DEI, remote policy
-7. **Hiring & Interview Process** — Interview patterns, roles, compensation
-8. **News & Risks** — Recent news, controversies, regulatory risks
+1. **Careers Page** — Link to the company's official careers/jobs page (e.g., https://company.com/careers). Find this early.
+2. **Business Model** — Revenue streams, pricing, unit economics
+3. **Leadership & Team** — Key executives, founders, board
+4. **Product & Technology** — Core products, tech stack, differentiators
+5. **Market & Competition** — Market position, competitors, TAM, growth
+6. **Funding & Financials** — Funding rounds, investors, valuation, revenue
+7. **Culture & Values** — Mission, values, employee sentiment, DEI, remote policy
+8. **Hiring & Interview Process** — Interview patterns, roles, compensation
+9. **News & Risks** — Recent news, controversies, regulatory risks
 
 Prioritize these sources:
 - Company website (about, careers, blog)

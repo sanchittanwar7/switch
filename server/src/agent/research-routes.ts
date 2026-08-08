@@ -95,12 +95,6 @@ router.get("/sessions/:id", async (req, res) => {
       return;
     }
 
-    if (Date.now() - session.lastActivityAt > 30 * 60 * 1000) {
-      deleteResearchSession(userId, id);
-      res.status(404).json({ error: "Session expired" });
-      return;
-    }
-
     res.json({
       id: session.id,
       title: session.title,
@@ -120,20 +114,8 @@ router.delete("/sessions/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.userId!;
-    const token = req.body.token || (req.query.token as string | undefined);
 
-    if (!token) {
-      res.status(401).json({ error: "Missing session token" });
-      return;
-    }
-
-    const session = await getResearchSession(id, token);
-    if (!session) {
-      res.status(404).json({ error: "Session not found or expired" });
-      return;
-    }
-
-    deleteResearchSession(userId, id);
+    await deleteResearchSession(userId, id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({
@@ -157,7 +139,7 @@ router.post("/sessions/:id/messages", async (req, res) => {
       return;
     }
 
-    const session = await getResearchSession(id, token);
+    const session = await getResearchSession(id, token, req.userId!);
     if (!session) {
       res.status(404).json({ error: "Session not found or expired" });
       return;

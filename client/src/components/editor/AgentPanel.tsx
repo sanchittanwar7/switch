@@ -461,12 +461,8 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
                   key={s.id}
                   onClick={() => {
                     const tokens = loadTokensFromStorage(resumeProjectPath);
-                    const stoken = tokens[s.id];
-                    if (stoken) {
-                      loadPastSession(s.id, stoken);
-                    } else {
-                      setEntries([{ type: "error", content: "Session token not available. Start a new session." }]);
-                    }
+                    const stoken = tokens[s.id] || "";
+                    loadPastSession(s.id, stoken);
                   }}
                   className="w-full text-left p-2 rounded-sm border border-brand-hairline bg-brand-canvas hover:border-brand-hairline-strong transition-colors"
                 >

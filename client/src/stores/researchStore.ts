@@ -123,7 +123,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
 
   reportContent: "",
   reportLastModified: null,
-  reportPanelOpen: false,
+  reportPanelOpen: true,
   loadingReport: false,
 
   instructions: null,
@@ -173,11 +173,6 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
   },
 
   loadSession: async (id) => {
-    const tokens = loadTokensFromStorage();
-    const token = tokens[id];
-
-    if (!token) return;
-
     try {
       const session = await apiGet<ResearchSessionDetail>(`/api/research/sessions/${id}`);
 
@@ -208,7 +203,12 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
         return { type: "agent_text", text: m.content };
       });
 
+      const token = session.sessionToken;
       saveLastSessionToStorage(id, token);
+
+      const tokens = loadTokensFromStorage();
+      tokens[id] = token;
+      saveTokensToStorage(tokens);
 
       set({
         sessionId: id,
@@ -216,26 +216,17 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
         title: session.title,
         entries,
         status: "idle",
-        reportPanelOpen: false,
-        reportContent: "",
-        reportLastModified: null,
+        reportPanelOpen: true,
       });
+      get().loadReport();
     } catch {
       // session not found or expired
     }
   },
 
   deleteSession: async (id) => {
-    const tokens = loadTokensFromStorage();
-    const token = tokens[id];
-
-    if (!token) return;
-
     try {
-      await apiDelete(`/api/research/sessions/${id}`, { token });
-
-      delete tokens[id];
-      saveTokensToStorage(tokens);
+      await apiDelete(`/api/research/sessions/${id}`);
 
       const { sessionId } = get();
       if (sessionId === id) {
@@ -247,6 +238,10 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
           status: "idle",
         });
       }
+
+      const tokens = loadTokensFromStorage();
+      delete tokens[id];
+      saveTokensToStorage(tokens);
 
       get().loadSessions();
     } catch {
@@ -386,7 +381,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
       status: "idle",
       reportContent: "",
       reportLastModified: null,
-      reportPanelOpen: false,
+      reportPanelOpen: true,
     });
   },
 
