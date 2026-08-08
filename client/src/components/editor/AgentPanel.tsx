@@ -594,26 +594,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
         </div>
 
         <div className="border-t border-brand-hairline p-3 space-y-2">
-          {hasModels ? (
-            <div className="flex items-center gap-2">
-              <Cpu size={14} className="text-brand-mute shrink-0" />
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="flex-1 bg-brand-canvas-soft-2 text-brand-ink text-xs px-2 py-1.5 rounded-sm border border-brand-hairline outline-none focus:border-brand-link transition-colors"
-              >
-                {availableModels.map((group) => (
-                  <optgroup key={group.provider} label={group.provider.toUpperCase()}>
-                    {group.models.map((m) => (
-                      <option key={`${group.provider}-${m}`} value={m}>
-                        {m}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </div>
-          ) : (
+          {!hasModels && (
             <div className="flex items-center gap-2 text-xs text-brand-mute">
               <Cpu size={14} className="shrink-0" />
               <span>
@@ -625,46 +606,63 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
             </div>
           )}
 
-          {sessionId && (status === "done" || status === "idle") && (
-            <div className="flex gap-2">
-              <button
-                onClick={startNewSession}
-                className="flex items-center gap-1 text-xs text-brand-mute hover:text-brand-ink transition-colors"
+          {hasModels && (
+            <div className="flex items-center gap-1 bg-brand-canvas border border-brand-hairline rounded-xl focus-within:border-brand-link focus-within:ring-2 focus-within:ring-brand-link/20 transition-colors">
+              <input
+                type="text"
+                placeholder={
+                  sessionId
+                    ? "Send a follow-up message..."
+                    : "Paste a job URL or ask the agent anything..."
+                }
+                value={inputText}
+                onChange={(e) => setInputText(e.target.value)}
+                disabled={status === "running"}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && status !== "running") handleSend();
+                }}
+                className="flex-1 min-w-0 bg-transparent text-brand-ink text-xs px-3 h-10 outline-none placeholder:text-brand-mute disabled:opacity-50"
+              />
+
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="shrink-0 bg-transparent text-brand-ink text-xs px-2 h-7 outline-none max-w-[140px] truncate rounded-sm hover:bg-brand-canvas-soft-2 transition-colors"
               >
-                <Plus size={12} />
-                New session
+                {availableModels.map((group) => (
+                  <optgroup key={group.provider} label={group.provider.toUpperCase()}>
+                    {group.models.map((m) => (
+                      <option key={`${group.provider}-${m}`} value={m}>
+                        {m.split("/").pop()}
+                      </option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+
+              <button
+                onClick={handleSend}
+                disabled={status === "running" || !inputText.trim() || !resumeProjectPath}
+                className="shrink-0 flex items-center justify-center w-8 h-8 mr-1 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
+              >
+                {status === "running" ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <Send size={16} />
+                )}
               </button>
             </div>
           )}
 
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder={
-                sessionId
-                  ? "Send a follow-up message..."
-                  : "Paste a job URL or ask the agent anything..."
-              }
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              disabled={status === "running"}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && status !== "running") handleSend();
-              }}
-              className="flex-1 bg-brand-canvas-soft-2 text-brand-ink text-xs px-2.5 py-1.5 rounded-sm border border-brand-hairline outline-none focus:border-brand-link transition-colors disabled:opacity-50"
-            />
+          {sessionId && (status === "done" || status === "idle") && (
             <button
-              onClick={handleSend}
-              disabled={status === "running" || !inputText.trim() || !resumeProjectPath || !hasModels}
-              className="shrink-0 flex items-center justify-center w-7 h-7 rounded-sm bg-brand-ink text-brand-on-primary hover:bg-brand-link transition-colors disabled:opacity-30"
+              onClick={startNewSession}
+              className="flex items-center gap-1 text-xs text-brand-mute hover:text-brand-ink transition-colors"
             >
-              {status === "running" ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <Send size={14} />
-              )}
+              <Plus size={12} />
+              New session
             </button>
-          </div>
+          )}
         </div>
       </div>
     </div>
