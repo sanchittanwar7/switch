@@ -114,3 +114,33 @@ export interface CreateEventInput {
 }
 
 export type UpdateEventInput = Partial<CreateEventInput>;
+
+export interface ResearchSessionSummary {
+  id: string;
+  title: string;
+  createdAt: number;
+  lastActivityAt: number;
+  messageCount: number;
+}
+
+export interface ResearchSessionDetail {
+  id: string;
+  title: string;
+  messages: AgentMessage[];
+  createdAt: number;
+  lastActivityAt: number;
+  sessionToken: string;
+}
+
+export interface AgentMessage {
+  role: "user" | "assistant" | "tool_call" | "tool_result";
+  content: string;
+  toolCallId?: string;
+  toolName?: string;
+  toolInput?: unknown;
+}
+
+export interface ResearchReport {
+  content: string;
+  lastModified: number | null;
+}

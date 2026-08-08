@@ -160,15 +160,9 @@ router.get("/sessions/:id", async (req, res) => {
     const { id } = req.params;
     const userId = req.userId!;
 
-    const loaded = await loadSessionById(id);
+    const loaded = await loadSessionById(id, userId);
     if (!loaded || loaded.userId !== userId) {
       res.status(404).json({ error: "Session not found" });
-      return;
-    }
-
-    if (Date.now() - loaded.lastActivityAt > 30 * 60 * 1000) {
-      deleteSession(id);
-      res.status(404).json({ error: "Session expired" });
       return;
     }
 

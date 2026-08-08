@@ -10,6 +10,7 @@ import SettingsView from "./views/SettingsView";
 import CalendarView from "./views/CalendarView";
 import ApplicationView from "./views/ApplicationView";
 import QuestionBankView from "./views/QuestionBankView";
+import ResearchView from "./views/ResearchView";
 import LoginPage from "./views/LoginPage";
 import LandingPage from "./views/LandingPage";
 
@@ -73,6 +74,7 @@ export default function App() {
         <Route path="/calendar" element={<CalendarView />} />
         <Route path="/resumes" element={<ResumeListView />} />
         <Route path="/resume" element={<EditorView />} />
+        <Route path="/research" element={<ResearchView />} />
         <Route path="/settings" element={<SettingsView />} />
       </Route>
 

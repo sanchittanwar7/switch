@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, FileText, Settings, LogOut, User, PanelLeft, MessageSquareQuote } from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileText, Settings, LogOut, User, PanelLeft, MessageSquareQuote, FlaskConical } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 const navItems = [
@@ -7,6 +7,7 @@ const navItems = [
   { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/questions", icon: MessageSquareQuote, label: "Question Bank" },
   { to: "/resumes", icon: FileText, label: "Resumes" },
+  { to: "/research", icon: FlaskConical, label: "Research" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
 

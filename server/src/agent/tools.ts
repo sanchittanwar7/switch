@@ -6,10 +6,13 @@ import { resolvePath } from "../utils/paths";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 
-export function createTools(userId: string) {
+export function createTools(userId: string, workspaceSubPath?: string) {
+  const resolve = (relativePath: string) =>
+    resolvePath(workspaceSubPath ? path.join(workspaceSubPath, relativePath) : relativePath, userId);
+
   return {
     read_files: tool({
-      description: "Read one or more files from the resume project directory. Returns content for each file.",
+      description: "Read one or more files from the workspace directory. Returns content for each file.",
       inputSchema: z.object({
         paths: z.array(z.string()).describe("Relative paths to the files to read"),
       }),
@@ -17,7 +20,7 @@ export function createTools(userId: string) {
         const results: Record<string, string> = {};
         for (const relativePath of relativePaths) {
           try {
-            const absPath = resolvePath(relativePath, userId);
+            const absPath = resolve(relativePath);
             results[relativePath] = await fs.readFile(absPath, "utf-8");
           } catch (err) {
             results[relativePath] = `Error reading ${relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`;
@@ -28,14 +31,14 @@ export function createTools(userId: string) {
     }),
     write_file: tool({
       description:
-        "Write content to a file in the resume project directory. Creates parent directories if they don't exist.",
+        "Write content to a file in the workspace directory. Creates parent directories if they don't exist.",
       inputSchema: z.object({
         path: z.string().describe("Relative path where the file should be written"),
         content: z.string().describe("Content to write to the file"),
       }),
       execute: async ({ path: relativePath, content }) => {
         try {
-          const absPath = resolvePath(relativePath, userId);
+          const absPath = resolve(relativePath);
           await fs.mkdir(path.dirname(absPath), { recursive: true });
           await fs.writeFile(absPath, content, "utf-8");
           return `File written: ${relativePath} (${content.length} chars)`;
@@ -51,7 +54,7 @@ export function createTools(userId: string) {
       }),
       execute: async ({ path: relativePath }) => {
         try {
-          const absPath = resolvePath(relativePath, userId);
+          const absPath = resolve(relativePath);
           const entries = await fs.readdir(absPath, { withFileTypes: true });
           return entries.map((e) => ({
             name: e.name,
