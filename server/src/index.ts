@@ -11,6 +11,7 @@ import latexRoutes from "./routes/latex";
 import agentRoutes, { streamRouter } from "./agent/routes";
 import researchRoutes, { researchStreamRouter } from "./agent/research-routes";
 import settingsRoutes from "./routes/settings";
+import profileRoutes from "./routes/profile";
 import calendarRoutes from "./routes/calendar";
 import applicationsRouter from "./routes/applications";
 import questionsRouter from "./routes/questions";
@@ -37,6 +38,7 @@ app.use("/api/agent", authMiddleware, agentRoutes);
 app.use("/api/research", researchStreamRouter);
 app.use("/api/research", authMiddleware, researchRoutes);
 app.use("/api/settings", authMiddleware, settingsRoutes);
+app.use("/api/profile", authMiddleware, profileRoutes);
 
 app.use("/pdfs", authMiddleware, async (req, res) => {
   const userId = (req as any).userId!;

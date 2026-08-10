@@ -71,6 +71,13 @@
       "when": 1786200000000,
       "tag": "0009_rename_question_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1786387046089,
+      "tag": "0010_curious_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }
