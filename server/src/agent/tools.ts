@@ -5,6 +5,9 @@ import path from "path";
 import { resolvePath } from "../utils/paths";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
+import { db } from "../db";
+import { applications } from "../db/schema";
+import { eq, and, asc } from "drizzle-orm";
 
 export function createTools(userId: string, workspaceSubPath?: string) {
   const resolve = (relativePath: string) =>
@@ -83,6 +86,44 @@ export function createTools(userId: string, workspaceSubPath?: string) {
           return article?.textContent || "Could not extract meaningful content from this page.";
         } catch (err) {
           return `Error fetching ${url}: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
+      },
+    }),
+    add_job_to_wishlist: tool({
+      description:
+        "Add a job to the user's wishlist on the jobs board. Use when the user provides job details with company, role, and optionally job URL and tags.",
+      inputSchema: z.object({
+        company: z.string().describe("Company name"),
+        role: z.string().describe("Job role/title"),
+        jobUrl: z.string().optional().describe("Job posting URL"),
+        tags: z.array(z.string()).optional().describe("Tags for the wishlist card"),
+      }),
+      execute: async ({ company, role, jobUrl, tags }) => {
+        try {
+          const [maxPos] = await db
+            .select({ max: applications.position })
+            .from(applications)
+            .where(and(eq(applications.columnId, "wishlist"), eq(applications.userId, userId)))
+            .orderBy(asc(applications.position));
+
+          const nextPosition = (maxPos?.max ?? -1) + 1;
+
+          const [created] = await db
+            .insert(applications)
+            .values({
+              userId,
+              company,
+              role,
+              jobUrl: jobUrl?.trim() || null,
+              tags: Array.isArray(tags) ? tags : [],
+              columnId: "wishlist",
+              position: nextPosition,
+            })
+            .returning();
+
+          return `Job added to wishlist: ${company} - ${role} (id: ${created.id})`;
+        } catch (err) {
+          return `Error adding job to wishlist: ${err instanceof Error ? err.message : "Unknown error"}`;
         }
       },
     }),
