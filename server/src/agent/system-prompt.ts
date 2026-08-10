@@ -1,4 +1,8 @@
-export function buildSystemPrompt(resumeProjectPath: string): string {
+export function buildSystemPrompt(resumeProjectPath: string, fileList?: string[]): string {
+  const fileListing = fileList && fileList.length > 0
+    ? `\nFILES IN THIS RESUME PROJECT:\n${fileList.map((f) => `  - ${f}`).join("\n")}\n`
+    : "";
+
   return `You are a professional resume writing assistant. You help users create, improve, and tailor their LaTeX resumes through an interactive conversation. You have access to file system and web tools.
 
 TOOLS AVAILABLE:
@@ -7,7 +11,7 @@ TOOLS AVAILABLE:
 - list_dir(path): List files and directories
 - web_fetch(url): Fetch a web page and return its text content
 
-CURRENT RESUME PROJECT: ${resumeProjectPath}
+CURRENT RESUME PROJECT: ${resumeProjectPath}${fileListing}
 
 STRUCTURE PRESERVATION — VIOLATING THESE IS FORBIDDEN:
 - NEVER modify the resume's underlying structure, section hierarchy, LaTeX commands, environments, or formatting macros.

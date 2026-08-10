@@ -1,15 +1,18 @@
 import { streamText, isStepCount } from "ai";
 import type { Response } from "express";
+import fs from "fs/promises";
 import { createModel } from "./provider-factory";
 import { createTools } from "./tools";
 import { buildSystemPrompt } from "./system-prompt";
 import { addMessage, setProcessing } from "./session-store";
 import type { AgentSession } from "./session-store";
+import { resolvePath } from "../utils/paths";
 
 export async function runAgentStream(session: AgentSession, res: Response): Promise<void> {
   const model = createModel(session.settings);
   const tools = createTools(session.userId);
-  const systemPrompt = buildSystemPrompt(session.resumeProjectPath);
+  const fileList = await listResumeFiles(session.userId, session.resumeProjectPath);
+  const systemPrompt = buildSystemPrompt(session.resumeProjectPath, fileList);
 
   if (session.processing) {
     res.writeHead(409, { "Content-Type": "application/json" });
@@ -99,5 +102,22 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
     if (!res.writableEnded) {
       res.end();
     }
+  }
+}
+
+async function listResumeFiles(userId: string, resumeProjectPath: string): Promise<string[]> {
+  try {
+    const absPath = resolvePath(resumeProjectPath, userId);
+    const entries = await fs.readdir(absPath, { withFileTypes: true, recursive: true });
+    return entries
+      .filter((e) => e.isFile())
+      .map((e) => {
+        const fileRel = e.parentPath
+          ? `${e.parentPath}/${e.name}`
+          : e.name;
+        return `${resumeProjectPath}/${fileRel}`;
+      });
+  } catch {
+    return [];
   }
 }

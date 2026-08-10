@@ -57,7 +57,7 @@ export default function MonacoEditor() {
         if (state.activeFile && state.isDirty) {
           state.saveFile(state.activeFile);
         }
-      }, 3000);
+      }, 1500);
     }
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);

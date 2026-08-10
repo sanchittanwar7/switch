@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight, Cpu, User, MessageSquare, Plus } from "lucide-react";
-import { useEditorStore } from "../../stores/editorStore";
 import { useSettingsStore } from "../../stores/settingsStore";
 import type { AvailableModel } from "../../stores/settingsStore";
 import { apiUrl } from "../../lib/api";
@@ -102,12 +101,9 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
   const eventSourceRef = useRef<EventSource | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const activeFile = useEditorStore((s) => s.activeFile);
   const { availableModels, loadAvailableModels } = useSettingsStore();
 
-  const resumeProjectPath = activeFile
-    ? activeFile.split("/").slice(0, 2).join("/")
-    : projectPath;
+  const resumeProjectPath = projectPath;
 
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });

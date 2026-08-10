@@ -31,6 +31,7 @@ interface EditorStore {
   readFile: (path: string) => Promise<string>;
   compile: (projectPath: string) => Promise<void>;
   setPdfUrl: (url: string | null) => void;
+  resetEditor: () => void;
   startAgentSession: (
     jobUrl: string,
     resumeProjectPath: string,
@@ -54,6 +55,27 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     set({ activeFile: path, isDirty: false });
   },
 
+  resetEditor: () => {
+    const { isDirty, activeFile, fileContents, pdfUrl: prevUrl } = get();
+    if (isDirty && activeFile && fileContents[activeFile] !== undefined) {
+      const content = fileContents[activeFile];
+      apiPut("/api/fs/write", { path: activeFile, content }).catch(() => {});
+    }
+    if (prevUrl?.startsWith("blob:")) URL.revokeObjectURL(prevUrl);
+    set({
+      activeFile: null,
+      openFiles: [],
+      fileContents: {},
+      fileTree: [],
+      isDirty: false,
+      compileStatus: "idle",
+      compileErrors: [],
+      pdfPath: null,
+      pdfUrl: null,
+      agentSession: null,
+    });
+  },
+
   openFile: async (path) => {
     const { fileContents, openFiles } = get();
 
@@ -73,7 +95,11 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
   },
 
   closeFile: (path) => {
-    const { openFiles, activeFile, fileContents } = get();
+    const { openFiles, activeFile, fileContents, isDirty } = get();
+    if (isDirty && activeFile === path && fileContents[path] !== undefined) {
+      const content = fileContents[path];
+      apiPut("/api/fs/write", { path, content }).catch(() => {});
+    }
     const newOpenFiles = openFiles.filter((f) => f !== path);
     const { [path]: _removed, ...rest } = fileContents;
     set({
