@@ -15,6 +15,7 @@ export default function ResearchView() {
   const [instructionsModalOpen, setInstructionsModalOpen] = useState(false);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const store = useResearchStore();
   const { availableModels, loadAvailableModels } = useSettingsStore();
@@ -124,57 +125,70 @@ export default function ResearchView() {
             </p>
           ) : (
             <div className="px-[15%]">
-              <div className="w-full flex items-center gap-1 bg-brand-canvas border border-brand-hairline rounded-xl focus-within:border-brand-link focus-within:ring-2 focus-within:ring-brand-link/20 transition-colors">
-              <input
-                type="text"
+              <div className="w-full flex flex-col gap-1 bg-brand-canvas border border-brand-hairline rounded-xl focus-within:border-brand-link focus-within:ring-2 focus-within:ring-brand-link/20 transition-colors p-2">
+              <textarea
+                ref={textareaRef}
+                rows={1}
                 placeholder="e.g. Research Stripe..."
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+                onChange={(e) => {
+                  setInputText(e.target.value);
+                  const el = textareaRef.current;
+                  if (el) {
+                    el.style.height = "auto";
+                    el.style.height = el.scrollHeight + "px";
+                  }
+                }}
                 disabled={isRunning}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && !isRunning) handleSend();
+                  if (e.key === "Enter" && !e.shiftKey && !isRunning) {
+                    e.preventDefault();
+                    handleSend();
+                  }
                 }}
-                className="flex-1 min-w-0 bg-transparent text-brand-ink text-sm px-4 h-12 outline-none placeholder:text-brand-mute disabled:opacity-50"
+                className="w-full bg-transparent text-brand-ink text-sm px-1 outline-none resize-none placeholder:text-brand-mute disabled:opacity-50"
               />
 
-              <select
-                value={store.selectedModel}
-                onChange={(e) => store.setSelectedModel(e.target.value)}
-                className="shrink-0 bg-transparent text-brand-ink text-xs px-2 h-8 outline-none max-w-[160px] truncate rounded-sm hover:bg-brand-canvas-soft-2 transition-colors"
-              >
-                {availableModels.map((group) => (
-                  <optgroup key={group.provider} label={group.provider.toUpperCase()}>
-                    {group.models.map((m) => (
-                      <option key={`${group.provider}-${m}`} value={m}>
-                        {m.split("/").pop()}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+              <div className="flex items-center gap-1 self-end">
+                <select
+                  value={store.selectedModel}
+                  onChange={(e) => store.setSelectedModel(e.target.value)}
+                  className="shrink-0 bg-transparent text-brand-ink text-xs px-2 h-8 outline-none max-w-[160px] truncate rounded-sm hover:bg-brand-canvas-soft-2 transition-colors"
+                >
+                  {availableModels.map((group) => (
+                    <optgroup key={group.provider} label={group.provider.toUpperCase()}>
+                      {group.models.map((m) => (
+                        <option key={`${group.provider}-${m}`} value={m}>
+                          {m.split("/").pop()}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
 
-              <button
-                onClick={() => setInstructionsModalOpen(true)}
-                className="relative shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
-                title="Research Instructions"
-              >
-                <Settings size={16} />
-                {store.instructions && (
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-brand-link rounded-full" />
-                )}
-              </button>
+                <button
+                  onClick={() => setInstructionsModalOpen(true)}
+                  className="relative shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
+                  title="Research Instructions"
+                >
+                  <Settings size={16} />
+                  {store.instructions && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-brand-link rounded-full" />
+                  )}
+                </button>
 
-              <button
-                onClick={handleSend}
-                disabled={isRunning || !inputText.trim()}
-                className="shrink-0 flex items-center justify-center w-9 h-9 mr-1 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
-              >
-                {isRunning ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Send size={16} />
-                )}
-              </button>
+                <button
+                  onClick={handleSend}
+                  disabled={isRunning || !inputText.trim()}
+                  className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
+                >
+                  {isRunning ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                </button>
+              </div>
             </div>
             </div>
           )}
@@ -402,57 +416,70 @@ export default function ResearchView() {
 
                   {hasModels && (
                     <div className="px-[15%]">
-                      <div className="w-full flex items-center gap-1 bg-brand-canvas border border-brand-hairline rounded-xl focus-within:border-brand-link focus-within:ring-2 focus-within:ring-brand-link/20 transition-colors">
-                      <input
-                        type="text"
+                      <div className="w-full flex flex-col gap-1 bg-brand-canvas border border-brand-hairline rounded-xl focus-within:border-brand-link focus-within:ring-2 focus-within:ring-brand-link/20 transition-colors p-2">
+                      <textarea
+                        ref={textareaRef}
+                        rows={1}
                         placeholder={hasActiveSession ? "Send a follow-up message..." : "e.g. Research Stripe..."}
                         value={inputText}
-                        onChange={(e) => setInputText(e.target.value)}
+                        onChange={(e) => {
+                          setInputText(e.target.value);
+                          const el = textareaRef.current;
+                          if (el) {
+                            el.style.height = "auto";
+                            el.style.height = el.scrollHeight + "px";
+                          }
+                        }}
                         disabled={isRunning}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" && !isRunning) handleSend();
+                          if (e.key === "Enter" && !e.shiftKey && !isRunning) {
+                            e.preventDefault();
+                            handleSend();
+                          }
                         }}
-                        className="flex-1 min-w-0 bg-transparent text-brand-ink text-sm px-4 h-12 outline-none placeholder:text-brand-mute disabled:opacity-50"
+                        className="w-full bg-transparent text-brand-ink text-sm px-1 outline-none resize-none placeholder:text-brand-mute disabled:opacity-50"
                       />
 
-                      <select
-                        value={store.selectedModel}
-                        onChange={(e) => store.setSelectedModel(e.target.value)}
-                        className="shrink-0 bg-transparent text-brand-ink text-xs px-2 h-8 outline-none max-w-[160px] truncate rounded-sm hover:bg-brand-canvas-soft-2 transition-colors"
-                      >
-                        {availableModels.map((group) => (
-                          <optgroup key={group.provider} label={group.provider.toUpperCase()}>
-                            {group.models.map((m) => (
-                              <option key={`${group.provider}-${m}`} value={m}>
-                                {m.split("/").pop()}
-                              </option>
-                            ))}
-                          </optgroup>
-                        ))}
-                      </select>
+                      <div className="flex items-center gap-1 self-end">
+                        <select
+                          value={store.selectedModel}
+                          onChange={(e) => store.setSelectedModel(e.target.value)}
+                          className="shrink-0 bg-transparent text-brand-ink text-xs px-2 h-8 outline-none max-w-[160px] truncate rounded-sm hover:bg-brand-canvas-soft-2 transition-colors"
+                        >
+                          {availableModels.map((group) => (
+                            <optgroup key={group.provider} label={group.provider.toUpperCase()}>
+                              {group.models.map((m) => (
+                                <option key={`${group.provider}-${m}`} value={m}>
+                                  {m.split("/").pop()}
+                                </option>
+                              ))}
+                            </optgroup>
+                          ))}
+                        </select>
 
-                      <button
-                        onClick={() => setInstructionsModalOpen(true)}
-                        className="relative shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
-                        title="Research Instructions"
-                      >
-                        <Settings size={16} />
-                        {store.instructions && (
-                          <span className="absolute top-1 right-1 w-2 h-2 bg-brand-link rounded-full" />
-                        )}
-                      </button>
+                        <button
+                          onClick={() => setInstructionsModalOpen(true)}
+                          className="relative shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors"
+                          title="Research Instructions"
+                        >
+                          <Settings size={16} />
+                          {store.instructions && (
+                            <span className="absolute top-1 right-1 w-2 h-2 bg-brand-link rounded-full" />
+                          )}
+                        </button>
 
-                      <button
-                        onClick={handleSend}
-                        disabled={isRunning || !inputText.trim()}
-                        className="shrink-0 flex items-center justify-center w-9 h-9 mr-1 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
-                      >
-                        {isRunning ? (
-                          <Loader2 size={16} className="animate-spin" />
-                        ) : (
-                          <Send size={16} />
-                        )}
-                      </button>
+                        <button
+                          onClick={handleSend}
+                          disabled={isRunning || !inputText.trim()}
+                          className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
+                        >
+                          {isRunning ? (
+                            <Loader2 size={16} className="animate-spin" />
+                          ) : (
+                            <Send size={16} />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     </div>
                   )}
