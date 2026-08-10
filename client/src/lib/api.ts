@@ -148,3 +148,94 @@ export function getSharedQuestions(filters?: SharedQuestionFilters): Promise<{ i
   if (filters?.search) params.set("search", filters.search);
   return apiGet(`/api/questions/shared?${params.toString()}`);
 }
+
+// ─── Profile ─────────────────────────────────────────────────────────────────
+
+export interface ProfileLocation {
+  city: string;
+  country: string;
+  isRemote: boolean;
+}
+
+export interface ProfileWorkExperience {
+  id: string;
+  company: string;
+  role: string;
+  startDate: string;
+  endDate: string | null;
+  skills: string[];
+}
+
+export interface ProfileProject {
+  id: string;
+  title: string;
+  description: string;
+  github: string;
+  url: string;
+}
+
+export interface ProfileSkill {
+  id: string;
+  name: string;
+  expertise: "beginner" | "intermediate" | "expert";
+}
+
+// Location
+export async function getLocation() {
+  return apiGet<ProfileLocation | null>("/api/profile/location");
+}
+
+export async function updateLocation(data: Partial<ProfileLocation>) {
+  return apiPut<ProfileLocation>("/api/profile/location", data);
+}
+
+// Work Experiences
+export async function getExperiences() {
+  return apiGet<ProfileWorkExperience[]>("/api/profile/experiences");
+}
+
+export async function createExperience(data: Omit<ProfileWorkExperience, "id">) {
+  return apiPost<ProfileWorkExperience>("/api/profile/experiences", data);
+}
+
+export async function updateExperience(id: string, data: Partial<Omit<ProfileWorkExperience, "id">>) {
+  return apiPatch<ProfileWorkExperience>(`/api/profile/experiences/${id}`, data);
+}
+
+export async function deleteExperience(id: string) {
+  return apiDelete(`/api/profile/experiences/${id}`);
+}
+
+// Projects
+export async function getProjects() {
+  return apiGet<ProfileProject[]>("/api/profile/projects");
+}
+
+export async function createProject(data: Omit<ProfileProject, "id">) {
+  return apiPost<ProfileProject>("/api/profile/projects", data);
+}
+
+export async function updateProject(id: string, data: Partial<Omit<ProfileProject, "id">>) {
+  return apiPatch<ProfileProject>(`/api/profile/projects/${id}`, data);
+}
+
+export async function deleteProject(id: string) {
+  return apiDelete(`/api/profile/projects/${id}`);
+}
+
+// Skills
+export async function getSkills() {
+  return apiGet<ProfileSkill[]>("/api/profile/skills");
+}
+
+export async function createSkill(data: Omit<ProfileSkill, "id">) {
+  return apiPost<ProfileSkill>("/api/profile/skills", data);
+}
+
+export async function updateSkill(id: string, data: Partial<Omit<ProfileSkill, "id">>) {
+  return apiPatch<ProfileSkill>(`/api/profile/skills/${id}`, data);
+}
+
+export async function deleteSkill(id: string) {
+  return apiDelete(`/api/profile/skills/${id}`);
+}
