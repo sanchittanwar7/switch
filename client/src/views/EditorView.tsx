@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { FolderOpen, Bot, PanelLeft } from "lucide-react";
@@ -17,18 +17,25 @@ export default function EditorView() {
   const [sideCollapsed, setSideCollapsed] = useState(false);
   const projectPath = searchParams.get("project");
   const pdfUrl = useEditorStore((s) => s.pdfUrl);
+  const resetEditor = useEditorStore((s) => s.resetEditor);
 
-  if (!projectPath) {
+  const resolvedPath = projectPath
+    ? projectPath.startsWith("resumes/")
+      ? projectPath
+      : `resumes/${projectPath}`
+    : null;
+
+  useEffect(() => {
+    if (resolvedPath) resetEditor();
+  }, [resolvedPath]);
+
+  if (!projectPath || !resolvedPath) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-sm text-brand-mute">Select a resume to edit.</div>
       </div>
     );
   }
-
-  const resolvedPath = projectPath.startsWith("resumes/")
-    ? projectPath
-    : `resumes/${projectPath}`;
 
   return (
     <div className="h-full flex">
