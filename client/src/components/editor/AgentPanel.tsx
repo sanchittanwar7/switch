@@ -100,6 +100,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
   const [loadingSessions, setLoadingSessions] = useState(false);
   const logRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const activeFile = useEditorStore((s) => s.activeFile);
   const { availableModels, loadAvailableModels } = useSettingsStore();
@@ -603,50 +604,63 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
           )}
 
           {hasModels && (
-            <div className="flex items-center gap-1 bg-brand-canvas border border-brand-hairline rounded-xl focus-within:border-brand-link focus-within:ring-2 focus-within:ring-brand-link/20 transition-colors">
-              <input
-                type="text"
+            <div className="flex flex-col gap-1 bg-brand-canvas border border-brand-hairline rounded-xl focus-within:border-brand-link focus-within:ring-2 focus-within:ring-brand-link/20 transition-colors p-2">
+              <textarea
+                ref={textareaRef}
+                rows={1}
                 placeholder={
                   sessionId
                     ? "Send a follow-up message..."
                     : "Paste a job URL or ask the agent anything..."
                 }
                 value={inputText}
-                onChange={(e) => setInputText(e.target.value)}
+                onChange={(e) => {
+                  setInputText(e.target.value);
+                  const el = textareaRef.current;
+                  if (el) {
+                    el.style.height = "auto";
+                    el.style.height = el.scrollHeight + "px";
+                  }
+                }}
                 disabled={status === "running"}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && status !== "running") handleSend();
+                  if (e.key === "Enter" && !e.shiftKey && status !== "running") {
+                    e.preventDefault();
+                    handleSend();
+                  }
                 }}
-                className="flex-1 min-w-0 bg-transparent text-brand-ink text-xs px-3 h-10 outline-none placeholder:text-brand-mute disabled:opacity-50"
+                className="w-full bg-transparent text-brand-ink text-xs px-1 outline-none resize-none placeholder:text-brand-mute disabled:opacity-50"
               />
 
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="shrink-0 bg-transparent text-brand-ink text-xs px-2 h-7 outline-none max-w-[140px] truncate rounded-sm hover:bg-brand-canvas-soft-2 transition-colors"
-              >
-                {availableModels.map((group) => (
-                  <optgroup key={group.provider} label={group.provider.toUpperCase()}>
-                    {group.models.map((m) => (
-                      <option key={`${group.provider}-${m}`} value={m}>
-                        {m.split("/").pop()}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+              <div className="flex items-center gap-1 self-end">
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="shrink-0 bg-transparent text-brand-ink text-xs px-2 h-7 outline-none max-w-[140px] truncate rounded-sm hover:bg-brand-canvas-soft-2 transition-colors"
+                >
+                  {availableModels.map((group) => (
+                    <optgroup key={group.provider} label={group.provider.toUpperCase()}>
+                      {group.models.map((m) => (
+                        <option key={`${group.provider}-${m}`} value={m}>
+                          {m.split("/").pop()}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+                </select>
 
-              <button
-                onClick={handleSend}
-                disabled={status === "running" || !inputText.trim() || !resumeProjectPath}
-                className="shrink-0 flex items-center justify-center w-8 h-8 mr-1 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
-              >
-                {status === "running" ? (
-                  <Loader2 size={16} className="animate-spin" />
-                ) : (
-                  <Send size={16} />
-                )}
-              </button>
+                <button
+                  onClick={handleSend}
+                  disabled={status === "running" || !inputText.trim() || !resumeProjectPath}
+                  className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
+                >
+                  {status === "running" ? (
+                    <Loader2 size={16} className="animate-spin" />
+                  ) : (
+                    <Send size={16} />
+                  )}
+                </button>
+              </div>
             </div>
           )}
 
