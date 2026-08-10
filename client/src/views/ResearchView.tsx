@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight,
-  Cpu, User, Plus, Trash2, FlaskConical, Settings, PanelLeft,
+  Cpu, User, Plus, Trash2, FlaskConical, Settings, PanelLeft, Star,
 } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useResearchStore } from "../stores/researchStore";
@@ -76,6 +76,22 @@ export default function ResearchView() {
   const handleStartNew = () => {
     store.startNewSession();
     setInputText("");
+  };
+
+  const insertWishlistTemplate = () => {
+    setInputText(`Add following job to my wishlist:
+Company: <COMPANY_NAME>
+Role: <ROLE_NAME>
+Job URL: <JOB_URL>
+Tags: <COMMA_SEPARATED_TAGS>`);
+    requestAnimationFrame(() => {
+      const el = textareaRef.current;
+      if (el) {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      }
+      el?.focus();
+    });
   };
 
   const handleLoadSession = (id: string) => {
@@ -481,17 +497,18 @@ export default function ResearchView() {
                         </button>
                       </div>
                     </div>
+                    {hasActiveSession && (store.status === "done" || store.status === "idle") && (
+                      <div className="flex justify-center mt-2">
+                        <button
+                          onClick={insertWishlistTemplate}
+                          className="flex items-center gap-1.5 text-xs text-brand-body bg-brand-canvas border border-brand-hairline hover:border-brand-hairline-strong hover:text-brand-ink rounded-lg px-2.5 py-1.5 transition-colors"
+                        >
+                          <Star size={12} />
+                          Add job to wishlist
+                        </button>
+                      </div>
+                    )}
                     </div>
-                  )}
-
-                  {hasActiveSession && (store.status === "done" || store.status === "idle") && (
-                    <button
-                      onClick={handleStartNew}
-                      className="flex items-center gap-1 text-xs text-brand-mute hover:text-brand-ink transition-colors"
-                    >
-                      <Plus size={12} />
-                      New session
-                    </button>
                   )}
                 </div>
             </div>

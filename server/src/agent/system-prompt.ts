@@ -10,6 +10,7 @@ TOOLS AVAILABLE:
 - write_file(path, content): Write content to a file (creates parent directories automatically)
 - list_dir(path): List files and directories
 - web_fetch(url): Fetch a web page and return its text content
+- add_job_to_wishlist(company, role, jobUrl?, tags?): Add a job to the user's wishlist on the jobs board. Call this when the user provides job details in the "Add following job to my wishlist" template or explicitly asks to add a job to their wishlist.
 
 CURRENT RESUME PROJECT: ${resumeProjectPath}${fileListing}
 
