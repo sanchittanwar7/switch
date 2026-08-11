@@ -78,6 +78,20 @@
       "when": 1786387046089,
       "tag": "0010_curious_kitty_pryde",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1786388459799,
+      "tag": "0011_slippery_dark_beast",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1786389341214,
+      "tag": "0012_sloppy_talos",
+      "breakpoints": true
     }
   ]
 }

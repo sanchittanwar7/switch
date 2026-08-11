@@ -161,9 +161,12 @@ export interface ProfileWorkExperience {
   id: string;
   company: string;
   role: string;
+  teamName: string | null;
+  description: string | null;
   startDate: string;
   endDate: string | null;
   skills: string[];
+  position: number;
 }
 
 export interface ProfileProject {
@@ -194,16 +197,20 @@ export async function getExperiences() {
   return apiGet<ProfileWorkExperience[]>("/api/profile/experiences");
 }
 
-export async function createExperience(data: Omit<ProfileWorkExperience, "id">) {
+export async function createExperience(data: Omit<ProfileWorkExperience, "id" | "position">) {
   return apiPost<ProfileWorkExperience>("/api/profile/experiences", data);
 }
 
-export async function updateExperience(id: string, data: Partial<Omit<ProfileWorkExperience, "id">>) {
+export async function updateExperience(id: string, data: Partial<Omit<ProfileWorkExperience, "id" | "position">>) {
   return apiPatch<ProfileWorkExperience>(`/api/profile/experiences/${id}`, data);
 }
 
 export async function deleteExperience(id: string) {
   return apiDelete(`/api/profile/experiences/${id}`);
+}
+
+export async function reorderExperiences(orderedIds: string[]) {
+  return apiPut<ProfileWorkExperience[]>("/api/profile/experiences/reorder", { orderedIds });
 }
 
 // Projects

@@ -1,6 +1,9 @@
 import { useState, useEffect } from "react";
-import { MapPin, Sparkles, Pencil, Trash2, Loader2, AlertCircle, Briefcase, FolderGit2, Github, ExternalLink } from "lucide-react";
+import { MapPin, Sparkles, Pencil, Trash2, Loader2, AlertCircle, Briefcase, FolderGit2, Github, ExternalLink, GripVertical } from "lucide-react";
 import { useProfileStore, type Skill, type WorkExperience, type Project } from "../stores/profileStore";
+import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const EXPERTISE_OPTIONS = [
   { value: "beginner", label: "Beginner" },
@@ -29,6 +32,7 @@ export default function ProfileView() {
     addExperience,
     updateExperience,
     deleteExperience,
+    reorderExperience,
     addProject,
     updateProject,
     deleteProject,
@@ -49,7 +53,7 @@ export default function ProfileView() {
 
   const [editingExpId, setEditingExpId] = useState<string | null>(null);
   const [expFormVisible, setExpFormVisible] = useState(false);
-  const [expForm, setExpForm] = useState({ company: "", role: "", startDate: "", endDate: "", isPresent: false, skills: "" });
+  const [expForm, setExpForm] = useState({ company: "", role: "", teamName: "", description: "", startDate: "", endDate: "", isPresent: false, skills: "" });
   const [expError, setExpError] = useState<string | null>(null);
 
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
@@ -138,7 +142,7 @@ export default function ProfileView() {
   }
 
   function openAddExp() {
-    setExpForm({ company: "", role: "", startDate: "", endDate: "", isPresent: false, skills: "" });
+    setExpForm({ company: "", role: "", teamName: "", description: "", startDate: "", endDate: "", isPresent: false, skills: "" });
     setEditingExpId(null);
     setExpFormVisible(true);
     setExpError(null);
@@ -148,6 +152,8 @@ export default function ProfileView() {
     setExpForm({
       company: exp.company,
       role: exp.role,
+      teamName: exp.teamName || "",
+      description: exp.description || "",
       startDate: exp.startDate,
       endDate: exp.endDate || "",
       isPresent: exp.endDate === null,
@@ -161,7 +167,7 @@ export default function ProfileView() {
   function cancelExpForm() {
     setExpFormVisible(false);
     setEditingExpId(null);
-    setExpForm({ company: "", role: "", startDate: "", endDate: "", isPresent: false, skills: "" });
+    setExpForm({ company: "", role: "", teamName: "", description: "", startDate: "", endDate: "", isPresent: false, skills: "" });
     setExpError(null);
   }
 
@@ -184,6 +190,8 @@ export default function ProfileView() {
     const data = {
       company: expForm.company.trim(),
       role: expForm.role.trim(),
+      teamName: expForm.teamName.trim() || null,
+      description: expForm.description.trim() || null,
       startDate: expForm.startDate,
       endDate: expForm.isPresent ? null : expForm.endDate,
       skills: skillsArray,
@@ -197,7 +205,7 @@ export default function ProfileView() {
       }
       setExpFormVisible(false);
       setEditingExpId(null);
-      setExpForm({ company: "", role: "", startDate: "", endDate: "", isPresent: false, skills: "" });
+      setExpForm({ company: "", role: "", teamName: "", description: "", startDate: "", endDate: "", isPresent: false, skills: "" });
     } catch (err) {
       setExpError(err instanceof Error ? err.message : "Failed to save experience");
     }
@@ -257,6 +265,15 @@ export default function ProfileView() {
     }
   }
 
+  function handleDragEnd(result: DropResult) {
+    if (!result.destination) return;
+    const reordered = Array.from(experiences);
+    const [removed] = reordered.splice(result.source.index, 1);
+    reordered.splice(result.destination.index, 0, removed);
+    const orderedIds = reordered.map((e) => e.id);
+    reorderExperience(orderedIds);
+  }
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center bg-brand-canvas-soft">
@@ -292,8 +309,8 @@ export default function ProfileView() {
             <div className="rounded-xl bg-brand-canvas border border-brand-hairline p-6">
               {!editingLocation ? (
                 location ? (
-                  <div>
-                    <div className="flex items-center gap-3 mb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
                       <MapPin size={18} className="text-brand-body shrink-0" />
                       <div>
                         <p className="text-[14px] text-brand-ink">
@@ -306,7 +323,7 @@ export default function ProfileView() {
                     </div>
                     <button
                       onClick={() => setEditingLocation(true)}
-                      className="inline-flex items-center gap-1.5 rounded-full bg-brand-canvas border border-brand-hairline px-3 py-1.5 text-[12px] font-medium text-brand-body hover:text-brand-ink hover:border-brand-hairline-strong transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-brand-canvas border border-brand-hairline px-3 py-1.5 text-[12px] font-medium text-brand-body hover:text-brand-ink hover:border-brand-hairline-strong transition-colors shrink-0"
                     >
                       <Pencil size={12} />
                       Edit
@@ -491,36 +508,66 @@ export default function ProfileView() {
                   </button>
                 </div>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  {skills.map((skill) => (
-                    <div
-                      key={skill.id}
-                      className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-canvas-soft-2 border border-brand-hairline text-[14px] text-brand-ink"
-                    >
-                      <span>{skill.name}</span>
-                      <span className="text-[11px] font-medium text-brand-mute bg-brand-canvas px-1.5 py-0.5 rounded">
-                        {skill.expertise}
-                      </span>
-                      <button
-                        onClick={() => openEditSkill(skill)}
-                        className="hidden group-hover:inline-flex p-0.5 rounded text-brand-mute hover:text-brand-ink transition-colors"
-                      >
-                        <Pencil size={12} />
-                      </button>
-                      <button
-                        onClick={() => deleteSkill(skill.id)}
-                        disabled={formLoading}
-                        className="hidden group-hover:inline-flex p-0.5 rounded text-brand-mute hover:text-brand-error transition-colors disabled:opacity-50"
-                      >
-                        {formLoading ? (
-                          <Loader2 size={12} className="animate-spin" />
-                        ) : (
-                          <Trash2 size={12} />
-                        )}
-                      </button>
+                (() => {
+                  const expertiseGroups = [
+                    { key: "expert" as const, label: "Expert" },
+                    { key: "intermediate" as const, label: "Intermediate" },
+                    { key: "beginner" as const, label: "Beginner" },
+                  ];
+
+                  const grouped = skills.reduce(
+                    (acc, skill) => {
+                      (acc[skill.expertise] ??= []).push(skill);
+                      return acc;
+                    },
+                    {} as Record<string, Skill[]>
+                  );
+
+                  return (
+                    <div className="space-y-6">
+                      {expertiseGroups.map(({ key, label }) => {
+                        const list = (grouped[key] ?? []).sort((a, b) =>
+                          a.name.localeCompare(b.name)
+                        );
+                        if (list.length === 0) return null;
+                        return (
+                          <div key={key}>
+                            <h4 className="text-[11px] font-medium text-brand-mute uppercase tracking-wider mb-2">
+                              {label}
+                            </h4>
+                            <div className="flex flex-wrap gap-2">
+                              {list.map((skill) => (
+                                <div
+                                  key={skill.id}
+                                  className="group flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-canvas-soft-2 border border-brand-hairline text-[14px] text-brand-ink"
+                                >
+                                  <span>{skill.name}</span>
+                                  <button
+                                    onClick={() => openEditSkill(skill)}
+                                    className="hidden group-hover:inline-flex p-0.5 rounded text-brand-mute hover:text-brand-ink transition-colors"
+                                  >
+                                    <Pencil size={12} />
+                                  </button>
+                                  <button
+                                    onClick={() => deleteSkill(skill.id)}
+                                    disabled={formLoading}
+                                    className="hidden group-hover:inline-flex p-0.5 rounded text-brand-mute hover:text-brand-error transition-colors disabled:opacity-50"
+                                  >
+                                    {formLoading ? (
+                                      <Loader2 size={12} className="animate-spin" />
+                                    ) : (
+                                      <Trash2 size={12} />
+                                    )}
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
-                </div>
+                  );
+                })()
               )}
             </div>
           </section>
@@ -580,6 +627,19 @@ export default function ProfileView() {
 
                     <label className="block">
                       <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
+                        Team
+                      </span>
+                      <input
+                        type="text"
+                        value={expForm.teamName}
+                        onChange={(e) => setExpForm((f) => ({ ...f, teamName: e.target.value }))}
+                        placeholder="Platform"
+                        className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+                      />
+                    </label>
+
+                    <label className="block">
+                      <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
                         Start Date
                       </span>
                       <input
@@ -613,6 +673,20 @@ export default function ProfileView() {
                         />
                       </label>
                     )}
+
+                    <label className="block">
+                      <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
+                        Description
+                      </span>
+                      <textarea
+                        value={expForm.description}
+                        onChange={(e) => setExpForm((f) => ({ ...f, description: e.target.value }))}
+                        placeholder="Led migration from monolith to microservices..."
+                        rows={4}
+                        className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 py-2 text-[14px] leading-[20px] text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link resize-vertical"
+                      />
+                      <p className="text-[11px] text-brand-mute mt-1">Markdown supported</p>
+                    </label>
 
                     <label className="block">
                       <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
@@ -665,150 +739,201 @@ export default function ProfileView() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {experiences.map((exp) => (
-                    <div
-                      key={exp.id}
-                      className="group border border-brand-hairline rounded-lg p-4 bg-brand-canvas-soft relative"
-                    >
-                      {editingExpId === exp.id && expFormVisible ? (
-                        <div className="space-y-4">
-                          {expError && (
-                            <div className="flex items-center gap-2 rounded-md bg-brand-error-soft px-3 py-2 text-[13px] text-brand-error">
-                              <AlertCircle size={14} />
-                              {expError}
-                            </div>
-                          )}
-                          <label className="block">
-                            <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
-                              Company
-                            </span>
-                            <input
-                              type="text"
-                              value={expForm.company}
-                              onChange={(e) => setExpForm((f) => ({ ...f, company: e.target.value }))}
-                              className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
-                              Role
-                            </span>
-                            <input
-                              type="text"
-                              value={expForm.role}
-                              onChange={(e) => setExpForm((f) => ({ ...f, role: e.target.value }))}
-                              className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
-                              Start Date
-                            </span>
-                            <input
-                              type="date"
-                              value={expForm.startDate}
-                              onChange={(e) => setExpForm((f) => ({ ...f, startDate: e.target.value }))}
-                              className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
-                            />
-                          </label>
-                          <label className="flex items-center gap-2 text-[14px] leading-[20px] text-brand-ink cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={expForm.isPresent}
-                              onChange={(e) => setExpForm((f) => ({ ...f, isPresent: e.target.checked }))}
-                              className="rounded border-brand-hairline bg-brand-canvas text-brand-link focus:ring-brand-link/20"
-                            />
-                            I currently work here
-                          </label>
-                          {!expForm.isPresent && (
-                            <label className="block">
-                              <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
-                                End Date
-                              </span>
-                              <input
-                                type="date"
-                                value={expForm.endDate}
-                                onChange={(e) => setExpForm((f) => ({ ...f, endDate: e.target.value }))}
-                                className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
-                              />
-                            </label>
-                          )}
-                          <label className="block">
-                            <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
-                              Skills
-                            </span>
-                            <input
-                              type="text"
-                              value={expForm.skills}
-                              onChange={(e) => setExpForm((f) => ({ ...f, skills: e.target.value }))}
-                              placeholder="React, TypeScript, Node.js"
-                              className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
-                            />
-                          </label>
-                          <div className="flex items-center gap-3 pt-1">
-                            <button
-                              onClick={handleExpSave}
-                              disabled={formLoading}
-                              className="inline-flex items-center gap-2 rounded-full bg-brand-ink text-brand-canvas px-6 h-10 text-[14px] leading-[20px] font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
-                            >
-                              {formLoading ? (
-                                <Loader2 size={14} className="animate-spin" />
-                              ) : null}
-                              Update
-                            </button>
-                            <button
-                              onClick={cancelExpForm}
-                              disabled={formLoading}
-                              className="text-[14px] leading-[20px] text-brand-body hover:text-brand-ink disabled:opacity-50 transition-colors"
-                            >
-                              Cancel
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <h4 className="text-[14px] font-medium text-brand-ink">{exp.company}</h4>
-                          <p className="text-[14px] text-brand-body">{exp.role}</p>
-                          <p className="text-[12px] text-brand-mute mt-1">
-                            {formatDate(exp.startDate)} — {exp.endDate ? formatDate(exp.endDate) : "Present"}
-                          </p>
-                          {exp.skills && exp.skills.length > 0 && (
-                            <div className="flex flex-wrap gap-1.5 mt-2">
-                              {exp.skills.map((skill, i) => (
-                                <span
-                                  key={i}
-                                  className="text-[11px] bg-brand-canvas-soft-2 text-brand-body px-2 py-0.5 rounded-full border border-brand-hairline"
-                                >
-                                  {skill}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          <div className="absolute top-3 right-3 hidden group-hover:flex items-center gap-1">
-                            <button
-                              onClick={() => openEditExp(exp)}
-                              className="p-1 rounded text-brand-mute hover:text-brand-ink transition-colors"
-                            >
-                              <Pencil size={12} />
-                            </button>
-                            <button
-                              onClick={() => deleteExperience(exp.id)}
-                              disabled={formLoading}
-                              className="p-1 rounded text-brand-mute hover:text-brand-error transition-colors disabled:opacity-50"
-                            >
-                              {formLoading ? (
-                                <Loader2 size={12} className="animate-spin" />
-                              ) : (
-                                <Trash2 size={12} />
-                              )}
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <DragDropContext onDragEnd={handleDragEnd}>
+                  <Droppable droppableId="experiences">
+                    {(provided) => (
+                      <div ref={provided.innerRef} {...provided.droppableProps} className="space-y-4">
+                        {experiences.map((exp, index) => (
+                          <Draggable key={exp.id} draggableId={exp.id} index={index}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                className={`group border border-brand-hairline rounded-lg p-4 bg-brand-canvas-soft relative ${snapshot.isDragging ? "opacity-60 shadow-lg" : ""}`}
+                              >
+                                <div {...provided.dragHandleProps} className="absolute top-3 left-3 hidden group-hover:flex text-brand-mute cursor-grab active:cursor-grabbing">
+                                  <GripVertical size={14} />
+                                </div>
+                                <div className={editingExpId !== exp.id ? "pl-6" : ""}>
+                                  {editingExpId === exp.id && expFormVisible ? (
+                                    <div className="space-y-4">
+                                      {expError && (
+                                        <div className="flex items-center gap-2 rounded-md bg-brand-error-soft px-3 py-2 text-[13px] text-brand-error">
+                                          <AlertCircle size={14} />
+                                          {expError}
+                                        </div>
+                                      )}
+                                      <label className="block">
+                                        <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
+                                          Company
+                                        </span>
+                                        <input
+                                          type="text"
+                                          value={expForm.company}
+                                          onChange={(e) => setExpForm((f) => ({ ...f, company: e.target.value }))}
+                                          className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+                                        />
+                                      </label>
+                                      <label className="block">
+                                        <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
+                                          Role
+                                        </span>
+                                        <input
+                                          type="text"
+                                          value={expForm.role}
+                                          onChange={(e) => setExpForm((f) => ({ ...f, role: e.target.value }))}
+                                          className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+                                        />
+                                      </label>
+                                      <label className="block">
+                                        <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
+                                          Team
+                                        </span>
+                                        <input
+                                          type="text"
+                                          value={expForm.teamName}
+                                          onChange={(e) => setExpForm((f) => ({ ...f, teamName: e.target.value }))}
+                                          placeholder="Platform"
+                                          className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+                                        />
+                                      </label>
+                                      <label className="block">
+                                        <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
+                                          Start Date
+                                        </span>
+                                        <input
+                                          type="date"
+                                          value={expForm.startDate}
+                                          onChange={(e) => setExpForm((f) => ({ ...f, startDate: e.target.value }))}
+                                          className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+                                        />
+                                      </label>
+                                      <label className="flex items-center gap-2 text-[14px] leading-[20px] text-brand-ink cursor-pointer">
+                                        <input
+                                          type="checkbox"
+                                          checked={expForm.isPresent}
+                                          onChange={(e) => setExpForm((f) => ({ ...f, isPresent: e.target.checked }))}
+                                          className="rounded border-brand-hairline bg-brand-canvas text-brand-link focus:ring-brand-link/20"
+                                        />
+                                        I currently work here
+                                      </label>
+                                      {!expForm.isPresent && (
+                                        <label className="block">
+                                          <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
+                                            End Date
+                                          </span>
+                                          <input
+                                            type="date"
+                                            value={expForm.endDate}
+                                            onChange={(e) => setExpForm((f) => ({ ...f, endDate: e.target.value }))}
+                                            className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+                                          />
+                                        </label>
+                                      )}
+                                      <label className="block">
+                                        <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
+                                          Description
+                                        </span>
+                                        <textarea
+                                          value={expForm.description}
+                                          onChange={(e) => setExpForm((f) => ({ ...f, description: e.target.value }))}
+                                          placeholder="Led migration from monolith to microservices..."
+                                          rows={4}
+                                          className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 py-2 text-[14px] leading-[20px] text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link resize-vertical"
+                                        />
+                                        <p className="text-[11px] text-brand-mute mt-1">Markdown supported</p>
+                                      </label>
+                                      <label className="block">
+                                        <span className="text-[14px] leading-[20px] tracking-[-0.28px] font-medium text-brand-ink mb-1.5 block">
+                                          Skills
+                                        </span>
+                                        <input
+                                          type="text"
+                                          value={expForm.skills}
+                                          onChange={(e) => setExpForm((f) => ({ ...f, skills: e.target.value }))}
+                                          placeholder="React, TypeScript, Node.js"
+                                          className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+                                        />
+                                      </label>
+                                      <div className="flex items-center gap-3 pt-1">
+                                        <button
+                                          onClick={handleExpSave}
+                                          disabled={formLoading}
+                                          className="inline-flex items-center gap-2 rounded-full bg-brand-ink text-brand-canvas px-6 h-10 text-[14px] leading-[20px] font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
+                                        >
+                                          {formLoading ? (
+                                            <Loader2 size={14} className="animate-spin" />
+                                          ) : null}
+                                          Update
+                                        </button>
+                                        <button
+                                          onClick={cancelExpForm}
+                                          disabled={formLoading}
+                                          className="text-[14px] leading-[20px] text-brand-body hover:text-brand-ink disabled:opacity-50 transition-colors"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <h4 className="text-[14px] font-medium text-brand-ink">{exp.company}</h4>
+                                      <p className="text-[14px] text-brand-body">
+                                        {exp.role}{exp.teamName ? ` | ${exp.teamName}` : ""}
+                                      </p>
+                                      <p className="text-[12px] text-brand-mute mt-1">
+                                        {formatDate(exp.startDate)} — {exp.endDate ? formatDate(exp.endDate) : "Present"}
+                                      </p>
+                                      {exp.skills && exp.skills.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 mt-2">
+                                          {exp.skills.map((skill, i) => (
+                                            <span
+                                              key={i}
+                                              className="text-[11px] bg-brand-canvas-soft-2 text-brand-body px-2 py-0.5 rounded-full border border-brand-hairline"
+                                            >
+                                              {skill}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {exp.description && (
+                                        <div className="mt-3 text-[13px] text-brand-body leading-relaxed prose-sm [&_a]:text-brand-link [&_a]:underline [&_code]:bg-brand-canvas-soft-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[12px] [&_pre]:bg-brand-canvas-soft-2 [&_pre]:p-3 [&_pre]:rounded-md [&_pre]:text-[12px] [&_pre]:overflow-x-auto [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_blockquote]:border-l-2 [&_blockquote]:border-brand-hairline-strong [&_blockquote]:pl-3 [&_blockquote]:text-brand-mute">
+                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                            {exp.description}
+                                          </ReactMarkdown>
+                                        </div>
+                                      )}
+                                      <div className="absolute top-3 right-3 hidden group-hover:flex items-center gap-1">
+                                        <button
+                                          onClick={() => openEditExp(exp)}
+                                          className="p-1 rounded text-brand-mute hover:text-brand-ink transition-colors"
+                                        >
+                                          <Pencil size={12} />
+                                        </button>
+                                        <button
+                                          onClick={() => deleteExperience(exp.id)}
+                                          disabled={formLoading}
+                                          className="p-1 rounded text-brand-mute hover:text-brand-error transition-colors disabled:opacity-50"
+                                        >
+                                          {formLoading ? (
+                                            <Loader2 size={12} className="animate-spin" />
+                                          ) : (
+                                            <Trash2 size={12} />
+                                          )}
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
+                </DragDropContext>
               )}
             </div>
           </section>

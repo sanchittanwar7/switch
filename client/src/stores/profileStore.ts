@@ -6,6 +6,7 @@ import {
   createExperience,
   updateExperience as apiUpdateExperience,
   deleteExperience,
+  reorderExperiences,
   getProjects,
   createProject,
   updateProject as apiUpdateProject,
@@ -38,9 +39,10 @@ interface ProfileState {
 
   updateLocation: (data: Partial<Location>) => Promise<void>;
 
-  addExperience: (data: Omit<WorkExperience, "id">) => Promise<void>;
-  updateExperience: (id: string, data: Partial<Omit<WorkExperience, "id">>) => Promise<void>;
+  addExperience: (data: Omit<WorkExperience, "id" | "position">) => Promise<void>;
+  updateExperience: (id: string, data: Partial<Omit<WorkExperience, "id" | "position">>) => Promise<void>;
   deleteExperience: (id: string) => Promise<void>;
+  reorderExperience: (orderedIds: string[]) => Promise<void>;
 
   addProject: (data: Omit<Project, "id">) => Promise<void>;
   updateProject: (id: string, data: Partial<Omit<Project, "id">>) => Promise<void>;
@@ -148,6 +150,18 @@ export const useProfileStore = create<ProfileState>((set) => ({
         error: err instanceof Error ? err.message : "Failed to delete experience",
       });
       throw err;
+    }
+  },
+
+  reorderExperience: async (orderedIds) => {
+    set({ error: null });
+    try {
+      const reordered = await reorderExperiences(orderedIds);
+      set({ experiences: reordered });
+    } catch (err) {
+      set({
+        error: err instanceof Error ? err.message : "Failed to reorder experiences",
+      });
     }
   },
 

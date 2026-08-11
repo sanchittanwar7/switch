@@ -1,0 +1,1 @@
+ALTER TABLE "work_experiences" ADD COLUMN "position" integer DEFAULT 0 NOT NULL;

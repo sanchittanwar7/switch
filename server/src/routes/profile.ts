@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { db } from "../db";
 import { userProfiles, workExperiences, projects, skills } from "../db/schema";
 
@@ -33,6 +33,7 @@ router.get("/location", async (req, res) => {
       isRemote: row.isRemote,
     });
   } catch (err) {
+    console.error("GET /location:", err);
     res.status(500).json({ error: "Failed to fetch location" });
   }
 });
@@ -65,6 +66,7 @@ router.put("/location", async (req, res) => {
       isRemote: row.isRemote,
     });
   } catch (err) {
+    console.error("PUT /location:", err);
     res.status(500).json({ error: "Failed to update location" });
   }
 });
@@ -78,19 +80,23 @@ router.get("/experiences", async (req, res) => {
       .select()
       .from(workExperiences)
       .where(eq(workExperiences.userId, userId))
-      .orderBy(desc(workExperiences.startDate));
+      .orderBy(asc(workExperiences.position), desc(workExperiences.startDate));
 
     res.json(
       rows.map((r) => ({
         id: r.id,
         company: r.company,
         role: r.role,
+        teamName: r.teamName,
+        description: r.description,
         startDate: r.startDate,
         endDate: r.endDate,
         skills: r.skills,
+        position: r.position,
       }))
     );
   } catch (err) {
+    console.error("GET /experiences:", err);
     res.status(500).json({ error: "Failed to fetch experiences" });
   }
 });
@@ -98,7 +104,7 @@ router.get("/experiences", async (req, res) => {
 router.post("/experiences", async (req, res) => {
   try {
     const userId = getUserId(req);
-    const { company, role, startDate, endDate, skills: skillsArr } = req.body;
+    const { company, role, teamName, description, startDate, endDate, skills: skillsArr } = req.body;
 
     if (!company || typeof company !== "string" || !company.trim()) {
       res.status(400).json({ error: "Company is required" });
@@ -117,15 +123,23 @@ router.post("/experiences", async (req, res) => {
       return;
     }
 
+    const [maxRow] = await db
+      .select({ maxPos: sql<number>`coalesce(max(${workExperiences.position}), -1)`.mapWith(Number) })
+      .from(workExperiences)
+      .where(eq(workExperiences.userId, userId));
+
     const [row] = await db
       .insert(workExperiences)
       .values({
         userId,
         company: company.trim(),
         role: role.trim(),
+        teamName: teamName || null,
+        description: description || null,
         startDate,
         endDate: endDate || null,
         skills: Array.isArray(skillsArr) ? skillsArr : [],
+        position: maxRow.maxPos + 1,
       })
       .returning();
 
@@ -133,11 +147,15 @@ router.post("/experiences", async (req, res) => {
       id: row.id,
       company: row.company,
       role: row.role,
+      teamName: row.teamName,
+      description: row.description,
       startDate: row.startDate,
       endDate: row.endDate,
       skills: row.skills,
+      position: row.position,
     });
   } catch (err) {
+    console.error("POST /experiences:", err);
     res.status(500).json({ error: "Failed to create experience" });
   }
 });
@@ -146,7 +164,7 @@ router.patch("/experiences/:id", async (req, res) => {
   try {
     const userId = getUserId(req);
     const { id } = req.params;
-    const { company, role, startDate, endDate, skills: skillsArr } = req.body;
+    const { company, role, teamName, description, startDate, endDate, skills: skillsArr } = req.body;
 
     const [existing] = await db
       .select()
@@ -170,6 +188,8 @@ router.patch("/experiences/:id", async (req, res) => {
     const updated: Record<string, any> = { updatedAt: new Date() };
     if (company !== undefined) updated.company = company.trim();
     if (role !== undefined) updated.role = role.trim();
+    if (teamName !== undefined) updated.teamName = teamName || null;
+    if (description !== undefined) updated.description = description || null;
     if (startDate !== undefined) updated.startDate = startDate;
     if (endDate !== undefined) updated.endDate = endDate;
     if (skillsArr !== undefined) updated.skills = Array.isArray(skillsArr) ? skillsArr : [];
@@ -184,11 +204,15 @@ router.patch("/experiences/:id", async (req, res) => {
       id: row.id,
       company: row.company,
       role: row.role,
+      teamName: row.teamName,
+      description: row.description,
       startDate: row.startDate,
       endDate: row.endDate,
       skills: row.skills,
+      position: row.position,
     });
   } catch (err) {
+    console.error("PATCH /experiences:", err);
     res.status(500).json({ error: "Failed to update experience" });
   }
 });
@@ -211,7 +235,52 @@ router.delete("/experiences/:id", async (req, res) => {
     await db.delete(workExperiences).where(eq(workExperiences.id, id));
     res.json({ success: true });
   } catch (err) {
+    console.error("DELETE /experiences:", err);
     res.status(500).json({ error: "Failed to delete experience" });
+  }
+});
+
+router.put("/experiences/reorder", async (req, res) => {
+  try {
+    const userId = getUserId(req);
+    const { orderedIds } = req.body;
+
+    if (!Array.isArray(orderedIds) || orderedIds.length === 0) {
+      res.status(400).json({ error: "orderedIds must be a non-empty array" });
+      return;
+    }
+
+    const updates = orderedIds.map((id, index) =>
+      db
+        .update(workExperiences)
+        .set({ position: index, updatedAt: new Date() })
+        .where(and(eq(workExperiences.id, String(id)), eq(workExperiences.userId, userId)))
+    );
+
+    await Promise.all(updates);
+
+    const rows = await db
+      .select()
+      .from(workExperiences)
+      .where(eq(workExperiences.userId, userId))
+      .orderBy(asc(workExperiences.position));
+
+    res.json(
+      rows.map((r) => ({
+        id: r.id,
+        company: r.company,
+        role: r.role,
+        teamName: r.teamName,
+        description: r.description,
+        startDate: r.startDate,
+        endDate: r.endDate,
+        skills: r.skills,
+        position: r.position,
+      }))
+    );
+  } catch (err) {
+    console.error("PUT /experiences/reorder:", err);
+    res.status(500).json({ error: "Failed to reorder experiences" });
   }
 });
 
@@ -235,6 +304,7 @@ router.get("/projects", async (req, res) => {
       }))
     );
   } catch (err) {
+    console.error("GET /projects:", err);
     res.status(500).json({ error: "Failed to fetch projects" });
   }
 });
@@ -268,6 +338,7 @@ router.post("/projects", async (req, res) => {
       url: row.url,
     });
   } catch (err) {
+    console.error("POST /projects:", err);
     res.status(500).json({ error: "Failed to create project" });
   }
 });
@@ -308,6 +379,7 @@ router.patch("/projects/:id", async (req, res) => {
       url: row.url,
     });
   } catch (err) {
+    console.error("PATCH /projects:", err);
     res.status(500).json({ error: "Failed to update project" });
   }
 });
@@ -330,6 +402,7 @@ router.delete("/projects/:id", async (req, res) => {
     await db.delete(projects).where(eq(projects.id, id));
     res.json({ success: true });
   } catch (err) {
+    console.error("DELETE /projects:", err);
     res.status(500).json({ error: "Failed to delete project" });
   }
 });
@@ -352,6 +425,7 @@ router.get("/skills", async (req, res) => {
       }))
     );
   } catch (err) {
+    console.error("GET /skills:", err);
     res.status(500).json({ error: "Failed to fetch skills" });
   }
 });
@@ -385,6 +459,7 @@ router.post("/skills", async (req, res) => {
       expertise: row.expertise,
     });
   } catch (err) {
+    console.error("POST /skills:", err);
     res.status(500).json({ error: "Failed to create skill" });
   }
 });
@@ -426,6 +501,7 @@ router.patch("/skills/:id", async (req, res) => {
       expertise: row.expertise,
     });
   } catch (err) {
+    console.error("PATCH /skills:", err);
     res.status(500).json({ error: "Failed to update skill" });
   }
 });
@@ -448,6 +524,7 @@ router.delete("/skills/:id", async (req, res) => {
     await db.delete(skills).where(eq(skills.id, id));
     res.json({ success: true });
   } catch (err) {
+    console.error("DELETE /skills:", err);
     res.status(500).json({ error: "Failed to delete skill" });
   }
 });

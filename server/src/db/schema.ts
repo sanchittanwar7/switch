@@ -129,9 +129,12 @@ export const workExperiences = pgTable("work_experiences", {
     .references(() => users.id, { onDelete: "cascade" }),
   company: text("company").notNull(),
   role: text("role").notNull(),
+  teamName: text("team_name"),
+  description: text("description"),
   startDate: text("start_date").notNull(),
   endDate: text("end_date"),
   skills: text("skills").array().notNull().default([]),
+  position: integer("position").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
