@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { MapPin, Sparkles, Pencil, Trash2, Loader2, AlertCircle, Briefcase, FolderGit2, Github, ExternalLink, GripVertical } from "lucide-react";
+import { MapPin, Sparkles, Pencil, Trash2, Loader2, AlertCircle, Briefcase, FolderGit2, Github, ExternalLink, GripVertical, ChevronDown, ChevronUp } from "lucide-react";
 import { useProfileStore, type Skill, type WorkExperience, type Project } from "../stores/profileStore";
 import { DragDropContext, Droppable, Draggable, type DropResult } from "@hello-pangea/dnd";
 import ReactMarkdown from "react-markdown";
@@ -55,6 +55,7 @@ export default function ProfileView() {
   const [expFormVisible, setExpFormVisible] = useState(false);
   const [expForm, setExpForm] = useState({ company: "", role: "", teamName: "", description: "", startDate: "", endDate: "", isPresent: false, skills: "" });
   const [expError, setExpError] = useState<string | null>(null);
+  const [expandedDescs, setExpandedDescs] = useState<Set<string>>(new Set());
 
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const [projectFormVisible, setProjectFormVisible] = useState(false);
@@ -169,6 +170,19 @@ export default function ProfileView() {
     setEditingExpId(null);
     setExpForm({ company: "", role: "", teamName: "", description: "", startDate: "", endDate: "", isPresent: false, skills: "" });
     setExpError(null);
+  }
+
+  function isLongDescription(desc: string): boolean {
+    return desc.split("\n").length > 8 || desc.length > 500;
+  }
+
+  function toggleExpDesc(id: string) {
+    setExpandedDescs((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
   }
 
   async function handleExpSave() {
@@ -589,7 +603,7 @@ export default function ProfileView() {
             </div>
 
             <div className="rounded-xl bg-brand-canvas border border-brand-hairline p-6">
-              {expFormVisible && (
+              {expFormVisible && editingExpId === null && (
                 <div className="mb-5 pb-5 border-b border-brand-hairline">
                   {expError && (
                     <div className="mb-4 flex items-center gap-2 rounded-md bg-brand-error-soft px-3 py-2 text-[13px] text-brand-error">
@@ -896,13 +910,43 @@ export default function ProfileView() {
                                           ))}
                                         </div>
                                       )}
-                                      {exp.description && (
-                                        <div className="mt-3 text-[13px] text-brand-body leading-relaxed prose-sm [&_a]:text-brand-link [&_a]:underline [&_code]:bg-brand-canvas-soft-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[12px] [&_pre]:bg-brand-canvas-soft-2 [&_pre]:p-3 [&_pre]:rounded-md [&_pre]:text-[12px] [&_pre]:overflow-x-auto [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_blockquote]:border-l-2 [&_blockquote]:border-brand-hairline-strong [&_blockquote]:pl-3 [&_blockquote]:text-brand-mute">
-                                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                                            {exp.description}
-                                          </ReactMarkdown>
-                                        </div>
-                                      )}
+                                      {exp.description && (() => {
+                                        const isLong = isLongDescription(exp.description);
+                                        const isExpanded = expandedDescs.has(exp.id);
+                                        const shouldCollapse = isLong && !isExpanded;
+                                        return (
+                                          <div className="relative">
+                                            <div
+                                              className={`mt-3 text-[13px] text-brand-body leading-relaxed prose-sm [&_a]:text-brand-link [&_a]:underline [&_code]:bg-brand-canvas-soft-2 [&_code]:px-1 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-[12px] [&_pre]:bg-brand-canvas-soft-2 [&_pre]:p-3 [&_pre]:rounded-md [&_pre]:text-[12px] [&_pre]:overflow-x-auto [&_ul]:list-disc [&_ul]:pl-4 [&_ol]:list-decimal [&_ol]:pl-4 [&_blockquote]:border-l-2 [&_blockquote]:border-brand-hairline-strong [&_blockquote]:pl-3 [&_blockquote]:text-brand-mute ${shouldCollapse ? "line-clamp-10 overflow-hidden" : ""}`}
+                                            >
+                                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                                {exp.description}
+                                              </ReactMarkdown>
+                                            </div>
+                                            {shouldCollapse && (
+                                              <>
+                                                <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-brand-canvas-soft to-transparent pointer-events-none rounded-b-lg" />
+                                                <button
+                                                  onClick={() => toggleExpDesc(exp.id)}
+                                                  className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 inline-flex items-center gap-1.5 rounded-full bg-brand-canvas border border-brand-hairline px-4 py-1 text-[12px] text-brand-link hover:bg-brand-canvas-soft-2 transition-colors shadow-sm"
+                                                >
+                                                  <ChevronDown size={12} />
+                                                  Show more
+                                                </button>
+                                              </>
+                                            )}
+                                            {isLong && isExpanded && (
+                                              <button
+                                                onClick={() => toggleExpDesc(exp.id)}
+                                                className="mt-2 inline-flex items-center gap-1.5 text-[12px] text-brand-link hover:underline"
+                                              >
+                                                <ChevronUp size={12} />
+                                                Show less
+                                              </button>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
                                       <div className="absolute top-3 right-3 hidden group-hover:flex items-center gap-1">
                                         <button
                                           onClick={() => openEditExp(exp)}
