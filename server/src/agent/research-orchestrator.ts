@@ -1,5 +1,5 @@
 import { streamText, isStepCount } from "ai";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import path from "path";
 import { createModel } from "./provider-factory";
 import { createTools } from "./tools";
@@ -7,7 +7,7 @@ import { buildResearchSystemPrompt } from "./research-system-prompt";
 import { addResearchMessage, setResearchProcessing, getResearchInstructions } from "./research-session-store";
 import type { ResearchSession } from "./research-session-store";
 
-export async function runResearchStream(session: ResearchSession, res: Response): Promise<void> {
+export async function runResearchStream(session: ResearchSession, req: Request, res: Response): Promise<void> {
   const model = createModel(session.settings);
   const workspaceSubPath = path.join("research", session.id);
   const tools = createTools(session.userId, workspaceSubPath);
@@ -36,6 +36,9 @@ export async function runResearchStream(session: ResearchSession, res: Response)
 
   let assistantResponse = "";
 
+  const abortController = new AbortController();
+  req.on("close", () => abortController.abort());
+
   try {
     const result = streamText({
       model,
@@ -47,6 +50,7 @@ export async function runResearchStream(session: ResearchSession, res: Response)
           content: m.content,
         })),
       tools,
+      abortSignal: abortController.signal,
       stopWhen: isStepCount(50),
       onToolExecutionStart: ({ toolCall }) => {
         addResearchMessage(session.id, "tool_call", `${toolCall.toolName}(${JSON.stringify(toolCall.input)})`, {

@@ -202,7 +202,7 @@ streamRouter.get("/sessions/:id/stream", async (req, res) => {
       return;
     }
 
-    await runAgentStream(session, res);
+    await runAgentStream(session, req, res);
   } catch (err) {
     if (!res.headersSent) {
       res.status(500).json({

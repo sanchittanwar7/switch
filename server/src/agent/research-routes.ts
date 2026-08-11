@@ -220,7 +220,7 @@ researchStreamRouter.get("/sessions/:id/stream", async (req, res) => {
       return;
     }
 
-    await runResearchStream(session, res);
+    await runResearchStream(session, req, res);
   } catch (err) {
     if (!res.headersSent) {
       res.status(500).json({

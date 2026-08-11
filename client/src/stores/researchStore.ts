@@ -59,6 +59,7 @@ interface ResearchStore {
   deleteSession: (id: string) => Promise<void>;
   sendMessage: (message: string) => Promise<void>;
   connectSSE: (id: string, token: string) => void;
+  stopSSE: () => void;
   startNewSession: () => void;
 
   openReportPanel: () => void;
@@ -109,6 +110,7 @@ function saveLastSessionToStorage(sessionId: string, sessionToken: string): void
 }
 
 let eventSourceRef: EventSource | null = null;
+let stopRequested = false;
 
 export const useResearchStore = create<ResearchStore>((set, get) => ({
   sessions: [],
@@ -264,6 +266,7 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
   },
 
   connectSSE: (id, token) => {
+    stopRequested = false;
     if (eventSourceRef) {
       eventSourceRef.close();
       eventSourceRef = null;
@@ -326,6 +329,10 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
     });
 
     es.addEventListener("error", (e: MessageEvent) => {
+      if (stopRequested) {
+        stopRequested = false;
+        return;
+      }
       try {
         const data = JSON.parse(e.data);
         set((s) => ({
@@ -366,6 +373,25 @@ export const useResearchStore = create<ResearchStore>((set, get) => ({
         get().loadReport();
       }
     });
+  },
+
+  stopSSE: () => {
+    stopRequested = true;
+    if (eventSourceRef) {
+      eventSourceRef.close();
+      eventSourceRef = null;
+    }
+    const { status } = get();
+    if (status === "running") {
+      set((s) => ({
+        status: "done",
+        entries: s.entries.map((entry) =>
+          entry.type === "tool_entry" && entry.result === null
+            ? { ...entry, result: "(Stopped)" }
+            : entry,
+        ),
+      }));
+    }
   },
 
   startNewSession: () => {

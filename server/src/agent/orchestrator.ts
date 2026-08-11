@@ -1,5 +1,5 @@
 import { streamText, isStepCount } from "ai";
-import type { Response } from "express";
+import type { Request, Response } from "express";
 import fs from "fs/promises";
 import { createModel } from "./provider-factory";
 import { createTools } from "./tools";
@@ -8,7 +8,7 @@ import { addMessage, setProcessing } from "./session-store";
 import type { AgentSession } from "./session-store";
 import { resolvePath } from "../utils/paths";
 
-export async function runAgentStream(session: AgentSession, res: Response): Promise<void> {
+export async function runAgentStream(session: AgentSession, req: Request, res: Response): Promise<void> {
   const model = createModel(session.settings);
   const tools = createTools(session.userId);
   const fileList = await listResumeFiles(session.userId, session.resumeProjectPath);
@@ -35,6 +35,9 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
 
   let assistantResponse = "";
 
+  const abortController = new AbortController();
+  req.on("close", () => abortController.abort());
+
   try {
     const result = streamText({
       model,
@@ -46,6 +49,7 @@ export async function runAgentStream(session: AgentSession, res: Response): Prom
           content: m.content,
         })),
       tools,
+      abortSignal: abortController.signal,
       stopWhen: isStepCount(20),
       onToolExecutionStart: ({ toolCall }) => {
         addMessage(session.id, "tool_call", `${toolCall.toolName}(${JSON.stringify(toolCall.input)})`, {
