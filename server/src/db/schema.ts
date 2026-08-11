@@ -107,3 +107,64 @@ export const events = pgTable("events", {
   userIdIdx: index("events_user_id_idx").on(table.userId),
   startTimeIdx: index("events_start_time_idx").on(table.startTime),
 }));
+
+export const userProfiles = pgTable("user_profiles", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  city: text("city"),
+  country: text("country"),
+  isRemote: boolean("is_remote").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdUnique: uniqueIndex("user_profiles_user_id_idx").on(table.userId),
+}));
+
+export const workExperiences = pgTable("work_experiences", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  company: text("company").notNull(),
+  role: text("role").notNull(),
+  teamName: text("team_name"),
+  description: text("description"),
+  startDate: text("start_date").notNull(),
+  endDate: text("end_date"),
+  skills: text("skills").array().notNull().default([]),
+  position: integer("position").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("work_experiences_user_id_idx").on(table.userId),
+}));
+
+export const projects = pgTable("projects", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  description: text("description"),
+  github: text("github"),
+  url: text("url"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("projects_user_id_idx").on(table.userId),
+}));
+
+export const skills = pgTable("skills", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  expertise: text("expertise").notNull().default("beginner"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  userIdIdx: index("skills_user_id_idx").on(table.userId),
+}));

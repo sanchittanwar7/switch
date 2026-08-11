@@ -77,10 +77,26 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
       <div className="border-t border-brand-hairline">
         {user && !collapsed && (
-          <div className="px-5 py-3 flex items-center gap-2 text-sm text-brand-mute">
+          <button
+            onClick={() => navigate("/profile")}
+            className="w-full px-5 py-3 flex items-center gap-2 text-sm text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors text-left"
+            title="View profile"
+          >
             <User size={16} />
             <span className="truncate">{user.email}</span>
-          </div>
+          </button>
+        )}
+        {user && collapsed && (
+          <button
+            onClick={() => navigate("/profile")}
+            className="w-full flex justify-center py-3 text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors group relative"
+            title="View profile"
+          >
+            <User size={18} />
+            <span className="absolute left-full ml-3 px-2.5 py-1 text-xs font-medium text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+              Profile
+            </span>
+          </button>
         )}
         <button
           onClick={handleLogout}
