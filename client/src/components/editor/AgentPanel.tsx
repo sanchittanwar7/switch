@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, useCallback } from "react";
-import { Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight, Cpu, User, MessageSquare, Plus } from "lucide-react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { Send, Loader2, CircleStop, CheckCircle, XCircle, Wrench, Bot, ChevronRight, Cpu, MessageSquare, Plus } from "lucide-react";
 import { useSettingsStore } from "../../stores/settingsStore";
 import type { AvailableModel } from "../../stores/settingsStore";
 import { apiUrl } from "../../lib/api";
@@ -100,6 +100,7 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
   const logRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const stopRequestedRef = useRef(false);
 
   const { availableModels, loadAvailableModels } = useSettingsStore();
 
@@ -108,6 +109,12 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
   }, [entries]);
+
+  useEffect(() => {
+    if (!inputText && textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  }, [inputText]);
 
   useEffect(() => {
     loadAvailableModels();
@@ -273,6 +280,10 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
 
       es.onerror = () => {
         if (errorHandled) return;
+        if (stopRequestedRef.current) {
+          stopRequestedRef.current = false;
+          return;
+        }
         if (es.readyState === EventSource.CLOSED) {
           errorHandled = true;
           resolveStalePendings();
@@ -282,6 +293,16 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
     },
     [resolveStalePendings, loadSessionList],
   );
+
+  const handleStop = useCallback(() => {
+    if (eventSourceRef.current) {
+      stopRequestedRef.current = true;
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    resolveStalePendings();
+    setStatus("done");
+  }, [resolveStalePendings]);
 
   const handleSend = useCallback(async () => {
     const message = inputText.trim();
@@ -430,6 +451,17 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
     );
   };
 
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
+    });
+  };
+
   const hasModels = allModels.length > 0;
 
   const showSessionList = status === "idle" && !sessionId;
@@ -479,26 +511,143 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
             </div>
           )}
 
-          {!showSessionList && entries.map((entry, i) => {
-            if (entry.type === "error") {
+          {!showSessionList && (() => {
+            const toolGroups: { type: "tool_group"; key: string; entries: ToolEntry[] }[] = [];
+            const items: (LogEntry | typeof toolGroups[number])[] = [];
+            let group: ToolEntry[] = [];
+
+            const flushGroup = () => {
+              if (group.length === 0) return;
+              if (group.length === 1) {
+                items.push(group[0]);
+              } else {
+                items.push({ type: "tool_group", key: `group_${group[0].callId}`, entries: [...group] });
+              }
+              group = [];
+            };
+
+            for (const entry of entries) {
+              if (entry.type === "tool_entry") {
+                group.push(entry);
+              } else {
+                flushGroup();
+                items.push(entry);
+              }
+            }
+            flushGroup();
+
+            return items.map((item, i) => {
+            if ("type" in item && item.type === "tool_group") {
+              const groupKey = item.key;
+              const groupExpanded = expandedGroups.has(groupKey);
+              const pendingCount = item.entries.filter((e) => e.result === null).length;
+
+              return (
+                <div key={groupKey}>
+                  <button
+                    onClick={() => toggleGroup(groupKey)}
+                    className="flex items-center gap-2 w-full text-left group"
+                  >
+                    <span className={`shrink-0 transition-transform ${groupExpanded ? "rotate-90" : ""}`}>
+                      <ChevronRight size={12} className="text-brand-mute" />
+                    </span>
+                    <Wrench size={12} className="text-brand-link shrink-0" />
+                    <span className="text-xs text-brand-ink font-medium">
+                      {item.entries.length} tools
+                    </span>
+                    {!groupExpanded && (
+                      <span className="text-xs text-brand-mute truncate">
+                        {item.entries.map((e) => e.tool).join(", ")}
+                      </span>
+                    )}
+                    {pendingCount > 0 && (
+                      <span className="text-[10px] text-brand-link shrink-0">
+                        ({pendingCount} running)
+                      </span>
+                    )}
+                  </button>
+
+                  {groupExpanded && (
+                    <div className="ml-5 space-y-1">
+                      {item.entries.map((entry) => {
+                        const pending = entry.result === null;
+                        return (
+                          <div key={entry.callId}>
+                            <button
+                              onClick={() => toggleExpanded(entry.callId)}
+                              className="flex items-center gap-2 w-full text-left group"
+                            >
+                              <span className={`shrink-0 transition-transform ${entry.expanded ? "rotate-90" : ""}`}>
+                                <ChevronRight size={10} className="text-brand-mute" />
+                              </span>
+                              {pending ? (
+                                <Loader2 size={10} className="animate-spin text-brand-link shrink-0" />
+                              ) : (
+                                <Wrench size={10} className="text-brand-link shrink-0" />
+                              )}
+                              <span className="text-xs text-brand-ink font-medium min-w-0 truncate">
+                                {entry.tool}
+                              </span>
+                              {!pending && !entry.expanded && (
+                                <span className="text-xs text-brand-mute truncate">
+                                  {truncateResult(entry.result)}
+                                </span>
+                              )}
+                            </button>
+
+                            {entry.expanded && (
+                              <div className="ml-5 mt-1 space-y-1.5">
+                                {entry.args !== undefined && entry.args !== null && (
+                                  <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
+                                    <div className="text-xs text-brand-mute mb-0.5 font-medium">
+                                      Arguments
+                                    </div>
+                                    <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
+                                      {formatArgs(entry.args)}
+                                    </pre>
+                                  </div>
+                                )}
+                                {entry.result !== null && (
+                                  <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
+                                    <div className="text-xs text-brand-mute mb-0.5 font-medium">
+                                      Result
+                                    </div>
+                                    <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
+                                      {entry.result}
+                                    </pre>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            if (item.type === "error") {
               return (
                 <div key={i} className="flex items-start gap-2">
                   <XCircle size={14} className="text-brand-error shrink-0 mt-0.5" />
-                  <span className="text-xs text-brand-error">{entry.content}</span>
+                  <span className="text-xs text-brand-error">{item.content}</span>
                 </div>
               );
             }
 
-            if (entry.type === "user_text") {
+            if (item.type === "user_text") {
               return (
-                <div key={i} className="flex items-start gap-2">
-                  <User size={14} className="text-brand-body shrink-0 mt-0.5" />
-                  <span className="text-xs text-brand-ink whitespace-pre-wrap">{entry.text}</span>
+                <div key={i} className="flex justify-end">
+                  <div className="bg-brand-canvas rounded-lg border border-brand-hairline px-3 py-2 max-w-[85%]">
+                    <span className="text-xs text-brand-ink whitespace-pre-wrap">{item.text}</span>
+                  </div>
                 </div>
               );
             }
 
-            if (entry.type === "done") {
+            if (item.type === "done") {
               return (
                 <div key={i} className="flex items-start gap-2">
                   <CheckCircle size={14} className="text-brand-link shrink-0 mt-0.5" />
@@ -509,28 +658,28 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
               );
             }
 
-            if (entry.type === "agent_text") {
+            if (item.type === "agent_text") {
               return (
                 <div key={i} className="flex items-start gap-2">
                   <Bot size={14} className="text-brand-link shrink-0 mt-0.5" />
                   <div className="min-w-0 flex-1">
-                    <MarkdownRenderer content={entry.text} />
+                    <MarkdownRenderer content={item.text} />
                   </div>
                 </div>
               );
             }
 
-            const pending = entry.result === null;
+            const pending = (item as ToolEntry).result === null;
 
             return (
-              <div key={entry.callId}>
+              <div key={(item as ToolEntry).callId}>
                 <button
-                  onClick={() => toggleExpanded(entry.callId)}
+                  onClick={() => toggleExpanded((item as ToolEntry).callId)}
                   className="flex items-center gap-2 w-full text-left group"
                 >
                   <span
                     className={`shrink-0 transition-transform ${
-                      entry.expanded ? "rotate-90" : ""
+                      (item as ToolEntry).expanded ? "rotate-90" : ""
                     }`}
                   >
                     <ChevronRight size={12} className="text-brand-mute" />
@@ -541,34 +690,34 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
                     <Wrench size={12} className="text-brand-link shrink-0" />
                   )}
                   <span className="text-xs text-brand-ink font-medium min-w-0 truncate">
-                    {entry.tool}
+                    {(item as ToolEntry).tool}
                   </span>
-                  {!pending && !entry.expanded && (
+                  {!pending && !(item as ToolEntry).expanded && (
                     <span className="text-xs text-brand-mute truncate">
-                      {truncateResult(entry.result)}
+                      {truncateResult((item as ToolEntry).result)}
                     </span>
                   )}
                 </button>
 
-                {entry.expanded && (
+                {(item as ToolEntry).expanded && (
                   <div className="ml-5 mt-1 space-y-1.5">
-                    {entry.args !== undefined && entry.args !== null && (
+                    {(item as ToolEntry).args !== undefined && (item as ToolEntry).args !== null && (
                       <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
                         <div className="text-xs text-brand-mute mb-0.5 font-medium">
                           Arguments
                         </div>
                         <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
-                          {formatArgs(entry.args)}
+                          {formatArgs((item as ToolEntry).args)}
                         </pre>
                       </div>
                     )}
-                    {entry.result !== null && (
+                    {(item as ToolEntry).result !== null && (
                       <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
                         <div className="text-xs text-brand-mute mb-0.5 font-medium">
                           Result
                         </div>
                         <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
-                          {entry.result}
+                          {(item as ToolEntry).result}
                         </pre>
                       </div>
                     )}
@@ -576,7 +725,8 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
                 )}
               </div>
             );
-          })}
+          });
+        })()}
 
           {status === "running" && (
             <div className="flex items-center gap-2 text-xs text-brand-mute pt-1">
@@ -645,17 +795,22 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
                   ))}
                 </select>
 
-                <button
-                  onClick={handleSend}
-                  disabled={status === "running" || !inputText.trim() || !resumeProjectPath}
-                  className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
-                >
-                  {status === "running" ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
+                {status === "running" ? (
+                  <button
+                    onClick={handleStop}
+                    className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg text-brand-mute hover:text-brand-error hover:bg-brand-error-soft transition-colors"
+                  >
+                    <CircleStop size={15} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSend}
+                    disabled={!inputText.trim() || !resumeProjectPath}
+                    className="shrink-0 flex items-center justify-center w-8 h-8 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
+                  >
                     <Send size={16} />
-                  )}
-                </button>
+                  </button>
+                )}
               </div>
             </div>
           )}

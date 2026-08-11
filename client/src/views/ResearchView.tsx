@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import {
-  Send, Loader2, CheckCircle, XCircle, Wrench, Bot, ChevronRight,
-  Cpu, User, Plus, Trash2, FlaskConical, Settings, PanelLeft, Star,
+  Send, Loader2, CircleStop, CheckCircle, XCircle, Wrench, Bot, ChevronRight,
+  Cpu, Plus, Trash2, FlaskConical, Settings, PanelLeft, Star,
 } from "lucide-react";
 import { Panel, PanelGroup, PanelResizeHandle } from "react-resizable-panels";
 import { useResearchStore } from "../stores/researchStore";
@@ -29,6 +29,12 @@ export default function ResearchView() {
   useEffect(() => {
     logRef.current?.scrollTo({ top: logRef.current.scrollHeight, behavior: "smooth" });
   }, [store.entries]);
+
+  useEffect(() => {
+    if (!inputText && textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
+  }, [inputText]);
 
   useEffect(() => {
     if (allModels.length === 0) return;
@@ -73,6 +79,10 @@ export default function ResearchView() {
     }
   };
 
+  const handleStop = () => {
+    store.stopSSE();
+  };
+
   const handleStartNew = () => {
     store.startNewSession();
     setInputText("");
@@ -115,6 +125,17 @@ Tags: <COMMA_SEPARATED_TAGS>`);
         updated[i] = { ...entry, expanded: !entry.expanded };
         useResearchStore.setState({ entries: updated });
       }
+    });
+  };
+
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
+      return next;
     });
   };
 
@@ -193,17 +214,22 @@ Tags: <COMMA_SEPARATED_TAGS>`);
                   )}
                 </button>
 
-                <button
-                  onClick={handleSend}
-                  disabled={isRunning || !inputText.trim()}
-                  className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
-                >
-                  {isRunning ? (
-                    <Loader2 size={16} className="animate-spin" />
-                  ) : (
+                {isRunning ? (
+                  <button
+                    onClick={handleStop}
+                    className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-error hover:bg-brand-error-soft transition-colors"
+                  >
+                    <CircleStop size={15} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleSend}
+                    disabled={!inputText.trim()}
+                    className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
+                  >
                     <Send size={16} />
-                  )}
-                </button>
+                  </button>
+                )}
               </div>
             </div>
             </div>
@@ -310,26 +336,144 @@ Tags: <COMMA_SEPARATED_TAGS>`);
                   ref={logRef}
                   className="flex-1 overflow-y-auto px-4 py-3 space-y-2"
                 >
-                  {store.entries.map((entry, i) => {
-                    if (entry.type === "error") {
+                  {(() => {
+                    const toolGroups: { type: "tool_group"; key: string; entries: typeof store.entries }[] = [];
+                    const items: (typeof store.entries[number] | typeof toolGroups[number])[] = [];
+                    let group: typeof store.entries = [];
+
+                    const flushGroup = () => {
+                      if (group.length === 0) return;
+                      if (group.length === 1) {
+                        items.push(group[0]);
+                      } else {
+                        items.push({ type: "tool_group", key: `group_${(group[0] as any).callId}`, entries: [...group] });
+                      }
+                      group = [];
+                    };
+
+                    for (const entry of store.entries) {
+                      if (entry.type === "tool_entry") {
+                        group.push(entry);
+                      } else {
+                        flushGroup();
+                        items.push(entry);
+                      }
+                    }
+                    flushGroup();
+
+                    return items.map((item, i) => {
+                    if ("type" in item && item.type === "tool_group") {
+                      const groupKey = item.key;
+                      const groupExpanded = expandedGroups.has(groupKey);
+                      const pendingCount = item.entries.filter((e) => (e as any).result === null).length;
+
+                      return (
+                        <div key={groupKey}>
+                          <button
+                            onClick={() => toggleGroup(groupKey)}
+                            className="flex items-center gap-2 w-full text-left group"
+                          >
+                            <span className={`shrink-0 transition-transform ${groupExpanded ? "rotate-90" : ""}`}>
+                              <ChevronRight size={12} className="text-brand-mute" />
+                            </span>
+                            <Wrench size={12} className="text-brand-link shrink-0" />
+                            <span className="text-xs text-brand-ink font-medium">
+                              {item.entries.length} tools
+                            </span>
+                            {!groupExpanded && (
+                              <span className="text-xs text-brand-mute truncate">
+                                {item.entries.map((e) => (e as any).tool).join(", ")}
+                              </span>
+                            )}
+                            {pendingCount > 0 && (
+                              <span className="text-[10px] text-brand-link shrink-0">
+                                ({pendingCount} running)
+                              </span>
+                            )}
+                          </button>
+
+                          {groupExpanded && (
+                            <div className="ml-5 space-y-1">
+                              {item.entries.map((entry) => {
+                                const e = entry as any;
+                                const pending = e.result === null;
+                                return (
+                                  <div key={e.callId}>
+                                    <button
+                                      onClick={() => toggleEntry(e.callId)}
+                                      className="flex items-center gap-2 w-full text-left group"
+                                    >
+                                      <span className={`shrink-0 transition-transform ${e.expanded ? "rotate-90" : ""}`}>
+                                        <ChevronRight size={10} className="text-brand-mute" />
+                                      </span>
+                                      {pending ? (
+                                        <Loader2 size={10} className="animate-spin text-brand-link shrink-0" />
+                                      ) : (
+                                        <Wrench size={10} className="text-brand-link shrink-0" />
+                                      )}
+                                      <span className="text-xs text-brand-ink font-medium min-w-0 truncate">
+                                        {e.tool}
+                                      </span>
+                                      {!pending && !e.expanded && (
+                                        <span className="text-xs text-brand-mute truncate">
+                                          {truncateResult(e.result)}
+                                        </span>
+                                      )}
+                                    </button>
+
+                                    {e.expanded && (
+                                      <div className="ml-5 mt-1 space-y-1.5">
+                                        {e.args !== undefined && e.args !== null && (
+                                          <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
+                                            <div className="text-xs text-brand-mute mb-0.5 font-medium">
+                                              Arguments
+                                            </div>
+                                            <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
+                                              {formatArgs(e.args)}
+                                            </pre>
+                                          </div>
+                                        )}
+                                        {e.result !== null && (
+                                          <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
+                                            <div className="text-xs text-brand-mute mb-0.5 font-medium">
+                                              Result
+                                            </div>
+                                            <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
+                                              {e.result}
+                                            </pre>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    if (item.type === "error") {
                       return (
                         <div key={i} className="flex items-start gap-2">
                           <XCircle size={14} className="text-brand-error shrink-0 mt-0.5" />
-                          <span className="text-xs text-brand-error">{entry.content}</span>
+                          <span className="text-xs text-brand-error">{item.content}</span>
                         </div>
                       );
                     }
 
-                    if (entry.type === "user_text") {
+                    if (item.type === "user_text") {
                       return (
-                        <div key={i} className="flex items-start gap-2">
-                          <User size={14} className="text-brand-body shrink-0 mt-0.5" />
-                          <span className="text-xs text-brand-ink whitespace-pre-wrap">{entry.text}</span>
+                        <div key={i} className="flex justify-end">
+                          <div className="bg-brand-canvas rounded-lg border border-brand-hairline px-3 py-2 max-w-[85%]">
+                            <span className="text-xs text-brand-ink whitespace-pre-wrap">{item.text}</span>
+                          </div>
                         </div>
                       );
                     }
 
-                    if (entry.type === "done") {
+                    if (item.type === "done") {
                       return (
                         <div key={i} className="flex items-start gap-2">
                           <CheckCircle size={14} className="text-brand-link shrink-0 mt-0.5" />
@@ -340,28 +484,29 @@ Tags: <COMMA_SEPARATED_TAGS>`);
                       );
                     }
 
-                    if (entry.type === "agent_text") {
+                    if (item.type === "agent_text") {
                       return (
                         <div key={i} className="flex items-start gap-2">
                           <Bot size={14} className="text-brand-link shrink-0 mt-0.5" />
                           <div className="min-w-0 flex-1">
-                            <MarkdownRenderer content={entry.text} />
+                            <MarkdownRenderer content={item.text} />
                           </div>
                         </div>
                       );
                     }
 
-                    const pending = entry.result === null;
+                    const e = item as any;
+                    const pending = e.result === null;
 
                     return (
-                      <div key={entry.callId}>
+                      <div key={e.callId}>
                         <button
-                          onClick={() => toggleEntry(entry.callId)}
+                          onClick={() => toggleEntry(e.callId)}
                           className="flex items-center gap-2 w-full text-left group"
                         >
                           <span
                             className={`shrink-0 transition-transform ${
-                              entry.expanded ? "rotate-90" : ""
+                              e.expanded ? "rotate-90" : ""
                             }`}
                           >
                             <ChevronRight size={12} className="text-brand-mute" />
@@ -372,34 +517,34 @@ Tags: <COMMA_SEPARATED_TAGS>`);
                             <Wrench size={12} className="text-brand-link shrink-0" />
                           )}
                           <span className="text-xs text-brand-ink font-medium min-w-0 truncate">
-                            {entry.tool}
+                            {e.tool}
                           </span>
-                          {!pending && !entry.expanded && (
+                          {!pending && !e.expanded && (
                             <span className="text-xs text-brand-mute truncate">
-                              {truncateResult(entry.result)}
+                              {truncateResult(e.result)}
                             </span>
                           )}
                         </button>
 
-                        {entry.expanded && (
+                        {e.expanded && (
                           <div className="ml-5 mt-1 space-y-1.5">
-                            {entry.args !== undefined && entry.args !== null && (
+                            {e.args !== undefined && e.args !== null && (
                               <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
                                 <div className="text-xs text-brand-mute mb-0.5 font-medium">
                                   Arguments
                                 </div>
                                 <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
-                                  {formatArgs(entry.args)}
+                                  {formatArgs(e.args)}
                                 </pre>
                               </div>
                             )}
-                            {entry.result !== null && (
+                            {e.result !== null && (
                               <div className="bg-brand-canvas-soft-2 rounded-sm border border-brand-hairline p-2">
                                 <div className="text-xs text-brand-mute mb-0.5 font-medium">
                                   Result
                                 </div>
                                 <pre className="text-xs text-brand-body whitespace-pre-wrap break-all font-mono">
-                                  {entry.result}
+                                  {e.result}
                                 </pre>
                               </div>
                             )}
@@ -407,7 +552,7 @@ Tags: <COMMA_SEPARATED_TAGS>`);
                         )}
                       </div>
                     );
-                  })}
+                  });})()}
 
                   {isRunning && (
                     <div className="flex items-center gap-2 text-xs text-brand-mute pt-1">
@@ -484,17 +629,22 @@ Tags: <COMMA_SEPARATED_TAGS>`);
                           )}
                         </button>
 
-                        <button
-                          onClick={handleSend}
-                          disabled={isRunning || !inputText.trim()}
-                          className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
-                        >
-                          {isRunning ? (
-                            <Loader2 size={16} className="animate-spin" />
-                          ) : (
+                        {isRunning ? (
+                          <button
+                            onClick={handleStop}
+                            className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-error hover:bg-brand-error-soft transition-colors"
+                          >
+                            <CircleStop size={15} />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handleSend}
+                            disabled={!inputText.trim()}
+                            className="shrink-0 flex items-center justify-center w-9 h-9 rounded-lg text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors disabled:opacity-30"
+                          >
                             <Send size={16} />
-                          )}
-                        </button>
+                          </button>
+                        )}
                       </div>
                     </div>
                     {hasActiveSession && (store.status === "done" || store.status === "idle") && (
