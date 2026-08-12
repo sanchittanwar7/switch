@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
 import fs from "fs/promises";
+import path from "path";
 import { db } from "../db";
 import { applications } from "../db/schema";
 import { resolvePath } from "../utils/paths";
@@ -9,6 +10,7 @@ import {
   getUserProviders,
   getDefaultResumeName,
   PROVIDER_BASE_URLS,
+  PROVIDER_DEFAULTS,
 } from "../settings";
 import { createSession } from "./session-store";
 
@@ -82,6 +84,13 @@ router.post("/auto-tailor", async (req, res) => {
       return;
     }
 
+    // Remove sessions directory copied from source resume
+    try {
+      await fs.rm(path.join(tailoredResumePath, "sessions"), { recursive: true, force: true });
+    } catch {
+      // ok if sessions dir doesn't exist
+    }
+
     // 6. Build LLM settings
     if (provider && model) {
       const userProviders = await getUserProviders(userId);
@@ -122,11 +131,24 @@ router.post("/auto-tailor", async (req, res) => {
 
     // Fallback to default settings
     const settings = await getSettings(userId);
-    const llmSettings = {
+    let llmSettings = {
       ...settings.llm,
       ...(apiKey ? { apiKey } : {}),
       ...(model ? { model } : {}),
     };
+
+    if (!llmSettings.apiKey) {
+      const userProviders = await getUserProviders(userId);
+      const providerWithKey = userProviders.find((p) => p.apiKey);
+      if (providerWithKey) {
+        llmSettings = {
+          provider: providerWithKey.provider,
+          apiKey: providerWithKey.apiKey,
+          baseUrl: PROVIDER_BASE_URLS[providerWithKey.provider] || "",
+          model: model || providerWithKey.defaultModel || PROVIDER_DEFAULTS[providerWithKey.provider].model,
+        };
+      }
+    }
 
     if (!llmSettings.apiKey) {
       res.status(400).json({

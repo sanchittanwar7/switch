@@ -23,7 +23,7 @@ export default function ApplicationModal({ application, onClose }: ApplicationMo
 
   const isWishlist = application.columnId === "wishlist";
   const isGenerating = generatingCards.has(application.id);
-  const canGenerate = isWishlist && application.jobUrl && !isGenerating && !!defaultResumeName;
+  const hasDefaultResume = !!defaultResumeName;
 
   const [company, setCompany] = useState(application.company);
   const [role, setRole] = useState(application.role);
@@ -102,11 +102,27 @@ export default function ApplicationModal({ application, onClose }: ApplicationMo
             Edit Application
           </h2>
           <div className="flex items-center gap-1">
-            {canGenerate && (
+            {isWishlist && !isGenerating && (
               <button
-                onClick={() => autoGenerateResume(application.id)}
-                className="p-1 rounded-full text-brand-mute hover:text-brand-link hover:bg-brand-canvas-soft-2 transition-colors"
-                title="Auto-generate tailored resume"
+                onClick={() => {
+                  if (!hasDefaultResume || !application.jobUrl) return;
+                  autoGenerateResume(application.id);
+                }}
+                disabled={!hasDefaultResume || !application.jobUrl}
+                className={`p-1 rounded-full transition-colors ${
+                  !hasDefaultResume || !application.jobUrl
+                    ? "text-brand-mute/30 cursor-not-allowed"
+                    : "text-brand-mute hover:text-brand-link hover:bg-brand-canvas-soft-2"
+                }`}
+                title={
+                  !application.jobUrl && !hasDefaultResume
+                    ? "Add a job URL and set a default resume first"
+                    : !application.jobUrl
+                      ? "Add a job URL first"
+                      : !hasDefaultResume
+                        ? "Set a default resume first"
+                        : "Auto-generate tailored resume"
+                }
               >
                 <Wand size={18} />
               </button>
@@ -173,7 +189,7 @@ export default function ApplicationModal({ application, onClose }: ApplicationMo
               <select
                 value={resumePath}
                 onChange={(e) => setResumePath(e.target.value)}
-                className="flex-1 px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+                className="flex-1 min-w-0 px-3 h-10 text-sm text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md truncate focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
               >
                 <option value="">None</option>
                 {resumes.map((r) => (

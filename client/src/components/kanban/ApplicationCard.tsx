@@ -18,7 +18,6 @@ export default function ApplicationCard({ application, index, onClick }: Applica
   const isWishlist = application.columnId === "wishlist";
   const isGenerating = generatingCards.has(application.id);
   const genStatus = generatingStatus[application.id];
-  const canGenerate = isWishlist && application.jobUrl && !isGenerating;
   const hasDefaultResume = !!defaultResumeName;
 
   return (
@@ -28,7 +27,7 @@ export default function ApplicationCard({ application, index, onClick }: Applica
           ref={provided.innerRef}
           {...provided.draggableProps}
           {...provided.dragHandleProps}
-          className={`mb-2 rounded-lg border transition-all flex ${
+          className={`mb-2 rounded-lg border transition-all flex min-w-0 ${
             snapshot.isDragging
               ? "border-brand-hairline-strong bg-brand-canvas ring-1 ring-brand-ink/10"
               : "border-brand-hairline hover:border-brand-hairline-strong bg-brand-canvas"
@@ -44,10 +43,10 @@ export default function ApplicationCard({ application, index, onClick }: Applica
             onClick={onClick}
             className="flex-1 p-3 cursor-pointer min-w-0"
           >
-            <h4 className="text-sm font-medium text-brand-ink truncate">
+            <h4 className="text-sm font-medium text-brand-ink truncate" title={application.company}>
               {application.company}
             </h4>
-            <p className="text-xs text-brand-body mt-0.5 truncate">
+            <p className="text-xs text-brand-body mt-0.5 truncate" title={application.role}>
               {application.role}
             </p>
 
@@ -82,25 +81,28 @@ export default function ApplicationCard({ application, index, onClick }: Applica
               </div>
             )}
 
-            {canGenerate && (
+            {isWishlist && !isGenerating && (
               <button
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (!hasDefaultResume || !application.jobUrl) return;
                   autoGenerateResume(application.id);
                 }}
-                className="flex items-center gap-1 mt-2 text-xs text-brand-link hover:text-brand-link-deep transition-colors"
-                title={hasDefaultResume ? "Auto-generate tailored resume" : "Set a default resume first"}
-              >
-                <Wand size={12} />
-                Auto-generate
-              </button>
-            )}
-
-            {isWishlist && application.jobUrl && !isGenerating && !hasDefaultResume && (
-              <button
-                disabled
-                className="flex items-center gap-1 mt-2 text-xs text-brand-mute/50 cursor-not-allowed"
-                title="Set a default resume first"
+                disabled={!hasDefaultResume || !application.jobUrl}
+                className={`flex items-center gap-1 mt-2 text-xs transition-colors ${
+                  !hasDefaultResume || !application.jobUrl
+                    ? "text-brand-mute/50 cursor-not-allowed"
+                    : "text-brand-link hover:text-brand-link-deep"
+                }`}
+                title={
+                  !application.jobUrl && !hasDefaultResume
+                    ? "Add a job URL and set a default resume first"
+                    : !application.jobUrl
+                      ? "Add a job URL first"
+                      : !hasDefaultResume
+                        ? "Set a default resume first"
+                        : "Auto-generate tailored resume"
+                }
               >
                 <Wand size={12} />
                 Auto-generate

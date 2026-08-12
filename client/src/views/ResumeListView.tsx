@@ -137,10 +137,10 @@ export default function ResumeListView() {
                 <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono">
                   Name
                 </th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono w-1/4">
+                <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono w-[20%]">
                   Last Modified
                 </th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-brand-mute font-mono w-1/4">
+                <th className="text-right py-2 px-3 text-xs font-medium text-brand-mute font-mono w-[20%]">
                   Actions
                 </th>
               </tr>
@@ -166,7 +166,7 @@ export default function ResumeListView() {
                       />
                     </button>
                   </td>
-                  <td className="py-2.5 px-3">
+                  <td className="py-2.5 px-3 max-w-0 w-full">
                     {editingName === r.name ? (
                       <div className="flex items-center gap-1.5">
                         <input
@@ -195,7 +195,8 @@ export default function ResumeListView() {
                     ) : (
                       <button
                         onClick={() => navigate(`/resume?project=${r.name}`)}
-                        className="flex items-center gap-2 text-sm font-medium text-brand-ink truncate hover:text-brand-link transition-colors"
+                        className="flex items-center gap-2 text-sm font-medium text-brand-ink truncate hover:text-brand-link transition-colors max-w-full"
+                        title={r.name}
                       >
                         <FolderOpen size={16} className="text-brand-mute shrink-0" />
                         {r.name}
