@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, FolderOpen, Trash2, Pencil, Copy, Check, X, HelpCircle } from "lucide-react";
+import { Plus, FolderOpen, Trash2, Pencil, Copy, Check, X, HelpCircle, Star } from "lucide-react";
 import { apiGet, apiPost, apiDelete } from "../lib/api";
+import { useSettingsStore } from "../stores/settingsStore";
 import NewResumeModal from "../components/NewResumeModal";
 
 interface ResumeEntry {
@@ -18,6 +19,7 @@ export default function ResumeListView() {
   const [deletingName, setDeletingName] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const navigate = useNavigate();
+  const { defaultResumeName, loadDefaultResume, setDefaultResume } = useSettingsStore();
 
   const fetchResumes = async () => {
     try {
@@ -32,6 +34,10 @@ export default function ResumeListView() {
 
   useEffect(() => {
     fetchResumes();
+  }, []);
+
+  useEffect(() => {
+    loadDefaultResume();
   }, []);
 
   const handleDelete = async () => {
@@ -125,13 +131,16 @@ export default function ResumeListView() {
           <table className="w-full table-fixed">
             <thead>
               <tr className="border-b border-brand-hairline">
-                <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono w-1/2">
+                <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono w-12">
+                  Def.
+                </th>
+                <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono">
                   Name
                 </th>
-                <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono w-1/4">
+                <th className="text-left py-2 px-3 text-xs font-medium text-brand-mute font-mono w-[20%]">
                   Last Modified
                 </th>
-                <th className="text-right py-2 px-3 text-xs font-medium text-brand-mute font-mono w-1/4">
+                <th className="text-right py-2 px-3 text-xs font-medium text-brand-mute font-mono w-[20%]">
                   Actions
                 </th>
               </tr>
@@ -143,6 +152,21 @@ export default function ResumeListView() {
                   className="border-b border-brand-hairline hover:bg-brand-canvas-soft-2 transition-colors group"
                 >
                   <td className="py-2.5 px-3">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDefaultResume(defaultResumeName === r.name ? null : r.name);
+                      }}
+                      className="p-1 rounded-sm transition-colors"
+                      title={defaultResumeName === r.name ? "Remove default" : "Set as default"}
+                    >
+                      <Star
+                        size={16}
+                        className={defaultResumeName === r.name ? "text-brand-warning fill-brand-warning" : "text-brand-mute"}
+                      />
+                    </button>
+                  </td>
+                  <td className="py-2.5 px-3 max-w-0 w-full">
                     {editingName === r.name ? (
                       <div className="flex items-center gap-1.5">
                         <input
@@ -171,7 +195,8 @@ export default function ResumeListView() {
                     ) : (
                       <button
                         onClick={() => navigate(`/resume?project=${r.name}`)}
-                        className="flex items-center gap-2 text-sm font-medium text-brand-ink truncate hover:text-brand-link transition-colors"
+                        className="flex items-center gap-2 text-sm font-medium text-brand-ink truncate hover:text-brand-link transition-colors max-w-full"
+                        title={r.name}
                       >
                         <FolderOpen size={16} className="text-brand-mute shrink-0" />
                         {r.name}

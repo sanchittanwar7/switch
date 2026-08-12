@@ -2,17 +2,20 @@ import { useEffect, useState } from "react";
 import { DragDropContext } from "@hello-pangea/dnd";
 import type { DropResult } from "@hello-pangea/dnd";
 import { useKanbanStore } from "../stores/kanbanStore";
+import { useSettingsStore } from "../stores/settingsStore";
 import BoardHeader from "../components/kanban/BoardHeader";
 import Column from "../components/kanban/Column";
 import ApplicationModal from "../components/kanban/ApplicationModal";
 
 export default function KanbanView() {
   const { columns, applications, loading, fetchBoard, moveApplication } = useKanbanStore();
+  const { loadDefaultResume } = useSettingsStore();
   const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBoard();
-  }, [fetchBoard]);
+    loadDefaultResume();
+  }, [fetchBoard, loadDefaultResume]);
 
   const selectedApplication = selectedApplicationId ? applications[selectedApplicationId] : null;
 

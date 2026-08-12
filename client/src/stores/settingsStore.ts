@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { apiGet, apiPut, apiPost, apiDelete } from "../lib/api";
+import { apiGet, apiPut, apiPost, apiDelete, getDefaultResume, setDefaultResume as setDefaultResumeApi } from "../lib/api";
 
 export interface SettingsData {
   provider: string;
@@ -31,6 +31,8 @@ interface SettingsStore {
   availableModels: AvailableModel[];
   loading: boolean;
   error: string | null;
+  defaultResumeName: string | null;
+  availableResumes: { name: string }[];
   loadSettings: () => Promise<void>;
   saveSettings: (data: Partial<SettingsData>) => Promise<SettingsData>;
   loadProviders: () => Promise<void>;
@@ -38,6 +40,8 @@ interface SettingsStore {
   deleteProvider: (id: string) => Promise<void>;
   loadAvailableModels: () => Promise<void>;
   setDefaultModel: (providerId: string, model: string | null) => Promise<void>;
+  loadDefaultResume: () => Promise<void>;
+  setDefaultResume: (name: string | null) => Promise<void>;
   clearError: () => void;
 }
 
@@ -47,6 +51,8 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   availableModels: [],
   loading: false,
   error: null,
+  defaultResumeName: null,
+  availableResumes: [],
 
   loadSettings: async () => {
     set({ loading: true, error: null });
@@ -122,6 +128,21 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
         am.providerId === providerId ? { ...am, defaultModel: updated.defaultModel } : am,
       ),
     }));
+  },
+
+  loadDefaultResume: async () => {
+    try {
+      const data = await getDefaultResume();
+      set({ defaultResumeName: data.defaultResumeName, availableResumes: data.resumes });
+    } catch {
+      // non-critical
+    }
+  },
+
+  setDefaultResume: async (name) => {
+    set({ error: null });
+    await setDefaultResumeApi(name);
+    set({ defaultResumeName: name });
   },
 
   clearError: () => set({ error: null }),

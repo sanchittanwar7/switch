@@ -19,6 +19,7 @@ export const userSettings = pgTable("user_settings", {
   storageMode: text("storage_mode").notNull().default("local"),
   shareQuestions: boolean("share_questions").notNull().default(false),
   researchInstructions: text("research_instructions"),
+  defaultResumeName: text("default_resume_name"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({

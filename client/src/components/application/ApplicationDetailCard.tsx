@@ -43,19 +43,21 @@ export default function ApplicationDetailCard({ application }: ApplicationDetail
             href={application.jobUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm text-brand-link hover:text-brand-link-deep transition-colors"
+            className="flex items-center gap-2 text-sm text-brand-link hover:text-brand-link-deep transition-colors min-w-0"
+            title={application.jobUrl}
           >
-            <ExternalLink size={14} />
-            {application.jobUrl}
+            <ExternalLink size={14} className="shrink-0" />
+            <span className="truncate">{application.jobUrl}</span>
           </a>
         )}
         {application.resumePath && (
           <button
             onClick={() => navigate(`/resume?project=${application.resumePath}`)}
-            className="flex items-center gap-2 text-sm text-brand-link hover:text-brand-link-deep transition-colors"
+            className="flex items-center gap-2 text-sm text-brand-link hover:text-brand-link-deep transition-colors min-w-0 max-w-full"
+            title={application.resumePath}
           >
-            <FileText size={14} />
-            {application.resumePath}
+            <FileText size={14} className="shrink-0" />
+            <span className="truncate">{application.resumePath}</span>
           </button>
         )}
       </div>

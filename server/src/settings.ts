@@ -91,6 +91,7 @@ export interface Settings {
   llm: LLMSettings;
   workspaceRoot?: string;
   shareQuestions: boolean;
+  defaultResumeName: string | null;
 }
 
 const DEFAULT_LLM: LLMSettings = {
@@ -121,6 +122,7 @@ export async function getSettings(userId: string): Promise<Settings> {
     llm: row ? fromDbRow(row) : { ...DEFAULT_LLM },
     workspaceRoot: getWorkspaceRoot(),
     shareQuestions: row?.shareQuestions ?? false,
+    defaultResumeName: row?.defaultResumeName ?? null,
   };
 }
 
@@ -128,6 +130,7 @@ export async function updateSettings(userId: string, partial: Partial<Settings>)
   const current = await getSettings(userId);
   const llm = { ...current.llm, ...(partial.llm || {}) };
   const shareQuestions = partial.shareQuestions !== undefined ? partial.shareQuestions : current.shareQuestions;
+  const defaultResumeName = partial.defaultResumeName !== undefined ? partial.defaultResumeName : current.defaultResumeName;
 
   await db
     .insert(userSettings)
@@ -138,6 +141,7 @@ export async function updateSettings(userId: string, partial: Partial<Settings>)
       baseUrl: llm.baseUrl || null,
       model: llm.model || null,
       shareQuestions,
+      defaultResumeName,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -148,6 +152,7 @@ export async function updateSettings(userId: string, partial: Partial<Settings>)
         baseUrl: llm.baseUrl || null,
         model: llm.model || null,
         shareQuestions,
+        defaultResumeName,
         updatedAt: new Date(),
       },
     });
@@ -156,6 +161,7 @@ export async function updateSettings(userId: string, partial: Partial<Settings>)
     llm,
     workspaceRoot: current.workspaceRoot,
     shareQuestions,
+    defaultResumeName,
   };
 }
 
@@ -273,4 +279,23 @@ export async function getLLMSettingsForModel(
 
   const settings = await getSettings(userId);
   return settings.llm.apiKey ? settings.llm : null;
+}
+
+export async function getDefaultResumeName(userId: string): Promise<string | null> {
+  const [row] = await db
+    .select({ defaultResumeName: userSettings.defaultResumeName })
+    .from(userSettings)
+    .where(eq(userSettings.userId, userId));
+
+  return row?.defaultResumeName ?? null;
+}
+
+export async function setDefaultResumeName(userId: string, name: string | null): Promise<void> {
+  await db
+    .insert(userSettings)
+    .values({ userId, defaultResumeName: name })
+    .onConflictDoUpdate({
+      target: [userSettings.userId],
+      set: { defaultResumeName: name, updatedAt: new Date() },
+    });
 }
