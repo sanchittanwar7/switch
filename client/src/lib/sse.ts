@@ -27,8 +27,17 @@ export function createSSEConnection(url: string, handlers: SSEHandlers): { close
     eventSource.close();
   });
 
-  eventSource.addEventListener("error", () => {
-    handlers.onError?.("Connection lost or stream failed");
+  eventSource.addEventListener("error", (e: MessageEvent) => {
+    let message = "Connection lost or stream failed";
+    try {
+      if (e.data) {
+        const data = JSON.parse(e.data);
+        if (data.message) message = data.message;
+      }
+    } catch {
+      // ignore parse errors, use default
+    }
+    handlers.onError?.(message);
     eventSource.close();
   });
 

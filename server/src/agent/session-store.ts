@@ -108,7 +108,9 @@ async function loadSessionFromDisk(sessionId: string, userId?: string): Promise<
       getSessionPath(index.userId, index.resumeProjectPath, sessionId),
       "utf-8",
     );
-    return JSON.parse(sessionRaw) as AgentSession;
+    const session = JSON.parse(sessionRaw) as AgentSession;
+    session.processing = false;
+    return session;
   } catch {
     if (userId) {
       try {
@@ -122,6 +124,7 @@ async function loadSessionFromDisk(sessionId: string, userId?: string): Promise<
               "utf-8",
             );
             const session = JSON.parse(sessionRaw) as AgentSession;
+            session.processing = false;
             persistIndexForSession(session);
             return session;
           } catch {
