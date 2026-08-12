@@ -33,6 +33,14 @@ export async function runAgentStream(session: AgentSession, req: Request, res: R
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
+  const sendHeartbeat = () => {
+    res.write(": heartbeat\n\n");
+  };
+
+  // Keep connection alive while LLM thinks / tools execute — Vercel proxy kills idle SSE
+  sendHeartbeat();
+  const heartbeatInterval = setInterval(sendHeartbeat, 15_000);
+
   let assistantResponse = "";
 
   const abortController = new AbortController();
@@ -93,9 +101,10 @@ export async function runAgentStream(session: AgentSession, req: Request, res: R
 
     sendSSE("done", { outputPaths: [] });
   } catch (err) {
+    console.error("[agent] stream error:", err);
     if (!res.headersSent) {
       res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: "Agent stream failed" }));
+      res.end(JSON.stringify({ error: err instanceof Error ? err.message : "Agent stream failed" }));
       return;
     }
     sendSSE("error", {
@@ -103,6 +112,7 @@ export async function runAgentStream(session: AgentSession, req: Request, res: R
     });
   } finally {
     setProcessing(session.id, false);
+    clearInterval(heartbeatInterval);
     if (!res.writableEnded) {
       res.end();
     }
