@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { eq } from "drizzle-orm";
+import fs from "fs";
 import { db } from "../db";
 import { userSettings } from "../db/schema";
 import {
@@ -8,11 +9,14 @@ import {
   deleteUserProvider,
   setDefaultModel,
   setSharePreference,
+  getDefaultResumeName,
+  setDefaultResumeName,
   LLM_PROVIDERS,
   PROVIDER_MODELS,
   PROVIDER_BASE_URLS,
   type LLMProvider,
 } from "../settings";
+import { resolvePath } from "../utils/paths";
 
 const router = Router();
 
@@ -179,6 +183,79 @@ router.get("/models", async (req, res) => {
   }));
 
   res.json(availableModels);
+});
+
+router.get("/default-resume", async (req, res) => {
+  const userId = getUserId(req);
+  const defaultResumeName = await getDefaultResumeName(userId);
+
+  const resumesDir = resolvePath("resumes", userId);
+  let resumes: { name: string }[] = [];
+
+  try {
+    const entries = await fs.promises.readdir(resumesDir, { withFileTypes: true });
+    resumes = entries
+      .filter((e) => e.isDirectory())
+      .map((e) => ({ name: e.name }));
+  } catch {
+    // no resumes directory yet — return empty
+  }
+
+  let effectiveDefault = defaultResumeName;
+  if (defaultResumeName) {
+    const fullPath = resolvePath(`resumes/${defaultResumeName}`, userId);
+    try {
+      const stat = await fs.promises.stat(fullPath);
+      if (!stat.isDirectory()) throw new Error("not a directory");
+    } catch {
+      await setDefaultResumeName(userId, null);
+      effectiveDefault = null;
+    }
+  }
+
+  res.json({ defaultResumeName: effectiveDefault, resumes });
+});
+
+router.put("/default-resume", async (req, res) => {
+  const userId = getUserId(req);
+  const { defaultResumeName } = req.body;
+
+  if (defaultResumeName === null || defaultResumeName === "") {
+    await setDefaultResumeName(userId, null);
+    res.json({ success: true });
+    return;
+  }
+
+  if (typeof defaultResumeName !== "string") {
+    res.status(400).json({ error: "Invalid resume name" });
+    return;
+  }
+
+  const trimmed = defaultResumeName.trim();
+  if (!trimmed) {
+    res.status(400).json({ error: "Resume name cannot be empty" });
+    return;
+  }
+
+  if (trimmed.includes("..")) {
+    res.status(400).json({ error: "Invalid resume name" });
+    return;
+  }
+
+  const fullPath = resolvePath(`resumes/${trimmed}`, userId);
+  try {
+    const stat = await fs.promises.stat(fullPath);
+    if (!stat.isDirectory()) {
+      res.status(400).json({ error: "Resume not found" });
+      return;
+    }
+  } catch {
+    res.status(400).json({ error: "Resume not found" });
+    return;
+  }
+
+  await setDefaultResumeName(userId, trimmed);
+  res.json({ success: true, defaultResumeName: trimmed });
 });
 
 export default router;
