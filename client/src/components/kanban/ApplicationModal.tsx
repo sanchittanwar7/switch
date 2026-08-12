@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { X, Trash2, ExternalLink, Send } from "lucide-react";
+import { X, Trash2, ExternalLink, Send, Wand } from "lucide-react";
 import { useKanbanStore } from "../../stores/kanbanStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 import { apiGet } from "../../lib/api";
 import type { Application } from "../../types";
 
@@ -17,7 +18,12 @@ interface ApplicationModalProps {
 
 export default function ApplicationModal({ application, onClose }: ApplicationModalProps) {
   const navigate = useNavigate();
-  const { updateApplication, deleteApplication, addComment } = useKanbanStore();
+  const { updateApplication, deleteApplication, addComment, generatingCards, autoGenerateResume } = useKanbanStore();
+  const { defaultResumeName } = useSettingsStore();
+
+  const isWishlist = application.columnId === "wishlist";
+  const isGenerating = generatingCards.has(application.id);
+  const canGenerate = isWishlist && application.jobUrl && !isGenerating && !!defaultResumeName;
 
   const [company, setCompany] = useState(application.company);
   const [role, setRole] = useState(application.role);
@@ -96,6 +102,15 @@ export default function ApplicationModal({ application, onClose }: ApplicationMo
             Edit Application
           </h2>
           <div className="flex items-center gap-1">
+            {canGenerate && (
+              <button
+                onClick={() => autoGenerateResume(application.id)}
+                className="p-1 rounded-full text-brand-mute hover:text-brand-link hover:bg-brand-canvas-soft-2 transition-colors"
+                title="Auto-generate tailored resume"
+              >
+                <Wand size={18} />
+              </button>
+            )}
             <button
               onClick={() => navigate(`/application/${application.id}`)}
               className="p-1 rounded-full text-brand-mute hover:text-brand-link hover:bg-brand-canvas-soft-2 transition-colors"

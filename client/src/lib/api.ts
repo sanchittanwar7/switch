@@ -255,3 +255,12 @@ export async function getDefaultResume(): Promise<{ defaultResumeName: string | 
 export async function setDefaultResume(defaultResumeName: string | null): Promise<{ success: boolean; defaultResumeName?: string }> {
   return apiPut("/api/settings/default-resume", { defaultResumeName });
 }
+
+export function startAutoTailor(cardId: string): Promise<{
+  sessionId: string;
+  sessionToken: string;
+  tailoredResumePath: string;
+  cardId: string;
+}> {
+  return apiPost("/api/agent/auto-tailor", { cardId });
+}

@@ -1,11 +1,33 @@
 import { create } from "zustand";
-import { apiGet, apiPost, apiPatch, apiDelete, apiPut } from "../lib/api";
+import { apiGet, apiPost, apiPatch, apiDelete, apiPut, startAutoTailor } from "../lib/api";
+import { createSSEConnection } from "../lib/sse";
 import type { Column, Application, Comment } from "../types";
+import { apiUrl } from "../lib/api";
+
+interface GeneratingStatus {
+  sessionId: string;
+  sessionToken: string;
+  tailoredResumePath: string;
+  step: string;
+  toolCalls: number;
+  error?: string;
+}
+
+const STEP_LABELS: Record<string, string> = {
+  read_files: "Reading current resume...",
+  web_fetch: "Fetching job description...",
+  list_dir: "Analyzing project structure...",
+  write_file: "Writing tailored resume...",
+};
+
+const activeConnections = new Map<string, { close: () => void }>();
 
 interface KanbanStore {
   columns: Column[];
   applications: Record<string, Application>;
   loading: boolean;
+  generatingCards: Set<string>;
+  generatingStatus: Record<string, GeneratingStatus>;
   fetchBoard: () => Promise<void>;
   createApplication: (data: {
     company: string;
@@ -27,6 +49,8 @@ interface KanbanStore {
   deleteApplication: (id: string) => Promise<void>;
   moveApplication: (columns: { id: string; applicationIds: string[] }[]) => Promise<void>;
   addComment: (applicationId: string, text: string) => Promise<void>;
+  autoGenerateResume: (cardId: string) => Promise<void>;
+  cancelAutoGenerate: (cardId: string) => void;
 }
 
 interface BoardResponse {
@@ -34,10 +58,12 @@ interface BoardResponse {
   applications: Record<string, Application>;
 }
 
-export const useKanbanStore = create<KanbanStore>((set) => ({
+export const useKanbanStore = create<KanbanStore>((set, get) => ({
   columns: [],
   applications: {},
   loading: false,
+  generatingCards: new Set(),
+  generatingStatus: {},
 
   fetchBoard: async () => {
     set({ loading: true });
@@ -121,5 +147,109 @@ export const useKanbanStore = create<KanbanStore>((set) => ({
         },
       };
     });
+  },
+
+  autoGenerateResume: async (cardId) => {
+    const state = get();
+    if (state.generatingCards.has(cardId)) return;
+
+    try {
+      const { sessionId, sessionToken, tailoredResumePath } = await startAutoTailor(cardId);
+
+      set((s) => ({
+        generatingCards: new Set(s.generatingCards).add(cardId),
+        generatingStatus: {
+          ...s.generatingStatus,
+          [cardId]: { sessionId, sessionToken, tailoredResumePath, step: "Starting...", toolCalls: 0 },
+        },
+      }));
+
+      const connection = createSSEConnection(
+        apiUrl(`/api/agent/sessions/${sessionId}/stream?token=${sessionToken}`),
+        {
+          onToolCall: (data) => {
+            set((s) => {
+              const status = s.generatingStatus[cardId];
+              if (!status) return s;
+              return {
+                generatingStatus: {
+                  ...s.generatingStatus,
+                  [cardId]: { ...status, step: STEP_LABELS[data.tool] || "Working...", toolCalls: status.toolCalls + 1 },
+                },
+              };
+            });
+          },
+          onDone: async () => {
+            const current = get();
+            const status = current.generatingStatus[cardId];
+            if (!status) return;
+
+            activeConnections.delete(cardId);
+
+            await apiPatch(`/api/kanban/applications/${cardId}`, { resumePath: status.tailoredResumePath });
+
+            const doneCards = new Set(get().generatingCards);
+            doneCards.delete(cardId);
+            const { [cardId]: _, ...restStatus } = get().generatingStatus;
+
+            set({
+              generatingCards: doneCards,
+              generatingStatus: restStatus,
+              applications: {
+                ...get().applications,
+                [cardId]: { ...get().applications[cardId], resumePath: status.tailoredResumePath },
+              },
+            });
+          },
+          onError: (error) => {
+            activeConnections.delete(cardId);
+            set((s) => {
+              const status = s.generatingStatus[cardId];
+              if (!status) return s;
+              return {
+                generatingStatus: {
+                  ...s.generatingStatus,
+                  [cardId]: { ...status, step: error, error },
+                },
+              };
+            });
+          },
+        },
+      );
+
+      activeConnections.set(cardId, connection);
+    } catch (err) {
+      set((s) => {
+        const doneCards = new Set(s.generatingCards);
+        doneCards.delete(cardId);
+        const { [cardId]: _, ...restStatus } = s.generatingStatus;
+        return {
+          generatingCards: doneCards,
+          generatingStatus: {
+            ...restStatus,
+            [cardId]: {
+              sessionId: "",
+              sessionToken: "",
+              tailoredResumePath: "",
+              step: err instanceof Error ? err.message : "Failed to start generation",
+              toolCalls: 0,
+              error: err instanceof Error ? err.message : "Failed to start generation",
+            },
+          },
+        };
+      });
+    }
+  },
+
+  cancelAutoGenerate: (cardId) => {
+    const conn = activeConnections.get(cardId);
+    if (conn) {
+      conn.close();
+      activeConnections.delete(cardId);
+    }
+    const doneCards = new Set(get().generatingCards);
+    doneCards.delete(cardId);
+    const { [cardId]: _, ...restStatus } = get().generatingStatus;
+    set({ generatingCards: doneCards, generatingStatus: restStatus });
   },
 }));

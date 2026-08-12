@@ -1,4 +1,7 @@
 import { Draggable } from "@hello-pangea/dnd";
+import { Wand, Loader2 } from "lucide-react";
+import { useKanbanStore } from "../../stores/kanbanStore";
+import { useSettingsStore } from "../../stores/settingsStore";
 import type { Application as ApplicationType } from "../../types";
 
 interface ApplicationCardProps {
@@ -9,6 +12,14 @@ interface ApplicationCardProps {
 
 export default function ApplicationCard({ application, index, onClick }: ApplicationCardProps) {
   const lastComment = application.comments?.[application.comments.length - 1];
+  const { generatingCards, generatingStatus, autoGenerateResume } = useKanbanStore();
+  const { defaultResumeName } = useSettingsStore();
+
+  const isWishlist = application.columnId === "wishlist";
+  const isGenerating = generatingCards.has(application.id);
+  const genStatus = generatingStatus[application.id];
+  const canGenerate = isWishlist && application.jobUrl && !isGenerating;
+  const hasDefaultResume = !!defaultResumeName;
 
   return (
     <Draggable draggableId={application.id} index={index}>
@@ -57,6 +68,43 @@ export default function ApplicationCard({ application, index, onClick }: Applica
               <p className="text-xs text-brand-mute mt-2 truncate">
                 {lastComment.text}
               </p>
+            )}
+
+            {isGenerating && genStatus && (
+              <div className="flex items-center gap-1.5 mt-2 text-xs text-brand-link">
+                <Loader2 size={12} className="animate-spin" />
+                <span className="truncate">
+                  {genStatus.error ? genStatus.error : genStatus.step}
+                </span>
+                {!genStatus.error && (
+                  <span className="text-brand-mute shrink-0">({genStatus.toolCalls} steps)</span>
+                )}
+              </div>
+            )}
+
+            {canGenerate && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  autoGenerateResume(application.id);
+                }}
+                className="flex items-center gap-1 mt-2 text-xs text-brand-link hover:text-brand-link-deep transition-colors"
+                title={hasDefaultResume ? "Auto-generate tailored resume" : "Set a default resume first"}
+              >
+                <Wand size={12} />
+                Auto-generate
+              </button>
+            )}
+
+            {isWishlist && application.jobUrl && !isGenerating && !hasDefaultResume && (
+              <button
+                disabled
+                className="flex items-center gap-1 mt-2 text-xs text-brand-mute/50 cursor-not-allowed"
+                title="Set a default resume first"
+              >
+                <Wand size={12} />
+                Auto-generate
+              </button>
             )}
           </div>
         </div>
