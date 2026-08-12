@@ -246,3 +246,12 @@ export async function updateSkill(id: string, data: Partial<Omit<ProfileSkill, "
 export async function deleteSkill(id: string) {
   return apiDelete(`/api/profile/skills/${id}`);
 }
+
+// Default Resume
+export async function getDefaultResume(): Promise<{ defaultResumeName: string | null; resumes: { name: string }[] }> {
+  return apiGet("/api/settings/default-resume");
+}
+
+export async function setDefaultResume(defaultResumeName: string | null): Promise<{ success: boolean; defaultResumeName?: string }> {
+  return apiPut("/api/settings/default-resume", { defaultResumeName });
+}
