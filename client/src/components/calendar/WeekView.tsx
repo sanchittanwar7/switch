@@ -22,7 +22,7 @@ interface WeekViewProps {
 
 const START_HOUR = 0;
 const END_HOUR = 24;
-const HOUR_HEIGHT = 60;
+const HOUR_HEIGHT = 100;
 const TOTAL_HOURS = END_HOUR - START_HOUR;
 
 function eventStyle(
@@ -108,18 +108,22 @@ export default function WeekView({
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, []);
-
   const now = new Date();
   const todayInWeek = days.some((d) => isSameDay(d, now));
   const nowMinutesSinceStart =
     todayInWeek
       ? (now.getHours() - START_HOUR) * 60 + now.getMinutes()
       : null;
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop =
+        nowMinutesSinceStart !== null
+          ? (nowMinutesSinceStart / 60) * HOUR_HEIGHT - 16
+          : 0;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleGridClick = (day: Date, hour: number) => {
     const start = setMinutes(setHours(day, hour), 0);
@@ -160,15 +164,6 @@ export default function WeekView({
             />
           ))}
 
-          {nowMinutesSinceStart !== null && (
-            <div
-              className="absolute left-0 right-0 z-20 pointer-events-none"
-              style={{ top: `${(nowMinutesSinceStart / 60) * HOUR_HEIGHT}px` }}
-            >
-              <div className="border-t border-brand-error" />
-            </div>
-          )}
-
           <div className="grid grid-cols-[60px_repeat(7,1fr)] relative z-10">
             <div>
               {hours.map((hour) => (
@@ -189,12 +184,21 @@ export default function WeekView({
               const overlapMap = computeOverlapColumns(dayEvents);
 
               return (
-                <div
-                  key={day.toISOString()}
-                  className="relative border-l border-brand-hairline"
-                  style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}
-                >
-                  {hours.map((hour) => (
+                  <div
+                    key={day.toISOString()}
+                    className="relative border-l border-brand-hairline"
+                    style={{ height: `${TOTAL_HOURS * HOUR_HEIGHT}px` }}
+                  >
+                    {nowMinutesSinceStart !== null && isSameDay(day, now) && (
+                      <div
+                        className="absolute left-0 right-0 z-20 pointer-events-none"
+                        style={{ top: `${(nowMinutesSinceStart / 60) * HOUR_HEIGHT}px` }}
+                      >
+                        <div className="border-t border-brand-error" />
+                      </div>
+                    )}
+
+                    {hours.map((hour) => (
                     <div
                       key={hour}
                       className="hover:bg-brand-canvas-soft-2/30 cursor-pointer transition-colors"
