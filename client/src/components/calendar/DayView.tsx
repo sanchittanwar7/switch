@@ -19,7 +19,7 @@ interface DayViewProps {
 
 const START_HOUR = 0;
 const END_HOUR = 24;
-const HOUR_HEIGHT = 60;
+const HOUR_HEIGHT = 100;
 const TOTAL_HOURS = END_HOUR - START_HOUR;
 
 function eventStyle(
@@ -112,16 +112,20 @@ export default function DayView({
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, []);
-
   const nowMinutesSinceStart =
     isToday
       ? (now.getHours() - START_HOUR) * 60 + now.getMinutes()
       : null;
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop =
+        nowMinutesSinceStart !== null
+          ? (nowMinutesSinceStart / 60) * HOUR_HEIGHT - 16
+          : 0;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const overlapMap = useMemo(
     () => computeOverlapColumns(dayEvents),
