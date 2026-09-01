@@ -17,6 +17,64 @@ export function getWebhookSecret(): string {
   );
 }
 
+export function getKeyId(): string {
+  const mode = getRazorpayMode();
+  return (
+    process.env[`RAZORPAY_KEY_ID_${mode.toUpperCase()}`] ??
+    process.env.RAZORPAY_KEY_ID ??
+    ""
+  );
+}
+
+export function getKeySecret(): string {
+  const mode = getRazorpayMode();
+  return (
+    process.env[`RAZORPAY_KEY_SECRET_${mode.toUpperCase()}`] ??
+    process.env.RAZORPAY_KEY_SECRET ??
+    ""
+  );
+}
+
+export interface RazorpayOrder {
+  orderId: string;
+  amountPaise: number;
+  currency: string;
+}
+
+export async function createRazorpayOrder(params: {
+  amountPaise: number;
+  currency: string;
+  notes: Record<string, string>;
+}): Promise<RazorpayOrder> {
+  const keyId = getKeyId();
+  const keySecret = getKeySecret();
+  if (!keyId || !keySecret) {
+    throw new Error("Razorpay API keys not configured");
+  }
+
+  const auth = Buffer.from(`${keyId}:${keySecret}`).toString("base64");
+  const res = await fetch("https://api.razorpay.com/v1/orders", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${auth}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      amount: params.amountPaise,
+      currency: params.currency,
+      notes: params.notes,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Razorpay order creation failed (${res.status}): ${text}`);
+  }
+
+  const data = (await res.json()) as { id: string; amount: number; currency: string };
+  return { orderId: data.id, amountPaise: data.amount, currency: data.currency };
+}
+
 export function verifyWebhookSignature(
   rawBody: string | Buffer,
   signature: string | undefined,

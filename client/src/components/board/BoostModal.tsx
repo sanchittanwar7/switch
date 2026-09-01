@@ -10,6 +10,7 @@ function formatPaise(paise: number): string {
 
 const POLL_INTERVAL_MS = 3000;
 const MAX_POLLS = 40;
+const MIN_RUPEES = 99;
 
 interface BoostModalProps {
   listing: BoardListing;
@@ -21,10 +22,17 @@ interface BoostModalProps {
 export default function BoostModal({ listing, alreadyListed, onClose, onPaid }: BoostModalProps) {
   const [polling, setPolling] = useState(false);
   const [paid, setPaid] = useState(false);
+  const [amount, setAmount] = useState("");
+  const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCountRef = useRef(0);
   const initialBidRef = useRef(listing.bidPaise);
   const initialStatusRef = useRef(listing.status);
+
+  const amountValue = Number(amount);
+  const amountPaise = Math.round(amountValue * 100);
+  const amountValid =
+    amount.trim() !== "" && Number.isFinite(amountValue) && amountValue >= MIN_RUPEES;
 
   const title =
     listing.kind === "candidate"
@@ -105,9 +113,36 @@ export default function BoostModal({ listing, alreadyListed, onClose, onPaid }: 
                 ? "This listing is already on the board. Your payment boosts it and pushes it higher in the rankings."
                 : "Complete a payment of at least ₹99 to activate this listing. Anyone can pay — the amount you enter becomes the listing's bid."}
             </p>
-            <RazorpayButton listingId={listing.id} />
+
+            <label className="block">
+              <span className="text-[14px] leading-[20px] font-medium text-brand-ink mb-1.5 block">
+                Amount (₹)
+              </span>
+              <input
+                type="number"
+                min={MIN_RUPEES}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder={`${MIN_RUPEES}`}
+                className="w-full rounded-md border border-brand-hairline bg-brand-canvas px-3 h-10 text-[14px] leading-[20px] text-brand-ink placeholder:text-brand-mute focus:outline-none focus:ring-2 focus:ring-brand-link/20 focus:border-brand-link"
+              />
+            </label>
+
+            {error && (
+              <div className="flex items-center gap-2 rounded-md bg-brand-error-soft px-3 py-2 text-[13px] text-brand-error">
+                {error}
+              </div>
+            )}
+
+            <RazorpayButton
+              listingId={listing.id}
+              amountPaise={amountPaise}
+              disabled={!amountValid}
+              onPaid={startPolling}
+              onError={setError}
+            />
             <p className="text-[12px] text-brand-mute">
-              You'll be taken to Razorpay in a new tab. Come back here — we'll confirm automatically.
+              Razorpay checkout opens here. Complete the payment — we'll confirm automatically.
             </p>
           </div>
         )}

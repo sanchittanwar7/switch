@@ -220,3 +220,10 @@ export interface BoardCreateResponse {
   listing: BoardListing;
   alreadyListed: boolean;
 }
+
+export interface BoardOrder {
+  orderId: string;
+  amountPaise: number;
+  currency: string;
+  keyId: string;
+}

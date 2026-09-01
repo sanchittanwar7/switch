@@ -13,8 +13,11 @@ import {
 import { db } from "../db";
 import { boardListings, boardPayments } from "../db/schema";
 import { contentHash } from "../lib/board-url";
+import { createRazorpayOrder, getKeyId } from "../lib/razorpay";
 
 const router = Router();
+
+const MIN_PAISE = Number(process.env.BOARD_MIN_PAISE) || 9900;
 
 type Kind = "candidate" | "recruiter";
 type Window = "all" | "today";
@@ -306,6 +309,53 @@ router.post("/listings", async (req, res) => {
   } catch (err) {
     console.error("POST /api/board/listings:", err);
     res.status(500).json({ error: "Failed to create listing" });
+  }
+});
+
+// ─── POST /orders ────────────────────────────────────────────────────────────
+
+router.post("/orders", async (req, res) => {
+  try {
+    const body = req.body ?? {};
+    const listingId = typeof body.listingId === "string" ? body.listingId : "";
+    const amountPaise = Math.trunc(Number(body.amountPaise));
+
+    if (!listingId) {
+      res.status(400).json({ error: "listingId is required" });
+      return;
+    }
+    if (!Number.isFinite(amountPaise) || amountPaise < MIN_PAISE) {
+      res.status(400).json({ error: `amountPaise must be an integer >= ${MIN_PAISE}` });
+      return;
+    }
+
+    const [listing] = await db
+      .select()
+      .from(boardListings)
+      .where(eq(boardListings.id, listingId));
+
+    if (!listing) {
+      res.status(404).json({ error: "Listing not found" });
+      return;
+    }
+
+    const order = await createRazorpayOrder({
+      amountPaise,
+      currency: "INR",
+      notes: { listingId },
+    });
+
+    res.json({
+      orderId: order.orderId,
+      amountPaise: order.amountPaise,
+      currency: order.currency,
+      keyId: getKeyId(),
+    });
+  } catch (err) {
+    console.error("POST /api/board/orders:", err);
+    res
+      .status(500)
+      .json({ error: err instanceof Error ? err.message : "Failed to create order" });
   }
 });
 

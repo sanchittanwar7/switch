@@ -13,6 +13,7 @@ import type {
   BoardListingKind,
   RankWindow,
   BoardFilters,
+  BoardOrder,
 } from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
@@ -302,4 +303,11 @@ export function createBoardListing(
   data: BoardListingInput,
 ): Promise<BoardCreateResponse> {
   return apiPost<BoardCreateResponse>("/api/board/listings", data);
+}
+
+export function createBoardOrder(
+  listingId: string,
+  amountPaise: number,
+): Promise<BoardOrder> {
+  return apiPost<BoardOrder>("/api/board/orders", { listingId, amountPaise });
 }
