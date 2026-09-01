@@ -8,17 +8,32 @@ import { addMessage, setProcessing } from "./session-store";
 import type { AgentSession } from "./session-store";
 import { resolvePath } from "../utils/paths";
 
+interface ActiveRun {
+  generation: number;
+  abortController: AbortController;
+}
+
+const activeRuns = new Map<string, ActiveRun>();
+let runGeneration = 0;
+
 export async function runAgentStream(session: AgentSession, req: Request, res: Response): Promise<void> {
   const model = createModel(session.settings);
   const tools = createTools(session.userId);
   const fileList = await listResumeFiles(session.userId, session.resumeProjectPath);
   const systemPrompt = buildSystemPrompt(session.resumeProjectPath, fileList);
 
-  if (session.processing) {
-    res.writeHead(409, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ error: "Session is already processing. Wait for current response to finish." }));
-    return;
+  // If a previous stream for this session is still marked active (e.g. the client
+  // disconnected without a clean close — laptop sleep), abort it and take over instead
+  // of rejecting with 409. This lets a reconnected client resume the session.
+  const previous = activeRuns.get(session.id);
+  if (previous) {
+    previous.abortController.abort();
+    activeRuns.delete(session.id);
   }
+
+  const generation = ++runGeneration;
+  const abortController = new AbortController();
+  activeRuns.set(session.id, { generation, abortController });
 
   setProcessing(session.id, true);
 
@@ -42,9 +57,12 @@ export async function runAgentStream(session: AgentSession, req: Request, res: R
   const heartbeatInterval = setInterval(sendHeartbeat, 15_000);
 
   let assistantResponse = "";
+  let assistantPersisted = false;
 
-  const abortController = new AbortController();
-  req.on("close", () => abortController.abort());
+  const abort = () => abortController.abort();
+  req.on("close", abort);
+  req.on("aborted", abort);
+  res.on("close", abort);
 
   try {
     const result = streamText({
@@ -97,21 +115,36 @@ export async function runAgentStream(session: AgentSession, req: Request, res: R
 
     if (assistantResponse) {
       addMessage(session.id, "assistant", assistantResponse);
+      assistantPersisted = true;
     }
 
     sendSSE("done", { outputPaths: [] });
   } catch (err) {
-    console.error("[agent] stream error:", err);
-    if (!res.headersSent) {
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: err instanceof Error ? err.message : "Agent stream failed" }));
-      return;
+    const wasAborted = abortController.signal.aborted;
+
+    if (wasAborted) {
+      // Client disconnected mid-stream. Persist whatever was generated so the session
+      // history is intact and a later "continue" resumes from here instead of losing it.
+      if (assistantResponse && !assistantPersisted) {
+        addMessage(session.id, "assistant", assistantResponse);
+      }
+    } else {
+      console.error("[agent] stream error:", err);
+      if (!res.headersSent) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: err instanceof Error ? err.message : "Agent stream failed" }));
+        return;
+      }
+      sendSSE("error", {
+        message: err instanceof Error ? err.message : "Unknown error",
+      });
     }
-    sendSSE("error", {
-      message: err instanceof Error ? err.message : "Unknown error",
-    });
   } finally {
-    setProcessing(session.id, false);
+    const current = activeRuns.get(session.id);
+    if (current && current.generation === generation) {
+      activeRuns.delete(session.id);
+      setProcessing(session.id, false);
+    }
     clearInterval(heartbeatInterval);
     if (!res.writableEnded) {
       res.end();

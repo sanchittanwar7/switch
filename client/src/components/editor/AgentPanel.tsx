@@ -284,15 +284,14 @@ export default function AgentPanel({ projectPath }: AgentPanelProps) {
           stopRequestedRef.current = false;
           return;
         }
-        if (es.readyState === EventSource.CLOSED) {
-          errorHandled = true;
-          resolveStalePendings();
-          setEntries((prev) => [
-            ...prev,
-            { type: "error", content: "Connection lost. The agent session may have timed out. Try sending your message again." },
-          ]);
-          setStatus("error");
-        }
+        errorHandled = true;
+        es.close();
+        resolveStalePendings();
+        setEntries((prev) => [
+          ...prev,
+          { type: "error", content: "Connection lost. Send your message again to continue." },
+        ]);
+        setStatus("error");
       };
     },
     [resolveStalePendings, loadSessionList],
