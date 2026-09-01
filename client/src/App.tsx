@@ -14,6 +14,7 @@ import ResearchView from "./views/ResearchView";
 import ProfileView from "./views/ProfileView";
 import LoginPage from "./views/LoginPage";
 import LandingPage from "./views/LandingPage";
+import BiddingBoardView from "./views/BiddingBoardView";
 
 function LoadingScreen() {
   return (
@@ -63,6 +64,7 @@ export default function App() {
         path="/login"
         element={user ? <Navigate to="/board" replace /> : <LoginPage />}
       />
+      <Route path="/bidding" element={<BiddingBoardView />} />
 
       <Route
         element={

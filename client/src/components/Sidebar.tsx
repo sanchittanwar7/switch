@@ -1,9 +1,10 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, FileText, Settings, LogOut, User, PanelLeft, MessageSquareQuote, FlaskConical } from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileText, Settings, LogOut, User, PanelLeft, MessageSquareQuote, FlaskConical, Gavel } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 const navItems = [
   { to: "/board", icon: LayoutDashboard, label: "Board" },
+  { to: "/bidding", icon: Gavel, label: "Bidding Board" },
   { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/questions", icon: MessageSquareQuote, label: "Question Bank" },
   { to: "/resumes", icon: FileText, label: "Resumes" },
