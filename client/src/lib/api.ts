@@ -1,5 +1,19 @@
 import { supabase } from "./supabase";
-import type { Application, Interview, InterviewType, InterviewStatus, QuestionBankEntry, SharedQuestionEntry } from "../types";
+import type {
+  Application,
+  Interview,
+  InterviewType,
+  InterviewStatus,
+  QuestionBankEntry,
+  SharedQuestionEntry,
+  BoardListing,
+  BoardListingsResponse,
+  BoardCreateResponse,
+  BoardListingInput,
+  BoardListingKind,
+  RankWindow,
+  BoardFilters,
+} from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
 
@@ -263,4 +277,29 @@ export function startAutoTailor(cardId: string): Promise<{
   cardId: string;
 }> {
   return apiPost("/api/agent/auto-tailor", { cardId });
+}
+
+// ─── Bidding Board ───────────────────────────────────────────────────────────
+
+export function getBoardListings(
+  kind: BoardListingKind,
+  window: RankWindow,
+  filters?: BoardFilters,
+): Promise<BoardListingsResponse> {
+  const params = new URLSearchParams();
+  params.set("kind", kind);
+  params.set("window", window);
+  if (filters?.skills && filters.skills.length > 0) params.set("skills", filters.skills.join(","));
+  if (filters?.location) params.set("location", filters.location);
+  if (filters?.yearsExperience !== undefined && filters.yearsExperience !== null) {
+    params.set("yearsExperience", String(filters.yearsExperience));
+  }
+  if (filters?.role) params.set("role", filters.role);
+  return apiGet<BoardListingsResponse>(`/api/board/listings?${params.toString()}`);
+}
+
+export function createBoardListing(
+  data: BoardListingInput,
+): Promise<BoardCreateResponse> {
+  return apiPost<BoardCreateResponse>("/api/board/listings", data);
 }
