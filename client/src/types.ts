@@ -144,3 +144,79 @@ export interface ResearchReport {
   content: string;
   lastModified: number | null;
 }
+
+export type BoardListingKind = "candidate" | "recruiter";
+export type BoardListingStatus = "pending_payment" | "active" | "hidden";
+export type RankWindow = "all" | "today";
+
+export interface BoardListing {
+  id: string;
+  kind: BoardListingKind;
+  status: BoardListingStatus;
+  rank: number;
+  bidPaise: number;
+  company: string | null;
+  resumeUrl: string | null;
+  linkedinUrl: string | null;
+  xUrl: string | null;
+  githubUrl: string | null;
+  yearsExperience: number | null;
+  locations: string[];
+  skills: string[];
+  jdUrl: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  currency: string | null;
+  role: string | null;
+  yearsExperienceMin: number | null;
+  yearsExperienceMax: number | null;
+  createdAt: string;
+}
+
+export interface BoardListingInput {
+  kind: BoardListingKind;
+  company?: string;
+  resumeUrl?: string;
+  linkedinUrl?: string;
+  xUrl?: string;
+  githubUrl?: string;
+  yearsExperience?: number;
+  locations?: string[];
+  skills?: string[];
+  jdUrl?: string;
+  salaryMin?: number;
+  salaryMax?: number;
+  currency?: string;
+  role?: string;
+  yearsExperienceMin?: number;
+  yearsExperienceMax?: number;
+}
+
+export interface BoardPayment {
+  id: string;
+  listingId: string;
+  userId: string | null;
+  razorpayPaymentId: string;
+  amountPaise: number;
+  status: string;
+  capturedAt: string;
+  createdAt: string;
+}
+
+export interface BoardFilters {
+  skills?: string[];
+  location?: string;
+  yearsExperience?: number;
+  role?: string;
+}
+
+export interface BoardListingsResponse {
+  kind: BoardListingKind;
+  window: RankWindow;
+  listings: BoardListing[];
+}
+
+export interface BoardCreateResponse {
+  listing: BoardListing;
+  alreadyListed: boolean;
+}

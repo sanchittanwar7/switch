@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, uniqueIndex, index, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, uuid, timestamp, integer, bigint, uniqueIndex, index, boolean } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid("id").primaryKey(),
@@ -168,4 +168,51 @@ export const skills = pgTable("skills", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
   userIdIdx: index("skills_user_id_idx").on(table.userId),
+}));
+
+export const boardListings = pgTable("board_listings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  contentHash: text("content_hash").notNull(),
+  kind: text("kind").notNull(),
+  status: text("status").notNull().default("pending_payment"),
+  company: text("company"),
+  resumeUrl: text("resume_url"),
+  linkedinUrl: text("linkedin_url"),
+  xUrl: text("x_url"),
+  githubUrl: text("github_url"),
+  yearsExperience: integer("years_experience"),
+  skills: text("skills").array().notNull().default([]),
+  locations: text("locations").array().notNull().default([]),
+  jdUrl: text("jd_url"),
+  salaryMin: integer("salary_min"),
+  salaryMax: integer("salary_max"),
+  currency: text("currency").notNull().default("INR"),
+  role: text("role"),
+  yearsExperienceMin: integer("years_experience_min"),
+  yearsExperienceMax: integer("years_experience_max"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  contentHashUnique: uniqueIndex("board_listings_content_hash_idx").on(table.contentHash),
+  kindIdx: index("board_listings_kind_idx").on(table.kind),
+  statusIdx: index("board_listings_status_idx").on(table.status),
+}));
+
+export const boardPayments = pgTable("board_payments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  listingId: uuid("listing_id")
+    .notNull()
+    .references(() => boardListings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  razorpayPaymentId: text("razorpay_payment_id").notNull(),
+  amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
+  status: text("status").notNull().default("captured"),
+  capturedAt: timestamp("captured_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => ({
+  razorpayPaymentIdUnique: uniqueIndex("board_payments_razorpay_payment_id_idx").on(
+    table.razorpayPaymentId,
+  ),
+  listingIdIdx: index("board_payments_listing_id_idx").on(table.listingId),
+  capturedAtIdx: index("board_payments_captured_at_idx").on(table.capturedAt),
 }));
