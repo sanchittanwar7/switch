@@ -4,7 +4,9 @@ import { Loader2, Plus, Users, Building2, TrendingUp } from "lucide-react";
 import { useBoardStore } from "../stores/boardStore";
 import ListingCard from "../components/board/ListingCard";
 import FilterBar from "../components/board/FilterBar";
-import type { BoardListingKind, RankWindow } from "../types";
+import ListingFormModal from "../components/board/ListingFormModal";
+import BoostModal from "../components/board/BoostModal";
+import type { BoardListing, BoardListingKind, RankWindow, BoardCreateResponse } from "../types";
 
 const KIND_TABS: { value: BoardListingKind; label: string; icon: typeof Users }[] = [
   { value: "candidate", label: "Candidates", icon: Users },
@@ -21,6 +23,25 @@ export default function BiddingBoardView() {
   const { kind, window, filters, listings, loading, error, setKind, setWindow, setFilters, fetchListings } =
     useBoardStore();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
+  const [boostListing, setBoostListing] = useState<BoardListing | null>(null);
+  const [boostAlreadyListed, setBoostAlreadyListed] = useState(false);
+
+  function handleCreated(res: BoardCreateResponse) {
+    setFormOpen(false);
+    setBoostListing(res.listing);
+    setBoostAlreadyListed(res.alreadyListed);
+  }
+
+  function handleBoost(listing: BoardListing) {
+    setBoostListing(listing);
+    setBoostAlreadyListed(false);
+  }
+
+  function handlePaid() {
+    setBoostListing(null);
+    fetchListings();
+  }
 
   useEffect(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -54,7 +75,7 @@ export default function BiddingBoardView() {
             </p>
           </div>
           <button
-            onClick={() => {}}
+            onClick={() => setFormOpen(true)}
             className="inline-flex items-center gap-2 rounded-full bg-brand-ink text-brand-canvas px-6 h-12 text-[16px] font-medium hover:opacity-90 transition-opacity shrink-0"
           >
             <Plus size={16} />
@@ -127,11 +148,26 @@ export default function BiddingBoardView() {
         {!loading && !error && listings.length > 0 && (
           <div className="space-y-4">
             {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} onBoost={() => {}} />
+              <ListingCard key={listing.id} listing={listing} onBoost={handleBoost} />
             ))}
           </div>
         )}
       </div>
+
+      <ListingFormModal
+        open={formOpen}
+        onClose={() => setFormOpen(false)}
+        onCreated={handleCreated}
+      />
+
+      {boostListing && (
+        <BoostModal
+          listing={boostListing}
+          alreadyListed={boostAlreadyListed}
+          onClose={() => setBoostListing(null)}
+          onPaid={handlePaid}
+        />
+      )}
     </div>
   );
 }
