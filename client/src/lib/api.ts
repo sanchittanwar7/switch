@@ -311,3 +311,14 @@ export function createBoardOrder(
 ): Promise<BoardOrder> {
   return apiPost<BoardOrder>("/api/board/orders", { listingId, amountPaise });
 }
+
+export function updateBoardListing(
+  id: string,
+  data: BoardListingInput,
+): Promise<{ listing: BoardListing }> {
+  return apiPatch<{ listing: BoardListing }>(`/api/board/listings/${id}`, data);
+}
+
+export function deleteBoardListing(id: string): Promise<{ success: boolean }> {
+  return apiDelete<{ success: boolean }>(`/api/board/listings/${id}`);
+}

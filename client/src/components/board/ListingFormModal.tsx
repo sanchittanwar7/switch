@@ -1,7 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { X, Loader2, AlertCircle, Users, Building2 } from "lucide-react";
 import { useBoardStore } from "../../stores/boardStore";
-import type { BoardListingKind, BoardListingInput, BoardCreateResponse } from "../../types";
+import type {
+  BoardListing,
+  BoardListingKind,
+  BoardListingInput,
+  BoardCreateResponse,
+} from "../../types";
 
 const LINKEDIN_URL_RE = /^https:\/\/www\.linkedin\.com\/in\/[A-Za-z0-9\-_]+\/?$/;
 
@@ -24,6 +29,7 @@ function splitList(value: string): string[] {
 interface FormState {
   kind: BoardListingKind;
   linkedinUrl: string;
+  name: string;
   company: string;
   locations: string;
   resumeUrl: string;
@@ -42,6 +48,7 @@ interface FormState {
 const EMPTY_FORM: FormState = {
   kind: "candidate",
   linkedinUrl: "",
+  name: "",
   company: "",
   locations: "",
   resumeUrl: "",
@@ -59,15 +66,54 @@ const EMPTY_FORM: FormState = {
 
 interface ListingFormModalProps {
   open: boolean;
+  listing?: BoardListing | null;
   onClose: () => void;
   onCreated: (res: BoardCreateResponse) => void;
+  onUpdated?: () => void;
 }
 
-export default function ListingFormModal({ open, onClose, onCreated }: ListingFormModalProps) {
+export default function ListingFormModal({
+  open,
+  listing,
+  onClose,
+  onCreated,
+  onUpdated,
+}: ListingFormModalProps) {
   const createListing = useBoardStore((s) => s.createListing);
+  const updateListing = useBoardStore((s) => s.updateListing);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const isEditing = !!listing;
+
+  useEffect(() => {
+    if (!open) return;
+    if (listing) {
+      setForm({
+        kind: listing.kind,
+        linkedinUrl: listing.linkedinUrl ?? "",
+        name: listing.name ?? "",
+        company: listing.company ?? "",
+        locations: listing.locations.join(", "),
+        resumeUrl: listing.resumeUrl ?? "",
+        xUrl: listing.xUrl ?? "",
+        githubUrl: listing.githubUrl ?? "",
+        yearsExperience: listing.yearsExperience?.toString() ?? "",
+        skills: listing.skills.join(", "),
+        jdUrl: listing.jdUrl ?? "",
+        role: listing.role ?? "",
+        salaryMin: listing.salaryMin?.toString() ?? "",
+        salaryMax: listing.salaryMax?.toString() ?? "",
+        yearsExperienceMin: listing.yearsExperienceMin?.toString() ?? "",
+        yearsExperienceMax: listing.yearsExperienceMax?.toString() ?? "",
+      });
+    } else {
+      setForm(EMPTY_FORM);
+    }
+    setError(null);
+    setSubmitting(false);
+  }, [open, listing]);
 
   if (!open) return null;
 
@@ -146,6 +192,8 @@ export default function ListingFormModal({ open, onClose, onCreated }: ListingFo
 
       if (form.kind === "candidate") {
         input.linkedinUrl = form.linkedinUrl.trim();
+        input.name = form.name.trim() || undefined;
+        input.role = form.role.trim() || undefined;
         input.resumeUrl = form.resumeUrl.trim() || undefined;
         input.xUrl = form.xUrl.trim() || undefined;
         input.githubUrl = form.githubUrl.trim() || undefined;
@@ -162,9 +210,15 @@ export default function ListingFormModal({ open, onClose, onCreated }: ListingFo
           form.yearsExperienceMax === "" ? undefined : Number(form.yearsExperienceMax);
       }
 
-      const res = await createListing(input);
-      reset();
-      onCreated(res);
+      if (isEditing && listing) {
+        await updateListing(listing.id, input);
+        reset();
+        onUpdated?.();
+      } else {
+        const res = await createListing(input);
+        reset();
+        onCreated(res);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create listing");
       setSubmitting(false);
@@ -190,28 +244,30 @@ export default function ListingFormModal({ open, onClose, onCreated }: ListingFo
         </button>
 
         <h3 className="text-[18px] font-semibold leading-[24px] tracking-[-0.36px] text-brand-ink mb-6">
-          List yourself.
+          {isEditing ? "Edit listing." : "List yourself."}
         </h3>
 
         <div className="flex items-center gap-1 mb-6">
           <button
             onClick={() => set("kind", "candidate")}
+            disabled={isEditing}
             className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               form.kind === "candidate"
                 ? "bg-brand-ink text-brand-canvas"
                 : "text-brand-body hover:text-brand-ink hover:bg-brand-canvas-soft"
-            }`}
+            } ${isEditing ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             <Users size={15} />
             I'm a candidate
           </button>
           <button
             onClick={() => set("kind", "recruiter")}
+            disabled={isEditing}
             className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
               form.kind === "recruiter"
                 ? "bg-brand-ink text-brand-canvas"
                 : "text-brand-body hover:text-brand-ink hover:bg-brand-canvas-soft"
-            }`}
+            } ${isEditing ? "opacity-60 cursor-not-allowed" : ""}`}
           >
             <Building2 size={15} />
             I'm hiring
@@ -222,12 +278,34 @@ export default function ListingFormModal({ open, onClose, onCreated }: ListingFo
           {form.kind === "candidate" ? (
             <>
               <label className="block">
-                <span className={labelClass}>LinkedIn URL *</span>
+                <span className={labelClass}>Name</span>
                 <input
                   type="text"
-                  value={form.linkedinUrl}
-                  onChange={(e) => set("linkedinUrl", e.target.value)}
-                  placeholder="https://www.linkedin.com/in/username"
+                  value={form.name}
+                  onChange={(e) => set("name", e.target.value)}
+                  placeholder="Jane Doe"
+                  className={inputClass}
+                />
+              </label>
+
+              <label className="block">
+                <span className={labelClass}>Role</span>
+                <input
+                  type="text"
+                  value={form.role}
+                  onChange={(e) => set("role", e.target.value)}
+                  placeholder="Software Engineer"
+                  className={inputClass}
+                />
+              </label>
+
+              <label className="block">
+                <span className={labelClass}>Company</span>
+                <input
+                  type="text"
+                  value={form.company}
+                  onChange={(e) => set("company", e.target.value)}
+                  placeholder="Acme Corp"
                   className={inputClass}
                 />
               </label>
@@ -422,7 +500,7 @@ export default function ListingFormModal({ open, onClose, onCreated }: ListingFo
               className="inline-flex items-center gap-2 rounded-full bg-brand-ink text-brand-canvas px-6 h-10 text-[14px] leading-[20px] font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-opacity"
             >
               {submitting && <Loader2 size={14} className="animate-spin" />}
-              Continue to payment
+              {isEditing ? "Save changes" : "Continue to payment"}
             </button>
             <button
               onClick={handleClose}

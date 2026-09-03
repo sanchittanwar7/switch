@@ -76,6 +76,7 @@ function toListingDto(row: typeof boardListings.$inferSelect, bidPaise: number, 
     status: row.status,
     rank,
     bidPaise,
+    name: row.name,
     company: row.company,
     resumeUrl: row.resumeUrl,
     linkedinUrl: row.linkedinUrl,
@@ -181,109 +182,119 @@ router.get("/listings", async (req, res) => {
   }
 });
 
+// ─── Listing body parsing ────────────────────────────────────────────────────
+
+type ParsedListing =
+  | { error: string }
+  | { kind: Kind; values: Partial<typeof boardListings.$inferInsert>; identityUrl: string };
+
+function parseListingValues(kind: unknown, body: Record<string, unknown>): ParsedListing {
+  if (kind !== "candidate" && kind !== "recruiter") {
+    return { error: "kind must be 'candidate' or 'recruiter'" };
+  }
+
+  const skills = cleanStringArray(body.skills)
+    .slice(0, 5)
+    .map((s) => s.toLowerCase());
+  const locations = cleanStringArray(body.locations);
+
+  let identityUrl: string | null = null;
+
+  const values: Partial<typeof boardListings.$inferInsert> = {
+    kind,
+    skills,
+    locations,
+  };
+
+  if (kind === "candidate") {
+    const linkedinUrl = cleanString(body.linkedinUrl);
+    if (!linkedinUrl || !isHttpUrl(linkedinUrl)) {
+      return { error: "linkedin_url is required and must be a valid http(s) URL" };
+    }
+    identityUrl = linkedinUrl;
+
+    const company = cleanString(body.company);
+    const resumeUrl = cleanString(body.resumeUrl);
+    const xUrl = cleanString(body.xUrl);
+    const githubUrl = cleanString(body.githubUrl);
+    const yearsExperience = cleanInteger(body.yearsExperience);
+    const name = cleanString(body.name);
+    const role = cleanString(body.role);
+
+    if (resumeUrl && !isHttpUrl(resumeUrl)) {
+      return { error: "resume_url must be a valid http(s) URL" };
+    }
+    if (xUrl && !isHttpUrl(xUrl)) {
+      return { error: "x_url must be a valid http(s) URL" };
+    }
+    if (githubUrl && !isHttpUrl(githubUrl)) {
+      return { error: "github_url must be a valid http(s) URL" };
+    }
+    if (yearsExperience !== null && yearsExperience < 0) {
+      return { error: "years_experience must be a non-negative integer" };
+    }
+
+    values.linkedinUrl = linkedinUrl;
+    values.name = name;
+    values.company = company;
+    values.role = role;
+    values.resumeUrl = resumeUrl;
+    values.xUrl = xUrl;
+    values.githubUrl = githubUrl;
+    values.yearsExperience = yearsExperience;
+  } else {
+    const jdUrl = cleanString(body.jdUrl);
+    if (!jdUrl || !isHttpUrl(jdUrl)) {
+      return { error: "jd_url is required and must be a valid http(s) URL" };
+    }
+    identityUrl = jdUrl;
+
+    const company = cleanString(body.company);
+    const role = cleanString(body.role);
+    const currency = cleanString(body.currency) ?? "INR";
+    const salaryMin = cleanInteger(body.salaryMin);
+    const salaryMax = cleanInteger(body.salaryMax);
+    const yearsExperienceMin = cleanInteger(body.yearsExperienceMin);
+    const yearsExperienceMax = cleanInteger(body.yearsExperienceMax);
+
+    if (salaryMin !== null && salaryMax !== null && salaryMin > salaryMax) {
+      return { error: "salary_min must be <= salary_max" };
+    }
+    if (
+      yearsExperienceMin !== null &&
+      yearsExperienceMax !== null &&
+      yearsExperienceMin > yearsExperienceMax
+    ) {
+      return { error: "years_experience_min must be <= years_experience_max" };
+    }
+
+    values.jdUrl = jdUrl;
+    values.company = company;
+    values.role = role;
+    values.currency = currency;
+    values.salaryMin = salaryMin;
+    values.salaryMax = salaryMax;
+    values.yearsExperienceMin = yearsExperienceMin;
+    values.yearsExperienceMax = yearsExperienceMax;
+  }
+
+  return { kind, values, identityUrl };
+}
+
 // ─── POST /listings ──────────────────────────────────────────────────────────
 
 router.post("/listings", async (req, res) => {
   try {
     const body = req.body ?? {};
-    const kind = body.kind;
-
-    if (kind !== "candidate" && kind !== "recruiter") {
-      res.status(400).json({ error: "kind must be 'candidate' or 'recruiter'" });
+    const parsed = parseListingValues(body.kind, body);
+    if ("error" in parsed) {
+      res.status(400).json({ error: parsed.error });
       return;
     }
 
-    const skills = cleanStringArray(body.skills)
-      .slice(0, 5)
-      .map((s) => s.toLowerCase());
-    const locations = cleanStringArray(body.locations);
+    const { kind, values, identityUrl } = parsed;
 
-    let identityUrl: string | null = null;
-
-    const values: Partial<typeof boardListings.$inferInsert> = {
-      kind,
-      status: "pending_payment",
-      skills,
-      locations,
-    };
-
-    if (kind === "candidate") {
-      const linkedinUrl = cleanString(body.linkedinUrl);
-      if (!linkedinUrl || !isHttpUrl(linkedinUrl)) {
-        res.status(400).json({ error: "linkedin_url is required and must be a valid http(s) URL" });
-        return;
-      }
-      identityUrl = linkedinUrl;
-
-      const company = cleanString(body.company);
-      const resumeUrl = cleanString(body.resumeUrl);
-      const xUrl = cleanString(body.xUrl);
-      const githubUrl = cleanString(body.githubUrl);
-      const yearsExperience = cleanInteger(body.yearsExperience);
-
-      if (resumeUrl && !isHttpUrl(resumeUrl)) {
-        res.status(400).json({ error: "resume_url must be a valid http(s) URL" });
-        return;
-      }
-      if (xUrl && !isHttpUrl(xUrl)) {
-        res.status(400).json({ error: "x_url must be a valid http(s) URL" });
-        return;
-      }
-      if (githubUrl && !isHttpUrl(githubUrl)) {
-        res.status(400).json({ error: "github_url must be a valid http(s) URL" });
-        return;
-      }
-      if (yearsExperience !== null && yearsExperience < 0) {
-        res.status(400).json({ error: "years_experience must be a non-negative integer" });
-        return;
-      }
-
-      values.linkedinUrl = linkedinUrl;
-      values.company = company;
-      values.resumeUrl = resumeUrl;
-      values.xUrl = xUrl;
-      values.githubUrl = githubUrl;
-      values.yearsExperience = yearsExperience;
-    } else {
-      const jdUrl = cleanString(body.jdUrl);
-      if (!jdUrl || !isHttpUrl(jdUrl)) {
-        res.status(400).json({ error: "jd_url is required and must be a valid http(s) URL" });
-        return;
-      }
-      identityUrl = jdUrl;
-
-      const company = cleanString(body.company);
-      const role = cleanString(body.role);
-      const currency = cleanString(body.currency) ?? "INR";
-      const salaryMin = cleanInteger(body.salaryMin);
-      const salaryMax = cleanInteger(body.salaryMax);
-      const yearsExperienceMin = cleanInteger(body.yearsExperienceMin);
-      const yearsExperienceMax = cleanInteger(body.yearsExperienceMax);
-
-      if (salaryMin !== null && salaryMax !== null && salaryMin > salaryMax) {
-        res.status(400).json({ error: "salary_min must be <= salary_max" });
-        return;
-      }
-      if (
-        yearsExperienceMin !== null &&
-        yearsExperienceMax !== null &&
-        yearsExperienceMin > yearsExperienceMax
-      ) {
-        res.status(400).json({ error: "years_experience_min must be <= years_experience_max" });
-        return;
-      }
-
-      values.jdUrl = jdUrl;
-      values.company = company;
-      values.role = role;
-      values.currency = currency;
-      values.salaryMin = salaryMin;
-      values.salaryMax = salaryMax;
-      values.yearsExperienceMin = yearsExperienceMin;
-      values.yearsExperienceMax = yearsExperienceMax;
-    }
-
-    const hash = contentHash(identityUrl!);
+    const hash = contentHash(identityUrl);
     if (!hash) {
       res.status(400).json({ error: "Invalid URL" });
       return;
@@ -302,13 +313,95 @@ router.post("/listings", async (req, res) => {
 
     const [created] = await db
       .insert(boardListings)
-      .values({ ...values, contentHash: hash } as typeof boardListings.$inferInsert)
+      .values({
+        ...values,
+        status: "pending_payment",
+        contentHash: hash,
+      } as typeof boardListings.$inferInsert)
       .returning();
 
     res.status(201).json({ listing: toListingDto(created, 0, 0), alreadyListed: false });
   } catch (err) {
     console.error("POST /api/board/listings:", err);
     res.status(500).json({ error: "Failed to create listing" });
+  }
+});
+
+// ─── PATCH /listings/:id ─────────────────────────────────────────────────────
+
+router.patch("/listings/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const body = req.body ?? {};
+    const parsed = parseListingValues(body.kind, body);
+    if ("error" in parsed) {
+      res.status(400).json({ error: parsed.error });
+      return;
+    }
+
+    const { values, identityUrl } = parsed;
+
+    const [existing] = await db
+      .select()
+      .from(boardListings)
+      .where(eq(boardListings.id, id));
+
+    if (!existing) {
+      res.status(404).json({ error: "Listing not found" });
+      return;
+    }
+
+    const hash = contentHash(identityUrl);
+    if (!hash) {
+      res.status(400).json({ error: "Invalid URL" });
+      return;
+    }
+
+    if (hash !== existing.contentHash) {
+      const [conflict] = await db
+        .select()
+        .from(boardListings)
+        .where(eq(boardListings.contentHash, hash));
+      if (conflict) {
+        res.status(409).json({ error: "Another listing already uses this URL" });
+        return;
+      }
+    }
+
+    const [updated] = await db
+      .update(boardListings)
+      .set({ ...values, contentHash: hash, updatedAt: new Date() } as typeof boardListings.$inferInsert)
+      .where(eq(boardListings.id, id))
+      .returning();
+
+    const { bidPaise, rank } = await getListingRank(updated.id, updated.kind);
+    res.json({ listing: toListingDto(updated, bidPaise, rank) });
+  } catch (err) {
+    console.error("PATCH /api/board/listings/:id:", err);
+    res.status(500).json({ error: "Failed to update listing" });
+  }
+});
+
+// ─── DELETE /listings/:id ────────────────────────────────────────────────────
+
+router.delete("/listings/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [deleted] = await db
+      .delete(boardListings)
+      .where(eq(boardListings.id, id))
+      .returning({ id: boardListings.id });
+
+    if (!deleted) {
+      res.status(404).json({ error: "Listing not found" });
+      return;
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("DELETE /api/board/listings/:id:", err);
+    res.status(500).json({ error: "Failed to delete listing" });
   }
 });
 

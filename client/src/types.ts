@@ -155,6 +155,7 @@ export interface BoardListing {
   status: BoardListingStatus;
   rank: number;
   bidPaise: number;
+  name: string | null;
   company: string | null;
   resumeUrl: string | null;
   linkedinUrl: string | null;
@@ -175,6 +176,7 @@ export interface BoardListing {
 
 export interface BoardListingInput {
   kind: BoardListingKind;
+  name?: string;
   company?: string;
   resumeUrl?: string;
   linkedinUrl?: string;

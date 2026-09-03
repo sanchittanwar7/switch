@@ -1,4 +1,4 @@
-import { MapPin, ExternalLink, TrendingUp, Briefcase, Clock } from "lucide-react";
+import { MapPin, ExternalLink, TrendingUp, Briefcase, Clock, Pencil, Trash2 } from "lucide-react";
 import type { BoardListing } from "../../types";
 
 function formatPaise(paise: number): string {
@@ -56,9 +56,11 @@ function LocationRow({ locations }: { locations: string[] }) {
 interface ListingCardProps {
   listing: BoardListing;
   onBoost: (listing: BoardListing) => void;
+  onEdit: (listing: BoardListing) => void;
+  onDelete: (listing: BoardListing) => void;
 }
 
-export default function ListingCard({ listing, onBoost }: ListingCardProps) {
+export default function ListingCard({ listing, onBoost, onEdit, onDelete }: ListingCardProps) {
   const isCandidate = listing.kind === "candidate";
   const salary = formatSalary(listing.salaryMin, listing.salaryMax, listing.currency);
 
@@ -76,7 +78,7 @@ export default function ListingCard({ listing, onBoost }: ListingCardProps) {
           <div className="flex items-center flex-wrap gap-2">
             <h3 className="text-[16px] font-medium leading-[24px] text-brand-ink">
               {isCandidate
-                ? listing.company || "Candidate"
+                ? listing.name || "Anonymous"
                 : listing.company || "Company"}
             </h3>
             {!isCandidate && listing.role && (
@@ -86,6 +88,12 @@ export default function ListingCard({ listing, onBoost }: ListingCardProps) {
               </span>
             )}
           </div>
+
+          {isCandidate && (listing.role || listing.company) && (
+            <div className="mt-0.5 text-[13px] text-brand-body">
+              {[listing.role, listing.company].filter(Boolean).join(" at ")}
+            </div>
+          )}
 
           <div className="mt-2 space-y-1">
             <LocationRow locations={listing.locations} />
@@ -150,6 +158,22 @@ export default function ListingCard({ listing, onBoost }: ListingCardProps) {
             <TrendingUp size={14} />
             Boost
           </button>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => onEdit(listing)}
+              title="Edit"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft transition-colors"
+            >
+              <Pencil size={14} />
+            </button>
+            <button
+              onClick={() => onDelete(listing)}
+              title="Delete"
+              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-brand-mute hover:text-brand-error hover:bg-brand-error-soft transition-colors"
+            >
+              <Trash2 size={14} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

@@ -175,6 +175,7 @@ export const boardListings = pgTable("board_listings", {
   contentHash: text("content_hash").notNull(),
   kind: text("kind").notNull(),
   status: text("status").notNull().default("pending_payment"),
+  name: text("name"),
   company: text("company"),
   resumeUrl: text("resume_url"),
   linkedinUrl: text("linkedin_url"),

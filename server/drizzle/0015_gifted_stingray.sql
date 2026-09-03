@@ -1,0 +1,1 @@
+ALTER TABLE "board_listings" ADD COLUMN "name" text;

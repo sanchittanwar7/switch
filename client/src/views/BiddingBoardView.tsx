@@ -6,6 +6,7 @@ import ListingCard from "../components/board/ListingCard";
 import FilterBar from "../components/board/FilterBar";
 import ListingFormModal from "../components/board/ListingFormModal";
 import BoostModal from "../components/board/BoostModal";
+import WhyBidModal from "../components/board/WhyBidModal";
 import type { BoardListing, BoardListingKind, RankWindow, BoardCreateResponse } from "../types";
 
 const KIND_TABS: { value: BoardListingKind; label: string; icon: typeof Users }[] = [
@@ -20,17 +21,32 @@ const WINDOW_TABS: { value: RankWindow; label: string }[] = [
 
 export default function BiddingBoardView() {
   const navigate = useNavigate();
-  const { kind, window, filters, listings, loading, error, setKind, setWindow, setFilters, fetchListings } =
+  const { kind, window, filters, listings, loading, error, setKind, setWindow, setFilters, fetchListings, deleteListing } =
     useBoardStore();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [formOpen, setFormOpen] = useState(false);
+  const [editingListing, setEditingListing] = useState<BoardListing | null>(null);
   const [boostListing, setBoostListing] = useState<BoardListing | null>(null);
   const [boostAlreadyListed, setBoostAlreadyListed] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
 
   function handleCreated(res: BoardCreateResponse) {
     setFormOpen(false);
     setBoostListing(res.listing);
     setBoostAlreadyListed(res.alreadyListed);
+  }
+
+  function handleEdit(listing: BoardListing) {
+    setEditingListing(listing);
+  }
+
+  function handleEditClose() {
+    setEditingListing(null);
+  }
+
+  function handleDelete(listing: BoardListing) {
+    if (!globalThis.confirm(`Delete listing "${listing.company || listing.role || listing.id}"?`)) return;
+    deleteListing(listing.id);
   }
 
   function handleBoost(listing: BoardListing) {
@@ -71,7 +87,13 @@ export default function BiddingBoardView() {
             </h1>
             <p className="mt-3 text-[16px] leading-[24px] text-brand-body max-w-[520px]">
               Pay to get listed higher. The more a listing raises, the higher it ranks.
-              Anyone can boost any listing.
+              Anyone can boost any listing.{" "}
+              <button
+                onClick={() => setWhyOpen(true)}
+                className="text-brand-link hover:text-brand-link-deep underline underline-offset-2"
+              >
+                why
+              </button>
             </p>
           </div>
           <button
@@ -148,7 +170,13 @@ export default function BiddingBoardView() {
         {!loading && !error && listings.length > 0 && (
           <div className="space-y-4">
             {listings.map((listing) => (
-              <ListingCard key={listing.id} listing={listing} onBoost={handleBoost} />
+              <ListingCard
+                key={listing.id}
+                listing={listing}
+                onBoost={handleBoost}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+              />
             ))}
           </div>
         )}
@@ -160,6 +188,14 @@ export default function BiddingBoardView() {
         onCreated={handleCreated}
       />
 
+      <ListingFormModal
+        open={!!editingListing}
+        listing={editingListing}
+        onClose={handleEditClose}
+        onCreated={handleCreated}
+        onUpdated={handleEditClose}
+      />
+
       {boostListing && (
         <BoostModal
           listing={boostListing}
@@ -168,6 +204,8 @@ export default function BiddingBoardView() {
           onPaid={handlePaid}
         />
       )}
+
+      <WhyBidModal open={whyOpen} onClose={() => setWhyOpen(false)} />
     </div>
   );
 }

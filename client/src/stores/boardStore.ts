@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { getBoardListings, createBoardListing } from "../lib/api";
+import { getBoardListings, createBoardListing, updateBoardListing, deleteBoardListing } from "../lib/api";
 import type {
   BoardListing,
   BoardListingKind,
@@ -21,6 +21,8 @@ interface BoardStore {
   setFilters: (filters: BoardFilters) => void;
   fetchListings: () => Promise<void>;
   createListing: (data: BoardListingInput) => Promise<BoardCreateResponse>;
+  updateListing: (id: string, data: BoardListingInput) => Promise<void>;
+  deleteListing: (id: string) => Promise<void>;
 }
 
 export const useBoardStore = create<BoardStore>((set, get) => ({
@@ -62,5 +64,19 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
   createListing: async (data) => {
     const response = await createBoardListing(data);
     return response;
+  },
+
+  updateListing: async (id, data) => {
+    const { listing } = await updateBoardListing(id, data);
+    set((state) => ({
+      listings: state.listings.map((l) => (l.id === id ? { ...l, ...listing } : l)),
+    }));
+  },
+
+  deleteListing: async (id) => {
+    await deleteBoardListing(id);
+    set((state) => ({
+      listings: state.listings.filter((l) => l.id !== id),
+    }));
   },
 }));
