@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "./contexts/AuthContext";
 import { useSettingsStore } from "./stores/settingsStore";
-import Sidebar from "./components/Sidebar";
+import Sidebar, { AUTH_REDIRECT_KEY } from "./components/Sidebar";
 import KanbanView from "./views/KanbanView";
 import EditorView from "./views/EditorView";
 import ResumeListView from "./views/ResumeListView";
@@ -14,6 +14,7 @@ import ResearchView from "./views/ResearchView";
 import ProfileView from "./views/ProfileView";
 import LoginPage from "./views/LoginPage";
 import LandingPage from "./views/LandingPage";
+import BiddingBoardView from "./views/BiddingBoardView";
 
 function LoadingScreen() {
   return (
@@ -48,6 +49,40 @@ function ProtectedLayout() {
   );
 }
 
+function PublicLayout() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
+
+  return (
+    <div className="flex h-screen bg-brand-canvas-soft">
+      <Sidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed((c) => !c)}
+      />
+      <main
+        className={`flex-1 overflow-auto transition-[margin] duration-200 ${
+          sidebarCollapsed ? "ml-16" : "ml-56"
+        }`}
+      >
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+
+function HomeRedirect() {
+  const { user } = useAuth();
+
+  if (!user) return <LandingPage />;
+
+  const target = localStorage.getItem(AUTH_REDIRECT_KEY);
+  if (target) {
+    localStorage.removeItem(AUTH_REDIRECT_KEY);
+    return <Navigate to={target} replace />;
+  }
+
+  return <Navigate to="/board" replace />;
+}
+
 export default function App() {
   const { user, loading } = useAuth();
 
@@ -57,12 +92,15 @@ export default function App() {
     <Routes>
       <Route
         path="/"
-        element={user ? <Navigate to="/board" replace /> : <LandingPage />}
+        element={<HomeRedirect />}
       />
       <Route
         path="/login"
         element={user ? <Navigate to="/board" replace /> : <LoginPage />}
       />
+      <Route element={<PublicLayout />}>
+        <Route path="/bidding" element={<BiddingBoardView />} />
+      </Route>
 
       <Route
         element={

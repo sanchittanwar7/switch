@@ -1,9 +1,13 @@
+import type { MouseEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, FileText, Settings, LogOut, User, PanelLeft, MessageSquareQuote, FlaskConical } from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileText, Settings, LogOut, LogIn, User, PanelLeft, MessageSquareQuote, FlaskConical, Gavel } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+
+export const AUTH_REDIRECT_KEY = "authRedirect";
 
 const navItems = [
   { to: "/board", icon: LayoutDashboard, label: "Board" },
+  { to: "/bidding", icon: Gavel, label: "Bidding Board" },
   { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/questions", icon: MessageSquareQuote, label: "Question Bank" },
   { to: "/resumes", icon: FileText, label: "Resumes" },
@@ -23,6 +27,19 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const handleLogout = async () => {
     await logout();
     navigate("/");
+  };
+
+  const handleSignIn = () => {
+    localStorage.setItem(AUTH_REDIRECT_KEY, "/board");
+    navigate("/login");
+  };
+
+  const handleNavClick = (to: string) => (e: MouseEvent<HTMLAnchorElement>) => {
+    if (!user && to !== "/bidding") {
+      e.preventDefault();
+      localStorage.setItem(AUTH_REDIRECT_KEY, to);
+      navigate("/login");
+    }
   };
 
   return (
@@ -54,6 +71,7 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
             key={to}
             to={to}
             end={to === "/"}
+            onClick={handleNavClick(to)}
             className={({ isActive }) =>
               `flex items-center gap-3 rounded-sm text-sm font-medium transition-colors group relative ${
                 collapsed ? "justify-center p-2" : "px-3 py-2"
@@ -99,16 +117,16 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </button>
         )}
         <button
-          onClick={handleLogout}
+          onClick={user ? handleLogout : handleSignIn}
           className={`w-full flex items-center gap-3 text-sm text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft-2 transition-colors group relative ${
             collapsed ? "justify-center px-2 py-3" : "px-5 py-3"
           }`}
         >
-          <LogOut size={18} />
-          {!collapsed && "Sign out"}
+          {user ? <LogOut size={18} /> : <LogIn size={18} />}
+          {!collapsed && (user ? "Sign out" : "Sign in")}
           {collapsed && (
             <span className="absolute left-full ml-3 px-2.5 py-1 text-xs font-medium text-brand-ink bg-brand-canvas border border-brand-hairline rounded-md whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
-              Sign out
+              {user ? "Sign out" : "Sign in"}
             </span>
           )}
         </button>

@@ -1,5 +1,20 @@
 import { supabase } from "./supabase";
-import type { Application, Interview, InterviewType, InterviewStatus, QuestionBankEntry, SharedQuestionEntry } from "../types";
+import type {
+  Application,
+  Interview,
+  InterviewType,
+  InterviewStatus,
+  QuestionBankEntry,
+  SharedQuestionEntry,
+  BoardListing,
+  BoardListingsResponse,
+  BoardCreateResponse,
+  BoardListingInput,
+  BoardListingKind,
+  RankWindow,
+  BoardFilters,
+  BoardOrder,
+} from "../types";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "";
 
@@ -263,4 +278,47 @@ export function startAutoTailor(cardId: string): Promise<{
   cardId: string;
 }> {
   return apiPost("/api/agent/auto-tailor", { cardId });
+}
+
+// ─── Bidding Board ───────────────────────────────────────────────────────────
+
+export function getBoardListings(
+  kind: BoardListingKind,
+  window: RankWindow,
+  filters?: BoardFilters,
+): Promise<BoardListingsResponse> {
+  const params = new URLSearchParams();
+  params.set("kind", kind);
+  params.set("window", window);
+  if (filters?.skills && filters.skills.length > 0) params.set("skills", filters.skills.join(","));
+  if (filters?.location) params.set("location", filters.location);
+  if (filters?.yearsExperience !== undefined && filters.yearsExperience !== null) {
+    params.set("yearsExperience", String(filters.yearsExperience));
+  }
+  if (filters?.role) params.set("role", filters.role);
+  return apiGet<BoardListingsResponse>(`/api/board/listings?${params.toString()}`);
+}
+
+export function createBoardListing(
+  data: BoardListingInput,
+): Promise<BoardCreateResponse> {
+  return apiPost<BoardCreateResponse>("/api/board/listings", data);
+}
+
+export function createBoardOrder(
+  listingId: string,
+  amountPaise: number,
+): Promise<BoardOrder> {
+  return apiPost<BoardOrder>("/api/board/orders", { listingId, amountPaise });
+}
+
+export function updateBoardListing(
+  id: string,
+  data: BoardListingInput,
+): Promise<{ listing: BoardListing }> {
+  return apiPatch<{ listing: BoardListing }>(`/api/board/listings/${id}`, data);
+}
+
+export function deleteBoardListing(id: string): Promise<{ success: boolean }> {
+  return apiDelete<{ success: boolean }>(`/api/board/listings/${id}`);
 }
