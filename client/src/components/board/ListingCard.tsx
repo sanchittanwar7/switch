@@ -63,6 +63,7 @@ interface ListingCardProps {
 export default function ListingCard({ listing, onBoost, onEdit, onDelete }: ListingCardProps) {
   const isCandidate = listing.kind === "candidate";
   const salary = formatSalary(listing.salaryMin, listing.salaryMax, listing.currency);
+  const isDev = import.meta.env.DEV;
 
   return (
     <div className="bg-brand-canvas border border-brand-hairline rounded-xl p-6 hover:border-brand-hairline-strong transition-colors">
@@ -158,22 +159,24 @@ export default function ListingCard({ listing, onBoost, onEdit, onDelete }: List
             <TrendingUp size={14} />
             Boost
           </button>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onEdit(listing)}
-              title="Edit"
-              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft transition-colors"
-            >
-              <Pencil size={14} />
-            </button>
-            <button
-              onClick={() => onDelete(listing)}
-              title="Delete"
-              className="inline-flex items-center justify-center w-8 h-8 rounded-full text-brand-mute hover:text-brand-error hover:bg-brand-error-soft transition-colors"
-            >
-              <Trash2 size={14} />
-            </button>
-          </div>
+          {isDev && (
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onEdit(listing)}
+                title="Edit"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-brand-mute hover:text-brand-ink hover:bg-brand-canvas-soft transition-colors"
+              >
+                <Pencil size={14} />
+              </button>
+              <button
+                onClick={() => onDelete(listing)}
+                title="Delete"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full text-brand-mute hover:text-brand-error hover:bg-brand-error-soft transition-colors"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
