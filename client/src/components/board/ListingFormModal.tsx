@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { X, Loader2, AlertCircle, Users, Building2 } from "lucide-react";
+import { X, Loader2, AlertCircle, TriangleAlert, Users, Building2 } from "lucide-react";
 import { useBoardStore } from "../../stores/boardStore";
 import type {
   BoardListing,
@@ -490,6 +490,16 @@ export default function ListingFormModal({
             <div className="flex items-center gap-2 rounded-md bg-brand-error-soft px-3 py-2 text-[13px] text-brand-error">
               <AlertCircle size={14} className="shrink-0" />
               {error}
+            </div>
+          )}
+
+          {!isEditing && (
+            <div className="flex items-start gap-2 rounded-md bg-brand-warning-soft px-3 py-2.5 text-[13px] leading-[18px] text-brand-warning">
+              <TriangleAlert size={14} className="shrink-0 mt-0.5" />
+              <span>
+                Listings cannot be edited or deleted once created. Double-check
+                your info before payment.
+              </span>
             </div>
           )}
 
