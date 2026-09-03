@@ -15,14 +15,15 @@ const MIN_RUPEES = 99;
 interface BoostModalProps {
   listing: BoardListing;
   alreadyListed: boolean;
+  initialAmount?: string | null;
   onClose: () => void;
   onPaid: () => void;
 }
 
-export default function BoostModal({ listing, alreadyListed, onClose, onPaid }: BoostModalProps) {
+export default function BoostModal({ listing, alreadyListed, initialAmount, onClose, onPaid }: BoostModalProps) {
   const [polling, setPolling] = useState(false);
   const [paid, setPaid] = useState(false);
-  const [amount, setAmount] = useState("");
+  const [amount, setAmount] = useState(initialAmount ?? "");
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pollCountRef = useRef(0);
@@ -36,7 +37,7 @@ export default function BoostModal({ listing, alreadyListed, onClose, onPaid }: 
 
   const title =
     listing.kind === "candidate"
-      ? listing.company || "Candidate"
+      ? listing.name || "Candidate"
       : listing.company || "Company";
 
   useEffect(() => {

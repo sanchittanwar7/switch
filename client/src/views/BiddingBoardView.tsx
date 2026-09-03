@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2, Plus, Users, Building2, TrendingUp } from "lucide-react";
+import { Loader2, Users, Building2, TrendingUp } from "lucide-react";
 import { useBoardStore } from "../stores/boardStore";
 import ListingCard from "../components/board/ListingCard";
 import FilterBar from "../components/board/FilterBar";
 import ListingFormModal from "../components/board/ListingFormModal";
 import BoostModal from "../components/board/BoostModal";
 import WhyBidModal from "../components/board/WhyBidModal";
+import ClaimRankWidget from "../components/board/ClaimRankWidget";
 import type { BoardListing, BoardListingKind, RankWindow, BoardCreateResponse } from "../types";
 
 const KIND_TABS: { value: BoardListingKind; label: string; icon: typeof Users }[] = [
@@ -29,6 +30,12 @@ export default function BiddingBoardView() {
   const [boostListing, setBoostListing] = useState<BoardListing | null>(null);
   const [boostAlreadyListed, setBoostAlreadyListed] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
+  const [claimAmount, setClaimAmount] = useState<string | null>(null);
+
+  function handleClaim(amount: string) {
+    setClaimAmount(amount);
+    setFormOpen(true);
+  }
 
   function handleCreated(res: BoardCreateResponse) {
     setFormOpen(false);
@@ -50,13 +57,20 @@ export default function BiddingBoardView() {
   }
 
   function handleBoost(listing: BoardListing) {
+    setClaimAmount(null);
     setBoostListing(listing);
     setBoostAlreadyListed(false);
   }
 
   function handlePaid() {
+    setClaimAmount(null);
     setBoostListing(null);
     fetchListings();
+  }
+
+  function handleBoostClose() {
+    setClaimAmount(null);
+    setBoostListing(null);
   }
 
   useEffect(() => {
@@ -96,14 +110,9 @@ export default function BiddingBoardView() {
               </button>
             </p>
           </div>
-          <button
-            onClick={() => setFormOpen(true)}
-            className="inline-flex items-center gap-2 rounded-full bg-brand-ink text-brand-canvas px-6 h-12 text-[16px] font-medium hover:opacity-90 transition-opacity shrink-0"
-          >
-            <Plus size={16} />
-            List yourself
-          </button>
         </div>
+
+        <ClaimRankWidget kind={kind} onClaim={handleClaim} />
 
         <div className="flex items-center justify-between gap-4 mb-8 flex-wrap">
           <div className="flex items-center gap-1">
@@ -200,7 +209,8 @@ export default function BiddingBoardView() {
         <BoostModal
           listing={boostListing}
           alreadyListed={boostAlreadyListed}
-          onClose={() => setBoostListing(null)}
+          initialAmount={claimAmount}
+          onClose={handleBoostClose}
           onPaid={handlePaid}
         />
       )}

@@ -278,6 +278,17 @@ export default function ListingFormModal({
           {form.kind === "candidate" ? (
             <>
               <label className="block">
+                <span className={labelClass}>LinkedIn URL *</span>
+                <input
+                  type="text"
+                  value={form.linkedinUrl}
+                  onChange={(e) => set("linkedinUrl", e.target.value)}
+                  placeholder="https://www.linkedin.com/in/username"
+                  className={inputClass}
+                />
+              </label>
+
+              <label className="block">
                 <span className={labelClass}>Name</span>
                 <input
                   type="text"
@@ -295,17 +306,6 @@ export default function ListingFormModal({
                   value={form.role}
                   onChange={(e) => set("role", e.target.value)}
                   placeholder="Software Engineer"
-                  className={inputClass}
-                />
-              </label>
-
-              <label className="block">
-                <span className={labelClass}>Company</span>
-                <input
-                  type="text"
-                  value={form.company}
-                  onChange={(e) => set("company", e.target.value)}
-                  placeholder="Acme Corp"
                   className={inputClass}
                 />
               </label>
