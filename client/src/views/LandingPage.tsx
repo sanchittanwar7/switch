@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { ArrowRight, Building2, LayoutDashboard, Sparkles, CalendarDays, FileText, Share2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
@@ -172,6 +172,32 @@ export default function LandingPage() {
           Built with Vercel · Supabase · LaTeX
         </p>
       </section>
+
+      <footer className="border-t border-brand-hairline py-12">
+        <div className="max-w-[1200px] mx-auto px-6 flex flex-col items-center gap-8">
+          <nav className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+            {[
+              { label: "About Us", to: "/about" },
+              { label: "Contact Us", to: "/contact" },
+              { label: "Pricing", to: "/pricing" },
+              { label: "Terms & Conditions", to: "/terms" },
+              { label: "Privacy Policy", to: "/privacy" },
+              { label: "Refund Policy", to: "/refund" },
+            ].map((link) => (
+              <Link
+                key={link.to}
+                to={link.to}
+                className="text-[13px] leading-[20px] text-brand-body hover:text-brand-ink transition-colors"
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+          <p className="text-[12px] leading-[16px] text-brand-mute">
+            © {new Date().getFullYear()} Lean Switch. All rights reserved.
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }

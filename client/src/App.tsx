@@ -15,6 +15,8 @@ import ProfileView from "./views/ProfileView";
 import LoginPage from "./views/LoginPage";
 import LandingPage from "./views/LandingPage";
 import BiddingBoardView from "./views/BiddingBoardView";
+import InfoPage from "./views/InfoPage";
+import { staticPages } from "./content/staticPages";
 
 function LoadingScreen() {
   return (
@@ -101,6 +103,20 @@ export default function App() {
       <Route element={<PublicLayout />}>
         <Route path="/bidding" element={<BiddingBoardView />} />
       </Route>
+
+      {staticPages.map((page) => (
+        <Route
+          key={page.path}
+          path={page.path}
+          element={
+            <InfoPage
+              title={page.title}
+              description={page.description}
+              sections={page.sections}
+            />
+          }
+        />
+      ))}
 
       <Route
         element={

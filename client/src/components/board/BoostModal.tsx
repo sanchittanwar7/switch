@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Loader2, CheckCircle2, TrendingUp } from "lucide-react";
+import { Link } from "react-router-dom";
 import RazorpayButton from "./RazorpayButton";
 import { getBoardListings } from "../../lib/api";
 import type { BoardListing } from "../../types";
@@ -134,6 +135,17 @@ export default function BoostModal({ listing, alreadyListed, initialAmount, onCl
                 {error}
               </div>
             )}
+
+            <p className="text-[12px] leading-[18px] text-brand-mute">
+              By paying, you agree to our{" "}
+              <Link
+                to="/terms"
+                className="text-brand-link hover:text-brand-link-deep underline underline-offset-2"
+              >
+                Terms & Conditions
+              </Link>
+              . All bidding board payments are non-refundable.
+            </p>
 
             <RazorpayButton
               listingId={listing.id}
