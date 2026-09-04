@@ -99,6 +99,38 @@ async function removeSessionFiles(session: AgentSession): Promise<void> {
   }
 }
 
+async function findSessionInWorkspace(userId: string, sessionId: string): Promise<AgentSession | null> {
+  async function walk(dir: string): Promise<AgentSession | null> {
+    let entries;
+    try {
+      entries = await fs.readdir(dir, { withFileTypes: true });
+    } catch {
+      return null;
+    }
+
+    for (const entry of entries) {
+      if (entry.isDirectory()) {
+        if (entry.name === "sessions") {
+          try {
+            const sessionRaw = await fs.readFile(path.join(dir, entry.name, `${sessionId}.json`), "utf-8");
+            const session = JSON.parse(sessionRaw) as AgentSession;
+            session.processing = false;
+            return session;
+          } catch {
+            // not in this sessions dir
+          }
+        } else {
+          const found = await walk(path.join(dir, entry.name));
+          if (found) return found;
+        }
+      }
+    }
+    return null;
+  }
+
+  return walk(getWorkspaceRoot(userId));
+}
+
 async function loadSessionFromDisk(sessionId: string, userId?: string): Promise<AgentSession | null> {
   try {
     const indexRaw = await fs.readFile(getIndexPath(sessionId), "utf-8");
@@ -113,26 +145,10 @@ async function loadSessionFromDisk(sessionId: string, userId?: string): Promise<
     return session;
   } catch {
     if (userId) {
-      try {
-        const userRoot = getWorkspaceRoot(userId);
-        const dirs = await fs.readdir(userRoot, { withFileTypes: true });
-        for (const dir of dirs) {
-          if (!dir.isDirectory()) continue;
-          try {
-            const sessionRaw = await fs.readFile(
-              path.join(userRoot, dir.name, "sessions", `${sessionId}.json`),
-              "utf-8",
-            );
-            const session = JSON.parse(sessionRaw) as AgentSession;
-            session.processing = false;
-            persistIndexForSession(session);
-            return session;
-          } catch {
-            // this directory doesn't have the session
-          }
-        }
-      } catch {
-        // user dir not found
+      const session = await findSessionInWorkspace(userId, sessionId);
+      if (session) {
+        persistIndexForSession(session);
+        return session;
       }
     }
     return null;
@@ -207,6 +223,8 @@ export async function getSession(sessionId: string, token: string): Promise<Agen
 }
 
 export async function loadSessionById(sessionId: string, userId?: string): Promise<AgentSession | null> {
+  const cached = sessions.get(sessionId);
+  if (cached) return cached;
   return loadSessionFromDisk(sessionId, userId);
 }
 
