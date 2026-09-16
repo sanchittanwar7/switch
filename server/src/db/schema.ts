@@ -205,15 +205,13 @@ export const boardPayments = pgTable("board_payments", {
     .notNull()
     .references(() => boardListings.id, { onDelete: "cascade" }),
   userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
-  razorpayPaymentId: text("razorpay_payment_id").notNull(),
+  paymentId: text("payment_id").notNull(),
   amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
   status: text("status").notNull().default("captured"),
   capturedAt: timestamp("captured_at", { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
-  razorpayPaymentIdUnique: uniqueIndex("board_payments_razorpay_payment_id_idx").on(
-    table.razorpayPaymentId,
-  ),
+  paymentIdUnique: uniqueIndex("board_payments_payment_id_idx").on(table.paymentId),
   listingIdIdx: index("board_payments_listing_id_idx").on(table.listingId),
   capturedAtIdx: index("board_payments_captured_at_idx").on(table.capturedAt),
 }));

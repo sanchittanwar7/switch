@@ -120,6 +120,13 @@
       "when": 1789199973216,
       "tag": "0016_enable_rls_on_public_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1789568584463,
+      "tag": "0017_colorful_power_man",
+      "breakpoints": true
     }
   ]
 }

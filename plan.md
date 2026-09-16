@@ -322,7 +322,7 @@ Order matters: 1 → 2 → 3 → 4 → 5 → 6.
 
 **Files**
 - `server/src/db/schema.ts` (edit board_payments block per §5)
-- `server/drizzle/0016_<name>.sql` + `meta/0016_snapshot.json` + `_journal.json` (generated)
+- `server/drizzle/0017_<name>.sql` + `meta/0017_snapshot.json` + `_journal.json` (generated)
 
 **Scope**
 1. Edit `board_payments`: rename `razorpayPaymentId` → `paymentId` (column `payment_id`), rename
@@ -331,6 +331,10 @@ Order matters: 1 → 2 → 3 → 4 → 5 → 6.
    (if drop+add, add `UPDATE board_payments` backfill to preserve data).
 3. Existing rows keep their id under `payment_id` (no data loss).
 4. Verify `npm run db:migrate -w server` on a scratch DB.
+
+**Note**
+- Migration `0016_enable_rls_on_public_tables.sql` already exists on `main` (post-rebase). The
+  board_payments rename is the **next** migration, so it generates as `0017_*`, not `0016_*`.
 
 **Acceptance**
 - Migration runs; existing rows preserved; unique index on `payment_id`.
