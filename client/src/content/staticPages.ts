@@ -17,13 +17,13 @@ export const staticPages: StaticPageContent[] = [
       {
         heading: "What we do.",
         paragraphs: [
-          "Lean Switch helps job seekers manage their entire job search in one place. Research companies before you apply, track every application through a kanban pipeline, tailor your resume with AI, schedule interviews, log feedback from every round, and get noticed on our bidding board.",
+          "Lean Switch helps job seekers manage their entire job search in one place. Research companies before you apply, track every application through a kanban pipeline, tailor your resume with AI, schedule interviews, log feedback from every round, and get noticed on our sponsored board.",
         ],
       },
       {
-        heading: "The bidding board.",
+        heading: "The sponsored board.",
         paragraphs: [
-          "Our bidding board connects job seekers with opportunities. You can pay to put yourself on the board to get noticed by companies and recruiters.",
+          "Our sponsored board connects job seekers with opportunities. You can pay to put yourself on the board to get noticed by companies and recruiters.",
         ],
       },
       {
@@ -68,9 +68,9 @@ export const staticPages: StaticPageContent[] = [
         ],
       },
       {
-        heading: "Bidding board.",
+        heading: "Sponsored board.",
         paragraphs: [
-          "You can pay to put yourself on the bidding board to get noticed by companies and recruiters. All bidding board payments are non-refundable.",
+          "You can pay to put yourself on the sponsored board to get noticed by companies and recruiters. Sponsored placement fees are non-refundable.",
         ],
       },
       {
@@ -100,9 +100,9 @@ export const staticPages: StaticPageContent[] = [
         ],
       },
       {
-        heading: "Bidding board payments.",
+        heading: "Sponsored placement fees.",
         paragraphs: [
-          "You may pay to place yourself on the bidding board. All bidding board payments are non-refundable.",
+          "You may pay to place yourself on the sponsored board. Sponsored placement fees are non-refundable.",
         ],
       },
       {
@@ -172,7 +172,7 @@ export const staticPages: StaticPageContent[] = [
       {
         heading: "Refunds.",
         paragraphs: [
-          "All bidding board payments are non-refundable. AI-powered resume tailoring and company research are billed directly by your own LLM provider, so Lean Switch does not process those payments and cannot issue refunds on their behalf.",
+          "Sponsored placement fees are non-refundable. AI-powered resume tailoring and company research are billed directly by your own LLM provider, so Lean Switch does not process those payments and cannot issue refunds on their behalf.",
         ],
       },
       {

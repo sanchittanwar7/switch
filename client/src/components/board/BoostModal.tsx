@@ -113,7 +113,7 @@ export default function BoostModal({ listing, alreadyListed, initialAmount, onCl
             <p className="text-[14px] leading-[20px] text-brand-body">
               {alreadyListed
                 ? "This listing is already on the board. Your payment boosts it and pushes it higher in the rankings."
-                : "Complete a payment of at least ₹99 to activate this listing. Anyone can pay — the amount you enter becomes the listing's bid."}
+                : "Complete a payment of at least ₹99 to activate this listing. Anyone can pay — the amount you enter becomes the listing's boost amount."}
             </p>
 
             <label className="block">
@@ -144,7 +144,7 @@ export default function BoostModal({ listing, alreadyListed, initialAmount, onCl
               >
                 Terms & Conditions
               </Link>
-              . All bidding board payments are non-refundable.
+              . Sponsored placement fees are non-refundable.
             </p>
 
             <DodoPayButton

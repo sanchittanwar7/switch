@@ -97,7 +97,7 @@ export default function BiddingBoardView() {
         <div className="flex items-start justify-between gap-6 mb-10">
           <div>
             <h1 className="text-[40px] font-semibold leading-[44px] tracking-[-1.6px] text-brand-ink">
-              Bidding Board.
+              Sponsored board.
             </h1>
             <p className="mt-3 text-[16px] leading-[24px] text-brand-body max-w-[520px]">
               Pay to get listed higher. The more a listing raises, the higher it ranks.
