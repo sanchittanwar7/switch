@@ -19,7 +19,7 @@ interface BoardStore {
   setKind: (kind: BoardListingKind) => void;
   setWindow: (window: RankWindow) => void;
   setFilters: (filters: BoardFilters) => void;
-  fetchListings: () => Promise<void>;
+  fetchListings: (opts?: { silent?: boolean }) => Promise<void>;
   createListing: (data: BoardListingInput) => Promise<BoardCreateResponse>;
   updateListing: (id: string, data: BoardListingInput) => Promise<void>;
   deleteListing: (id: string) => Promise<void>;
@@ -47,9 +47,10 @@ export const useBoardStore = create<BoardStore>((set, get) => ({
     set({ filters });
   },
 
-  fetchListings: async () => {
+  fetchListings: async (opts) => {
     const { kind, window, filters } = get();
-    set({ loading: true, error: null });
+    if (!opts?.silent) set({ loading: true });
+    set({ error: null });
     try {
       const data = await getBoardListings(kind, window, filters);
       set({ listings: data.listings, loading: false });

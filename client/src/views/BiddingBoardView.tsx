@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2, Users, Building2, TrendingUp } from "lucide-react";
 import { useBoardStore } from "../stores/boardStore";
 import ListingCard from "../components/board/ListingCard";
@@ -7,6 +7,7 @@ import FilterBar from "../components/board/FilterBar";
 import ListingFormModal from "../components/board/ListingFormModal";
 import BoostModal from "../components/board/BoostModal";
 import WhyBidModal from "../components/board/WhyBidModal";
+import PaymentStatusModal from "../components/board/PaymentStatusModal";
 import ClaimRankWidget from "../components/board/ClaimRankWidget";
 import type { BoardListing, BoardListingKind, RankWindow, BoardCreateResponse } from "../types";
 
@@ -22,6 +23,7 @@ const WINDOW_TABS: { value: RankWindow; label: string }[] = [
 
 export default function BiddingBoardView() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { kind, window, filters, listings, loading, error, setKind, setWindow, setFilters, fetchListings, deleteListing } =
     useBoardStore();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -31,6 +33,36 @@ export default function BiddingBoardView() {
   const [boostAlreadyListed, setBoostAlreadyListed] = useState(false);
   const [whyOpen, setWhyOpen] = useState(false);
   const [claimAmount, setClaimAmount] = useState<string | null>(null);
+
+  const paymentStatus = searchParams.get("status");
+  const paymentEmail = searchParams.get("email");
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const refreshTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => {
+    if (paymentStatus) setPaymentModalOpen(true);
+  }, [paymentStatus]);
+
+  useEffect(() => {
+    const timers = refreshTimersRef.current;
+    return () => timers.forEach(clearTimeout);
+  }, []);
+
+  function handlePaymentStatusClose() {
+    const succeeded = paymentStatus?.toLowerCase() === "succeeded";
+    const next = new URLSearchParams(searchParams);
+    next.delete("payment_id");
+    next.delete("status");
+    next.delete("email");
+    setSearchParams(next, { replace: true });
+    setPaymentModalOpen(false);
+    if (succeeded) {
+      fetchListings({ silent: true });
+      [1500, 4000, 8000].forEach((delay) => {
+        refreshTimersRef.current.push(setTimeout(() => fetchListings({ silent: true }), delay));
+      });
+    }
+  }
 
   function handleClaim(amount: string) {
     setClaimAmount(amount);
@@ -216,6 +248,12 @@ export default function BiddingBoardView() {
       )}
 
       <WhyBidModal open={whyOpen} onClose={() => setWhyOpen(false)} />
+
+      <PaymentStatusModal
+        status={paymentModalOpen ? paymentStatus : null}
+        email={paymentEmail}
+        onClose={handlePaymentStatusClose}
+      />
     </div>
   );
 }
