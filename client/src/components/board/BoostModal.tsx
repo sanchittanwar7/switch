@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Loader2, CheckCircle2, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
-import RazorpayButton from "./RazorpayButton";
+import DodoPayButton from "./DodoPayButton";
 import { getBoardListings } from "../../lib/api";
 import type { BoardListing } from "../../types";
 
@@ -147,7 +147,7 @@ export default function BoostModal({ listing, alreadyListed, initialAmount, onCl
               . All bidding board payments are non-refundable.
             </p>
 
-            <RazorpayButton
+            <DodoPayButton
               listingId={listing.id}
               amountPaise={amountPaise}
               disabled={!amountValid}
@@ -155,7 +155,7 @@ export default function BoostModal({ listing, alreadyListed, initialAmount, onCl
               onError={setError}
             />
             <p className="text-[12px] text-brand-mute">
-              Razorpay checkout opens here. Complete the payment — we'll confirm automatically.
+              A secure checkout opens. Complete the payment — we'll confirm automatically.
             </p>
           </div>
         )}

@@ -198,7 +198,7 @@ export interface BoardPayment {
   id: string;
   listingId: string;
   userId: string | null;
-  razorpayPaymentId: string;
+  paymentId: string;
   amountPaise: number;
   status: string;
   capturedAt: string;
@@ -224,8 +224,8 @@ export interface BoardCreateResponse {
 }
 
 export interface BoardOrder {
-  orderId: string;
+  checkoutUrl: string;
+  sessionId: string;
   amountPaise: number;
   currency: string;
-  keyId: string;
 }
