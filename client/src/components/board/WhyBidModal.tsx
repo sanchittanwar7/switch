@@ -22,14 +22,14 @@ export default function WhyBidModal({ open, onClose }: WhyBidModalProps) {
         </button>
 
         <h3 className="text-[18px] font-semibold leading-[24px] tracking-[-0.36px] text-brand-ink mb-6">
-          Why bid?
+          Why boost?
         </h3>
 
         <div className="space-y-5">
           <div className="rounded-lg bg-brand-canvas-soft border border-brand-hairline p-4">
             <div className="flex items-center gap-2 mb-2">
               <Users size={15} className="text-brand-link" />
-              <p className="text-[14px] font-medium text-brand-ink">Why should a candidate bid?</p>
+              <p className="text-[14px] font-medium text-brand-ink">Why should a candidate boost?</p>
             </div>
             <p className="text-[13px] leading-[20px] text-brand-body">
               Most of the people randomly apply for jobs knowing that they're not eligible. This
@@ -41,7 +41,7 @@ export default function WhyBidModal({ open, onClose }: WhyBidModalProps) {
           <div className="rounded-lg bg-brand-canvas-soft border border-brand-hairline p-4">
             <div className="flex items-center gap-2 mb-2">
               <Building2 size={15} className="text-brand-link" />
-              <p className="text-[14px] font-medium text-brand-ink">Why should a recruiter bid?</p>
+              <p className="text-[14px] font-medium text-brand-ink">Why should a recruiter boost?</p>
             </div>
             <p className="text-[13px] leading-[20px] text-brand-body">
               Recruiters spend hours and burn thousands to find a serious and right fit. Spend a

@@ -13,7 +13,7 @@ import {
 import { db } from "../db";
 import { boardListings, boardPayments } from "../db/schema";
 import { contentHash } from "../lib/board-url";
-import { createRazorpayOrder, getKeyId } from "../lib/razorpay";
+import { createDodoCheckout } from "../lib/dodo";
 
 const router = Router();
 
@@ -432,23 +432,19 @@ router.post("/orders", async (req, res) => {
       return;
     }
 
-    const order = await createRazorpayOrder({
-      amountPaise,
-      currency: "INR",
-      notes: { listingId },
-    });
+    const checkout = await createDodoCheckout({ listingId, amountPaise });
 
     res.json({
-      orderId: order.orderId,
-      amountPaise: order.amountPaise,
-      currency: order.currency,
-      keyId: getKeyId(),
+      checkoutUrl: checkout.checkoutUrl,
+      sessionId: checkout.sessionId,
+      amountPaise: checkout.amountPaise,
+      currency: checkout.currency,
     });
   } catch (err) {
     console.error("POST /api/board/orders:", err);
     res
       .status(500)
-      .json({ error: err instanceof Error ? err.message : "Failed to create order" });
+      .json({ error: err instanceof Error ? err.message : "Failed to create checkout session" });
   }
 });
 

@@ -2,43 +2,59 @@ import { Router } from "express";
 import { eq } from "drizzle-orm";
 import { db } from "../db";
 import { boardListings, boardPayments } from "../db/schema";
-import { verifyWebhookSignature, getWebhookSecret } from "../lib/razorpay";
+import { getDodoClient, verifyDodoWebhook, type DodoWebhookEvent } from "../lib/dodo";
 
 const router = Router();
 
 const MIN_PAISE = Number(process.env.BOARD_MIN_PAISE) || 9900;
 
-router.post("/razorpay", async (req, res) => {
+router.post("/dodo", async (req, res) => {
   try {
     const rawBody = req.body as Buffer;
-    const signature = req.headers["x-razorpay-signature"];
-    const signatureStr = Array.isArray(signature) ? signature[0] : signature;
 
-    if (!verifyWebhookSignature(rawBody, signatureStr, getWebhookSecret())) {
+    const headers: Record<string, string> = {
+      "webhook-id": String(req.headers["webhook-id"] ?? ""),
+      "webhook-timestamp": String(req.headers["webhook-timestamp"] ?? ""),
+      "webhook-signature": String(req.headers["webhook-signature"] ?? ""),
+    };
+
+    let payload: DodoWebhookEvent;
+    try {
+      payload = verifyDodoWebhook(rawBody, headers);
+    } catch {
       res.status(400).json({ error: "Invalid signature" });
       return;
     }
 
-    let payload: Record<string, any>;
-    try {
-      payload = JSON.parse(rawBody.toString("utf8"));
-    } catch {
-      res.status(400).json({ error: "Invalid JSON body" });
-      return;
-    }
-
-    if (payload?.event !== "payment.captured") {
+    if (payload.type !== "payment.succeeded") {
       res.json({ status: "ignored" });
       return;
     }
 
-    const entity = payload?.payload?.payment?.entity;
-    const razorpayPaymentId = entity?.id;
-    const amountPaise = Number(entity?.amount);
-    const listingId = entity?.notes?.listingId;
+    const payment = payload.data;
+    const paymentId = payment.payment_id;
+    const amountPaise = Number(payment.total_amount);
+    let listingId =
+      typeof payment.metadata?.listingId === "string" ? payment.metadata.listingId : "";
 
-    if (!razorpayPaymentId || typeof listingId !== "string" || !listingId) {
-      console.warn("[board-webhook] unattributed payment (missing id or notes.listingId)");
+    if (!listingId) {
+      try {
+        const full = await getDodoClient().payments.retrieve(paymentId);
+        listingId =
+          typeof full.metadata?.listingId === "string" ? full.metadata.listingId : "";
+      } catch (err) {
+        console.warn(`[board-webhook] failed to retrieve payment ${paymentId}:`, err);
+      }
+    }
+
+    if (!paymentId || !listingId) {
+      console.warn("[board-webhook] unattributed payment (missing id or metadata.listingId)");
+      res.json({ status: "unattributed" });
+      return;
+    }
+
+    if (!Number.isFinite(amountPaise) || amountPaise <= 0) {
+      console.warn(`[board-webhook] invalid amount: ${payment.total_amount}`);
       res.json({ status: "unattributed" });
       return;
     }
@@ -54,27 +70,21 @@ router.post("/razorpay", async (req, res) => {
       return;
     }
 
-    if (!Number.isFinite(amountPaise) || amountPaise <= 0) {
-      console.warn(`[board-webhook] invalid amount: ${entity?.amount}`);
-      res.json({ status: "unattributed" });
-      return;
-    }
-
     const qualifies = amountPaise >= MIN_PAISE;
 
     await db
       .insert(boardPayments)
       .values({
         listingId: listing.id,
-        razorpayPaymentId,
+        paymentId,
         amountPaise,
         status: qualifies ? "captured" : "flagged",
       })
-      .onConflictDoNothing({ target: boardPayments.razorpayPaymentId });
+      .onConflictDoNothing({ target: boardPayments.paymentId });
 
     if (!qualifies) {
       console.warn(
-        `[board-webhook] sub-minimum payment flagged: ${razorpayPaymentId} (${amountPaise} < ${MIN_PAISE})`,
+        `[board-webhook] sub-minimum payment flagged: ${paymentId} (${amountPaise} < ${MIN_PAISE})`,
       );
       res.json({ status: "flagged" });
       return;

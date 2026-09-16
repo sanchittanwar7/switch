@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Loader2, CheckCircle2, TrendingUp } from "lucide-react";
 import { Link } from "react-router-dom";
-import RazorpayButton from "./RazorpayButton";
+import DodoPayButton from "./DodoPayButton";
 import { getBoardListings } from "../../lib/api";
 import type { BoardListing } from "../../types";
 
@@ -113,7 +113,7 @@ export default function BoostModal({ listing, alreadyListed, initialAmount, onCl
             <p className="text-[14px] leading-[20px] text-brand-body">
               {alreadyListed
                 ? "This listing is already on the board. Your payment boosts it and pushes it higher in the rankings."
-                : "Complete a payment of at least ₹99 to activate this listing. Anyone can pay — the amount you enter becomes the listing's bid."}
+                : "Complete a payment of at least ₹99 to activate this listing. Anyone can pay — the amount you enter becomes the listing's boost amount."}
             </p>
 
             <label className="block">
@@ -144,10 +144,10 @@ export default function BoostModal({ listing, alreadyListed, initialAmount, onCl
               >
                 Terms & Conditions
               </Link>
-              . All bidding board payments are non-refundable.
+              . Sponsored placement fees are non-refundable.
             </p>
 
-            <RazorpayButton
+            <DodoPayButton
               listingId={listing.id}
               amountPaise={amountPaise}
               disabled={!amountValid}
@@ -155,7 +155,7 @@ export default function BoostModal({ listing, alreadyListed, initialAmount, onCl
               onError={setError}
             />
             <p className="text-[12px] text-brand-mute">
-              Razorpay checkout opens here. Complete the payment — we'll confirm automatically.
+              A secure checkout opens. Complete the payment — we'll confirm automatically.
             </p>
           </div>
         )}

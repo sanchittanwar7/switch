@@ -466,12 +466,12 @@ All file paths are relative to workspace root. Backend prepends root and validat
 4. **Master resume is read-only to agent.** Always copies to `tailored/{company}/{job_id}/` before editing.
 5. **Kanban ↔ Resume link is one-way.** Card stores `resumePath`. From board, click to open that resume in the editor.
 6. **Compilation is synchronous per request.** `pdflatex` runs twice in the project dir. PDF served as static file.
-7. **Settings in DB per-user.** `settings.json` removed. LLM config in `user_settings` table. Database credentials via `DATABASE_URL` + `SUPABASE_SERVICE_KEY` env vars.
+7. **Settings in DB per-user.** `settings.json` removed. LLM config in `user_settings` table. Database credentials via `DATABASE_URL` + `SUPABASE_SECRET_KEY` env vars.
 8. **Migrations automatic.** Drizzle migrations run on server startup. Columns table seeded if empty.
 
 ---
 
-## Bidding Board
+## Sponsored Board
 
 A public, pay-to-rank board with two sides: **Candidates** (people listing themselves) and **Hiring** (companies listing roles). No sign-in required for reading or writing.
 
@@ -482,15 +482,15 @@ A public, pay-to-rank board with two sides: **Candidates** (people listing thems
   - recruiter → `hash(normalize(jd_url))`
   - `normalizeUrl` strips query/fragment, lowercases host, trims a trailing slash. So the same LinkedIn profile / job posting (differing only by tracking params) resolves to one shared listing.
 - **Shared + immutable.** Anyone can boost any listing by paying. There is no owner, no `user_id`, no edit/delete tokens. A `hidden` status exists for future manual moderation only.
-- **Ranking = cumulative captured payments.** `bid = SUM(amount_paise)` of `captured` payments, sorted desc; ties broken by earliest `created_at`. Two windows: **all-time** and **today** (since `00:00 UTC`).
-- **Minimum payment ₹99** (`BOARD_MIN_PAISE`, default `9900`). A listing is `pending_payment` until its first qualifying payment activates it; every qualifying payment (including the first) adds to the bid. Sub-minimum payments are recorded with `status = 'flagged'` and never activate or rank.
+- **Ranking = cumulative captured payments.** `bidPaise = SUM(amount_paise)` of `captured` payments, sorted desc; ties broken by earliest `created_at`. Two windows: **all-time** and **today** (since `00:00 UTC`).
+- **Minimum payment ₹99** (`BOARD_MIN_PAISE`, default `9900`). A listing is `pending_payment` until its first qualifying payment activates it; every qualifying payment (including the first) adds to the boost total. Sub-minimum payments are recorded with `status = 'flagged'` and never activate or rank.
 
 ### Data model
 
 | Table | Key columns |
 |-------|-------------|
 | `board_listings` | `content_hash` (unique), `kind` (`candidate`/`recruiter`), `status` (`pending_payment`/`active`/`hidden`), kind-specific fields (`linkedin_url`, `resume_url`, `x_url`, `github_url`, `years_experience`, `skills text[]`, `locations text[]` for candidates; `jd_url`, `salary_min`/`max`, `currency`, `role`, `years_experience_min`/`max`, `skills`, `locations` for recruiters), shared `company`. |
-| `board_payments` | `listing_id` (FK cascade), `user_id` (nullable, analytics only), `razorpay_payment_id` (unique), `amount_paise` (bigint), `status` (`captured`), `captured_at`. |
+| `board_payments` | `listing_id` (FK cascade), `user_id` (nullable, analytics only), `payment_id` (unique, Dodo payment id), `amount_paise` (bigint), `status` (`captured`/`flagged`), `captured_at`. |
 
 No `purpose` column — activation vs boost is inferred from the listing's status at capture time.
 
@@ -502,24 +502,33 @@ Mounted at `/api/board` **without** `authMiddleware` (fully public).
 |--------|------|------|-------------|
 | GET | `/api/board/listings` | none | Ranked listings. Query: `kind`, `window` (`all`/`today`), `skills` (comma), `location`, `yearsExperience` (candidate), `role` (recruiter). Each item includes `rank` + `bidPaise`. |
 | POST | `/api/board/listings` | none | Find-or-create by content hash. Only `linkedin_url` (candidate) or `jd_url` (recruiter) required. Returns `{ listing, alreadyListed }`. |
-| POST | `/api/board/webhook/razorpay` | HMAC | Razorpay webhook. Verify signature → capture payment → activate/boost. |
+| POST | `/api/board/orders` | none | Create a Dodo checkout session for `{ listingId, amountPaise }`. Returns `{ checkoutUrl, sessionId, amountPaise, currency }`. |
+| POST | `/api/board/webhook/dodo` | StdWebhooks | Dodo webhook. Verify signature → capture payment → activate/boost. |
 
 No PATCH/DELETE — listings are immutable.
 
-### Razorpay payment flow
+### Dodo payment flow
 
-1. Client opens the hosted **Payment Button** page with the listing id as a `notes` reference:
-   `https://pages.razorpay.com/<button_id>?notes[listingId]=<uuid>`
-2. Razorpay POSTs `payment.captured` to `POST /api/board/webhook/razorpay` (via Vercel rewrite, port 443).
-3. Server reads the raw body (`express.raw` before `express.json`), verifies `X-Razorpay-Signature` = HMAC-SHA256(secret, rawBody), rejects on mismatch (400).
-4. Reads `payload.payment.entity` → `id`, `amount` (paise), `notes.listingId`. Resolves the listing; inserts `board_payments` idempotently on the unique `razorpay_payment_id` (handles `payment.failed` → `payment.captured` UPI retries).
-5. Amount ≥ `BOARD_MIN_PAISE` → activate a `pending_payment` listing and add to its bid; sub-minimum → recorded as flagged, never ranked.
+1. Client calls `POST /api/board/orders` with `{ listingId, amountPaise }`. Server creates a Dodo
+   **checkout session** (`checkoutSessions.create`) with `product_cart: [{ product_id, quantity: 1, amount }]`,
+   `metadata: { listingId }`, `return_url`/`cancel_url` from `CLIENT_BASE_URL`, and returns `{ checkoutUrl, sessionId }`.
+2. Client opens `checkoutUrl` in a new tab (hosted checkout — no PCI scope, no client SDK).
+3. On successful payment, Dodo POSTs `payment.succeeded` to `POST /api/board/webhook/dodo`
+   (Standard Webhooks: `webhook-id`, `webhook-signature`, `webhook-timestamp` headers).
+4. Server reads the raw body (`express.raw` before `express.json`), verifies the signature via
+   `client.webhooks.unwrap(rawBody, { headers })` (HMAC-SHA256, `DODO_PAYMENTS_WEBHOOK_KEY`), rejects on mismatch (400).
+5. Switches on `payload.type`: `payment.succeeded` → reads `data.payment_id`, `data.total_amount` (paise),
+   `data.metadata.listingId` (fallback `GET /payments/{id}` if metadata absent). Inserts `board_payments`
+   idempotently on the unique `payment_id` (`onConflictDoNothing` — replays never duplicate). Other types → `{ status: "ignored" }`.
+6. Amount ≥ `BOARD_MIN_PAISE` → activate a `pending_payment` listing and add to its boost total; sub-minimum → recorded as `flagged`, never ranked.
 
-Webhook secret is resolved per environment mode: `RAZORPAY_MODE` override wins, else `NODE_ENV === 'development'` → test (reads `RAZORPAY_WEBHOOK_SECRET_TEST`), otherwise live (`RAZORPAY_WEBHOOK_SECRET_LIVE`). Amounts are INR paise; `KEY_ID`/`KEY_SECRET` are unused (hosted Payment Button needs no server-side keys).
+Environment is resolved from `DODO_PAYMENTS_ENVIRONMENT` (`test_mode` default; `live_mode` only after
+compliance sign-off). Amounts are INR paise. The webhook route is mounted under `express.raw` at
+`/api/board/webhook` before `express.json`.
 
 ### Frontend
 
 - **Route** `/bidding` → `BiddingBoardView`, public (outside `ProtectedLayout`).
 - **Store** `boardStore` — `kind`, `window`, `filters`, `listings`, actions `setKind` (clears filters), `setWindow`, `setFilters`, `fetchListings` (debounced 300ms in the view), `createListing`.
-- **Components** `components/board/`: `ListingCard` (rank badge, kind fields, raised amount, always-on Boost), `FilterBar` (kind-specific filters), `ListingFormModal` (find-or-create; client enforces LinkedIn URL shape), `RazorpayButton` (builds `notes[listingId]` URL, opens new tab), `BoostModal` (payment + poll for activation/boost).
-- Client env: `VITE_RAZORPAY_PAYMENT_PAGE_URL` (payment page URL; overrides the built-in default).
+- **Components** `components/board/`: `ListingCard` (rank badge, kind fields, raised amount, always-on Boost), `FilterBar` (kind-specific filters), `ListingFormModal` (find-or-create; client enforces LinkedIn URL shape), `DodoPayButton` (calls `POST /orders`, opens `checkoutUrl` in a new tab), `BoostModal` (payment + poll for activation/boost).
+- No payment-gateway client env required — Dodo checkout is hosted and server-created.

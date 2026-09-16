@@ -1,12 +1,13 @@
 import type { MouseEvent } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { LayoutDashboard, CalendarDays, FileText, Settings, LogOut, LogIn, User, PanelLeft, MessageSquareQuote, FlaskConical } from "lucide-react";
+import { LayoutDashboard, CalendarDays, FileText, Settings, LogOut, LogIn, User, PanelLeft, MessageSquareQuote, FlaskConical, TrendingUp } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 export const AUTH_REDIRECT_KEY = "authRedirect";
 
 const navItems = [
   { to: "/board", icon: LayoutDashboard, label: "Board" },
+  { to: "/bidding", icon: TrendingUp, label: "Sponsored board" },
   { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/questions", icon: MessageSquareQuote, label: "Question Bank" },
   { to: "/resumes", icon: FileText, label: "Resumes" },
