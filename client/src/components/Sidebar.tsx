@@ -7,12 +7,12 @@ export const AUTH_REDIRECT_KEY = "authRedirect";
 
 const navItems = [
   { to: "/board", icon: LayoutDashboard, label: "Board" },
-  { to: "/bidding", icon: TrendingUp, label: "Sponsored board" },
   { to: "/calendar", icon: CalendarDays, label: "Calendar" },
   { to: "/questions", icon: MessageSquareQuote, label: "Question Bank" },
   { to: "/resumes", icon: FileText, label: "Resumes" },
   { to: "/research", icon: FlaskConical, label: "Research" },
   { to: "/settings", icon: Settings, label: "Settings" },
+  { to: "/bidding", icon: TrendingUp, label: "Sponsored board" },
 ];
 
 interface SidebarProps {
