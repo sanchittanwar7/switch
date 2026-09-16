@@ -1,20 +1,14 @@
-# Plan — Config-driven multi-gateway payments (Razorpay + Dodo)
+# Plan — Dodo Payments integration for the Sponsored Board
 
 ## 1. Executive summary
 
-Add **Dodo Payments** as a second payment gateway for the "Bidding Board" (`/api/board/*`) and
-make the active gateway **config-driven via an env variable** (`PAYMENT_GATEWAY=razorpay|dodo`).
-Razorpay blocks the "bidding" use case; Dodo supports variable-amount one-time payments natively
-via **Pay What You Want (PWYW)**. **No Razorpay code is deleted** — both gateways coexist behind a
-common interface, and flipping the env var swaps the entire flow (order creation → client checkout →
-webhook capture).
+Replace **Razorpay** with **Dodo Payments** as the single payment gateway for the "Bidding Board"
+(`/api/board/*`). Razorpay blocks the "bidding" use case; Dodo supports variable-amount one-time
+payments natively via **Pay What You Want (PWYW)**. **Razorpay code is deleted** — Dodo becomes the
+only provider end-to-end (checkout creation → hosted checkout → webhook capture).
 
-This plan is split into **6 subtasks**, each sized to produce **300–500 lines of code**, covering
-the gateway abstraction, DB migration, checkout dispatch, webhook handling, dual client UI, and
-config/docs.
-
-**Rollback = one env var.** If Dodo misbehaves in production, set `PAYMENT_GATEWAY=razorpay` and
-you are back on the old path instantly.
+This plan is split into **6 subtasks**, covering the Dodo lib, DB migration, checkout + webhook
+routes, client checkout UI, product reframing, and config/docs.
 
 ## 0. Pre-flight — Dodo account setup & use-case verification (do before writing code)
 
@@ -34,7 +28,7 @@ you are back on the old path instantly.
 4. **Generate API keys** (dashboard → Developers/API): grab the **test-mode** key and, later,
    the **live-mode** key. Never ship the key to the client.
 5. **Create webhook endpoint** (Developer → Webhooks → Add endpoint):
-   - URL: `https://<your-host>/api/board/webhook/dodo`.
+   - URL: `https://leanswitch.vercel.app/api/board/webhook/dodo`.
    - Subscribe to `payment.succeeded` (and optionally `payment.failed`).
    - Copy the **signing secret** → `DODO_PAYMENTS_WEBHOOK_KEY`.
 6. **Stay in test mode** until compliance sign-off (§0.2) — see
@@ -57,7 +51,7 @@ can read live docs and exercise the API while implementing Subtasks 1–6.
 Use during implementation:
 
 - Ask `dodo-knowledge` for current payload shapes / field names instead of guessing.
-- Use `checkout-integration` + `webhook-integration` skills when writing Subtasks 3–4.
+- Use `checkout-integration` + `webhook-integration` skills when writing Subtask 3.
 - Use `testing-and-go-live` skill before the §8 rollout checklist.
 
 > **Restart opencode** after this config change — config is loaded at startup, not hot-reloaded.
@@ -107,9 +101,9 @@ Before implementing, confirm Dodo will accept the business model. Two steps:
 
 ## 2.4 Product reframing (required — apply before go-live)
 
-The word **"bidding"** is what trips Razorpay and risks Dodo's MoR compliance. Reposition the
-feature as a **sponsored placement / pay-to-boost** model. Mechanical behavior is unchanged
-(cumulative sum = rank); only the framing and copy change.
+The word **"bidding"** is what risks Dodo's MoR compliance (it was also what tripped Razorpay).
+Reposition the feature as a **sponsored placement / pay-to-boost** model. Mechanical behavior is
+unchanged (cumulative sum = rank); only the framing and copy change.
 
 | Surface | Current (risky) | New (safe) |
 |---------|-----------------|------------|
@@ -120,7 +114,7 @@ feature as a **sponsored placement / pay-to-boost** model. Mechanical behavior i
 | Model explained as | "bidding" | "Pay a one-time fee to publish; higher cumulative fees rank higher" |
 | Winner/loser language | any "outbid / win / lose" | remove — everyone stays listed |
 
-**Files to update (do with Subtask 6):**
+**Files to update (do with Subtask 5):**
 - `client/src/content/staticPages.ts` (terms + FAQ copy)
 - `client/src/components/board/*` (labels, aria text)
 - `client/src/views/` (route copy, page title)
@@ -141,16 +135,15 @@ no winner/loser, no refunding of losing bids, no chance element. Every payer sta
 
 Dodo Payments covers this exactly:
 
-| Requirement | Razorpay | Dodo Payments |
-|-------------|----------|---------------|
-| Variable amount per payment (user types ₹ amount) | Blocked as "bidding" | ✅ **Pay What You Want** (PWYW) on one-time products; pass `amount` in paise per checkout session |
-| Minimum payment floor (₹99) | ✅ `BOARD_MIN_PAISE` | ✅ PWYW `minimum_price` bound |
-| Reference the listing on the payment | `notes.listingId` | ✅ checkout-session `metadata.listingId` |
-| Server-side order/checkout creation | `POST /v1/orders` | ✅ `client.checkoutSessions.create(...)` |
-| Webhook on capture | `payment.captured` + HMAC | ✅ `payment.succeeded` + Standard Webhooks (HMAC-SHA256) |
-| Idempotency on retries | unique `razorpay_payment_id` | ✅ `webhook-id` header + unique `payment_id` |
-| INR (paise) | ✅ | ✅ amount in lowest denomination (paise for INR) |
-| Hosted checkout (no PCI) | ✅ hosted page | ✅ hosted `checkout_url` |
+- **Variable amount per payment** → **Pay What You Want** (PWYW) on one-time products; pass `amount`
+  in paise per checkout session.
+- **Minimum payment floor (₹99)** → PWYW `minimum_price` bound.
+- **Reference the listing on the payment** → checkout-session `metadata.listingId`.
+- **Server-side checkout creation** → `client.checkoutSessions.create(...)`.
+- **Webhook on capture** → `payment.succeeded` + Standard Webhooks (HMAC-SHA256).
+- **Idempotency on retries** → `webhook-id` header + unique `payment_id`.
+- **INR (paise)** → amount in lowest denomination.
+- **Hosted checkout (no PCI)** → hosted `checkout_url`.
 
 **Reference:** `https://docs.dodopayments.com/developer-resources/dynamic-pricing-checkout` and
 `https://docs.dodopayments.com/features/pay-what-you-want`.
@@ -195,12 +188,12 @@ our specific model. **Action required before code freeze:**
 
 | File | Responsibility |
 |------|----------------|
-| `server/src/lib/razorpay.ts` | Mode/key/secret resolution, `createRazorpayOrder`, `verifyWebhookSignature` (HMAC-SHA256) |
+| `server/src/lib/razorpay.ts` | Mode/key/secret resolution, `createRazorpayOrder`, `verifyWebhookSignature` (HMAC-SHA256) — **delete** |
 | `server/src/routes/board.ts` | `POST /api/board/orders` → `createRazorpayOrder`, returns `orderId`/`keyId` |
 | `server/src/routes/board-webhook.ts` | `POST /api/board/webhook/razorpay` → verify sig, read `payment.captured`, insert `board_payments` |
 | `server/src/db/schema.ts` | `board_payments.razorpay_payment_id` (unique), `amount_paise`, `status` |
 | `server/src/index.ts` | `express.raw` mount for `/api/board/webhook` |
-| `client/src/components/board/RazorpayButton.tsx` | Loads checkout.js, opens Razorpay modal |
+| `client/src/components/board/RazorpayButton.tsx` | Loads checkout.js, opens Razorpay modal — **delete** |
 | `client/src/components/board/BoostModal.tsx` | Amount input + `RazorpayButton` + poll-for-activation |
 | `client/src/lib/api.ts` | `createBoardOrder` → `POST /api/board/orders` |
 | `client/src/types.ts` | `BoardOrder`, `razorpayPaymentId` |
@@ -208,90 +201,72 @@ our specific model. **Action required before code freeze:**
 
 ---
 
-## 4. Target architecture (dual gateway, config-driven)
+## 4. Target architecture (Dodo only)
 
 ```
 [BoostModal]
     │ amount (₹) → amountPaise
     ▼
-[GET /api/board/gateway]  → { provider: "razorpay" | "dodo" }   (capability discovery)
-    │
-[PaymentButton]  (client — renders RazorpayButton OR DodoPayButton based on provider)
-    ▼
 [POST /api/board/orders]  (server, public)
     │ validate listingId + amountPaise ≥ BOARD_MIN_PAISE
-    │ getPaymentGateway()  →  razorpay | dodo   (from PAYMENT_GATEWAY env)
-    ├─ razorpay → createRazorpayOrder(...)         → { provider:"razorpay", orderId, keyId }
-    └─ dodo     → createBoardCheckout(...)          → { provider:"dodo", checkoutUrl, sessionId }
+    │ createDodoCheckout(...)  →  { checkoutUrl, sessionId }
     ▼
-{ provider, ...provider-specific fields }
+{ checkoutUrl, sessionId }
     │
-    ├─ razorpay → in-page checkout modal (existing RazorpayButton)
-    └─ dodo     → open checkoutUrl in new tab (new DodoPayButton)
+[DodoPayButton]  →  window.open(checkoutUrl, "_blank")
     ▼
-[webhook]  (both mounted, express.raw)
-    ├─ POST /api/board/webhook/razorpay  → verify HMAC → payment.captured   (existing)
-    └─ POST /api/board/webhook/dodo      → verify StdWebhooks → payment.succeeded (new)
-    │ both call a shared `recordPayment({ provider, providerPaymentId, amountPaise, listingId })`
-    │ insert board_payments idempotently (unique provider_payment_id)
+[POST /api/board/webhook/dodo]  (express.raw)
+    │ verify StdWebhooks → payment.succeeded
+    │ recordPayment({ paymentId, amountPaise, listingId })
+    │ insert board_payments idempotently (unique payment_id)
     │ amount ≥ MIN → activate pending listing + add to bid; else flag
     ▼
 [BoostModal polls GET /api/board/listings until status/rank changes]
 ```
 
-### 4.1 Gateway abstraction
+### 4.1 Dodo lib
 
 ```ts
-// server/src/lib/payments.ts
-export type Provider = "razorpay" | "dodo";
+// server/src/lib/dodo.ts
+export function getDodoEnvironment(): "test_mode" | "live_mode";
+export function getDodoApiKey(): string;
+export function getDodoWebhookKey(): string;
+export function getDodoProductId(): string;
 
-export type CreateOrderResult =
-  | { provider: "razorpay"; orderId: string; keyId: string; amountPaise: number; currency: string }
-  | { provider: "dodo"; checkoutUrl: string; sessionId: string; amountPaise: number; currency: string };
+export function getDodoClient(): DodoPayments; // lazy singleton
 
-export interface PaymentGateway {
-  provider: Provider;
-  createOrder(params: { listingId: string; amountPaise: number }): Promise<CreateOrderResult>;
-}
+export async function createDodoCheckout(params: {
+  listingId: string;
+  amountPaise: number;
+}): Promise<{ checkoutUrl: string; sessionId: string; amountPaise: number; currency: string }>;
 
-export function getPaymentGateway(): PaymentGateway {
-  const p = process.env.PAYMENT_GATEWAY;
-  if (p === "dodo") return dodoGateway;
-  return razorpayGateway; // default — preserves current behavior
-}
+export function verifyDodoWebhook(rawBody: Buffer | string, headers: Record<string, string>): unknown;
 ```
-
-Existing `lib/razorpay.ts` becomes the `razorpayGateway` implementation (wrapped, **not deleted**);
-new `lib/dodo.ts` is the `dodoGateway`. The route and webhook handlers depend only on the
-`PaymentGateway` interface + a shared `recordPayment` helper, never on a specific provider.
 
 ---
 
 ## 5. Data model change
 
-`board_payments` becomes gateway-agnostic so **both** providers write into the same table:
+`board_payments` becomes Dodo-native — Razorpay is dropped:
 
-- Rename `razorpay_payment_id` → `provider_payment_id` (unique index → `board_payments_provider_payment_id_idx`).
-- Add `provider` `text` (default `"razorpay"`) to tag each row's source.
-- Existing Razorpay rows are backfilled `provider='razorpay'` and keep their payment id (no data loss).
-
-The existing Razorpay webhook insert changes **one field name** (`razorpayPaymentId` →
-`providerPaymentId` + `provider: "razorpay"`); the Razorpay lib, button, and route are otherwise
-untouched.
+- Rename `razorpay_payment_id` → `payment_id` (unique index → `board_payments_payment_id_idx`).
+  Column name stays **generic** — no provider prefix, so a future provider swap needs no rename.
+- No `provider` column (single provider).
+- Existing Razorpay rows keep their id under `payment_id` (no data loss; historical rows are simply
+  legacy records).
 
 ```ts
 export const boardPayments = pgTable("board_payments", {
   id: uuid("id").defaultRandom().primaryKey(),
   listingId: uuid("listing_id").notNull().references(() => boardListings.id, { onDelete: "cascade" }),
   userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
-  provider: text("provider").notNull().default("razorpay"),
-  providerPaymentId: text("provider_payment_id").notNull(),
+  paymentId: text("payment_id").notNull(),
   amountPaise: bigint("amount_paise", { mode: "number" }).notNull(),
   status: text("status").notNull().default("captured"),
   capturedAt: timestamp("captured_at", { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => ({
-  providerPaymentIdUnique: uniqueIndex("board_payments_provider_payment_id_idx").on(table.providerPaymentId),
+  paymentIdUnique: uniqueIndex("board_payments_payment_id_idx").on(table.paymentId),
   listingIdIdx: index("board_payments_listing_id_idx").on(table.listingId),
   capturedAtIdx: index("board_payments_captured_at_idx").on(table.capturedAt),
 }));
@@ -301,58 +276,45 @@ export const boardPayments = pgTable("board_payments", {
 
 | Var | Required | Notes |
 |-----|----------|-------|
-| `PAYMENT_GATEWAY` | no | `razorpay` (default — current behavior) or `dodo`. Single switch for the whole flow. |
 | `BOARD_MIN_PAISE` | no | unchanged, default `9900` |
 | `CLIENT_BASE_URL` | no | base URL for Dodo `return_url`/`cancel_url`; default `http://localhost:5173` |
-| **Razorpay (kept)** | | |
-| `RAZORPAY_MODE` / `RAZORPAY_KEY_ID[_TEST|_LIVE]` / `RAZORPAY_KEY_SECRET[_TEST|_LIVE]` / `RAZORPAY_WEBHOOK_SECRET[_TEST|_LIVE]` | conditional | unchanged; required only when `PAYMENT_GATEWAY=razorpay` |
-| `VITE_RAZORPAY_PAYMENT_PAGE_URL` | conditional | unchanged |
-| **Dodo (new)** | | |
-| `DODO_PAYMENTS_API_KEY` | conditional | server-side secret; required only when `PAYMENT_GATEWAY=dodo` |
+| `DODO_PAYMENTS_API_KEY` | yes | server-side secret (test-mode in dev, live-mode in prod) |
 | `DODO_PAYMENTS_ENVIRONMENT` | no | `test_mode` (default in dev) / `live_mode` |
-| `DODO_PAYMENTS_WEBHOOK_KEY` | conditional | webhook signing secret |
-| `DODO_PRODUCT_ID` | conditional | PWYW one-time product id (`pdt_...`) |
+| `DODO_PAYMENTS_WEBHOOK_KEY` | yes | webhook signing secret |
+| `DODO_PRODUCT_ID` | yes | PWYW one-time product id (`pdt_...`) |
 
-Razorpay vars are **not removed** — they stay in `.env.example`, documented as "used when
-`PAYMENT_GATEWAY=razorpay`".
+All Razorpay vars (`RAZORPAY_*`, `VITE_RAZORPAY_PAYMENT_PAGE_URL`) are **removed** from `.env.example`.
 
 ---
 
 ## 7. Subtasks
 
-Each subtask is a self-contained chunk of **300–500 lines of code**, independently
-reviewable and shippable. Order matters: 1 → 2 → 3 → 4 → 5 → 6.
+Each subtask is a self-contained chunk of code, independently reviewable and shippable.
+Order matters: 1 → 2 → 3 → 4 → 5 → 6.
 
 ---
 
-### Subtask 1 — Gateway abstraction + Dodo lib (`~400 LOC`)
+### Subtask 1 — Dodo lib (`~250 LOC`)
 
 **Files**
-- `server/src/lib/payments.ts` (new, ~120 LOC) — `Provider`, `CreateOrderResult`, `PaymentGateway`, `getPaymentGateway()`
-- `server/src/lib/dodo.ts` (new, ~220 LOC) — client, checkout creation, webhook verify
-- `server/src/lib/razorpay.ts` (edit, ~30 LOC) — keep everything, add a `razorpayGateway: PaymentGateway` adapter wrapper at the bottom (no existing function removed)
+- `server/src/lib/dodo.ts` (new) — client, checkout creation, webhook verify
 - `server/package.json` (add `dodopayments` dependency)
 
 **Scope**
 1. Add `dodopayments` to `server` deps.
-2. `payments.ts`: define the shared `PaymentGateway` interface + `CreateOrderResult` union (§4.1).
-   `getPaymentGateway()` reads `PAYMENT_GATEWAY` and returns the matching implementation;
-   defaults to `razorpay` so nothing changes for existing deployments.
-3. `dodo.ts`:
+2. `dodo.ts`:
    - `getDodoEnvironment()` / `getDodoApiKey()` / `getDodoWebhookKey()` / `getDodoProductId()`
-     with per-mode override (`_TEST`/`_LIVE`) mirroring the Razorpay pattern.
+     from env.
    - Lazy singleton `getDodoClient()` (`bearerToken`, `environment`, `webhookKey`).
-   - `dodoGateway.createOrder({ listingId, amountPaise })` → `checkoutSessions.create` with
+   - `createDodoCheckout({ listingId, amountPaise })` → `checkoutSessions.create` with
      `product_cart: [{ product_id, quantity: 1, amount }]`, `metadata: { listingId }`,
      `return_url`/`cancel_url` from `CLIENT_BASE_URL`, `customization: { theme: "dark" }`,
-     `feature_flags: { redirect_immediately: true }`. Returns `{ provider: "dodo", checkoutUrl, sessionId, amountPaise, currency: "INR" }`.
+     `feature_flags: { redirect_immediately: true }`.
+     Returns `{ checkoutUrl, sessionId, amountPaise, currency: "INR" }`.
    - `verifyDodoWebhook(rawBody, headers)` → `client.webhooks.unwrap(...)`.
-4. `razorpay.ts`: wrap the **existing** `createRazorpayOrder` + `getKeyId` into
-   `razorpayGateway.createOrder` returning `{ provider: "razorpay", orderId, keyId, ... }`.
-   Do not remove `createRazorpayOrder`/`verifyWebhookSignature` (still used by the Razorpay webhook).
 
 **Acceptance**
-- `npm run lint` passes; `getPaymentGateway()` returns the correct impl for each `PAYMENT_GATEWAY`.
+- `npm run lint` passes.
 
 ---
 
@@ -360,145 +322,134 @@ reviewable and shippable. Order matters: 1 → 2 → 3 → 4 → 5 → 6.
 
 **Files**
 - `server/src/db/schema.ts` (edit board_payments block per §5)
-- `server/src/routes/board-webhook.ts` (edit Razorpay insert — field rename only)
 - `server/drizzle/0016_<name>.sql` + `meta/0016_snapshot.json` + `_journal.json` (generated)
 
 **Scope**
-1. Edit `board_payments`: rename `razorpayPaymentId` → `providerPaymentId`, add `provider`
-   (default `"razorpay"`), rename unique index.
-2. Update the Razorpay webhook `insert` to write `providerPaymentId` + `provider: "razorpay"`
-   instead of `razorpayPaymentId`. No other Razorpay logic changes.
-3. Run `npm run db:generate -w server`; inspect SQL so the rename is `ALTER TABLE ... RENAME COLUMN`
-   (if drop+add, add `UPDATE board_payments SET provider='razorpay'` backfill and preserve data).
-4. Backfill note: existing rows keep their id under `provider_payment_id`, `provider='razorpay'`.
-5. Verify `npm run db:migrate -w server` on a scratch DB.
+1. Edit `board_payments`: rename `razorpayPaymentId` → `paymentId` (column `payment_id`), rename
+   unique index to `board_payments_payment_id_idx`.
+2. Run `npm run db:generate -w server`; inspect SQL so the rename is `ALTER TABLE ... RENAME COLUMN`
+   (if drop+add, add `UPDATE board_payments` backfill to preserve data).
+3. Existing rows keep their id under `payment_id` (no data loss).
+4. Verify `npm run db:migrate -w server` on a scratch DB.
 
 **Acceptance**
-- Migration runs; existing Razorpay rows preserved; unique index on `provider_payment_id`.
+- Migration runs; existing rows preserved; unique index on `payment_id`.
 
 ---
 
-### Subtask 3 — Checkout creation endpoint (provider dispatch) (`~350 LOC`)
+### Subtask 3 — Checkout route + webhook handler (`~350 LOC`)
 
 **Files**
-- `server/src/routes/board.ts` (edit `POST /orders`, add `GET /gateway`, imports)
+- `server/src/routes/board.ts` (edit `POST /orders` to use Dodo)
+- `server/src/routes/board-webhook.ts` (replace `/razorpay` with `/dodo`)
+- `server/src/lib/razorpay.ts` (delete)
 
 **Scope**
-1. Replace the direct `createRazorpayOrder` call in `POST /orders` with `getPaymentGateway().createOrder(...)`,
-   returning the provider-tagged result (§4.1) to the client.
-2. Keep existing validation (`listingId` exists, `amountPaise` finite/int/`>= MIN_PAISE`) unchanged.
-3. Add `GET /api/board/gateway` → `{ provider }` so the client can pick a checkout button without
-   creating an order first.
-4. Map gateway errors to clean `{ error }` JSON (no stack leaks) — both providers.
-5. `getListingRank`/`bidExpr`/`paymentJoin` untouched (read `amount_paise` + `status`, unchanged).
+1. `POST /orders`: replace `createRazorpayOrder` with `createDodoCheckout`, returning
+   `{ checkoutUrl, sessionId }`. Keep validation (`listingId` exists, `amountPaise` finite/int/`>= MIN_PAISE`) unchanged.
+2. Map Dodo errors to clean `{ error }` JSON (no stack leaks).
+3. `board-webhook.ts`: replace the `/razorpay` handler with `/dodo`:
+   - Verify via `verifyDodoWebhook` (Standard Webhooks headers); on failure 400.
+   - Switch on `payload.type`: `payment.succeeded` → process; else `200 { status:"ignored" }`.
+   - Extract `data.payment_id`, `data.amount` (paise), `listingId` from `metadata.listingId`
+     (fallback: `GET /payments/{payment_id}` via SDK if metadata absent).
+   - Idempotent `insert ... onConflictDoNothing({ target: paymentId })`,
+     then `amountPaise >= MIN_PAISE` → `captured` + activate `pending_payment`; else `flagged`.
+4. `getListingRank`/`bidExpr`/`paymentJoin` untouched (read `amount_paise` + `status`, unchanged).
+5. Delete `server/src/lib/razorpay.ts`; remove its imports.
 
 **Acceptance**
-- `PAYMENT_GATEWAY=razorpay`: `POST /orders` returns `{ provider:"razorpay", orderId, keyId }`.
-- `PAYMENT_GATEWAY=dodo`: returns `{ provider:"dodo", checkoutUrl, sessionId }`.
-- `GET /gateway` reports the active provider.
+- `POST /orders` returns `{ checkoutUrl, sessionId }`; `dodo wh trigger payment.succeeded` creates a
+  `board_payments` row; replays don't duplicate.
 
 ---
 
-### Subtask 4 — Webhook handlers (both providers) (`~400 LOC`)
+### Subtask 4 — Client: Dodo checkout button (`~250 LOC`)
 
 **Files**
-- `server/src/routes/board-webhook.ts` (add `/dodo`, refactor shared capture logic)
-- `server/src/lib/payments.ts` (optional: `recordPayment` helper)
+- `client/src/components/board/DodoPayButton.tsx` (new)
+- `client/src/components/board/BoostModal.tsx` (edit — render `DodoPayButton`)
+- `client/src/lib/api.ts` (edit `createBoardOrder` return type)
+- `client/src/types.ts` (edit `BoardOrder` → `{ checkoutUrl, sessionId }`)
+- `client/src/components/board/RazorpayButton.tsx` (delete)
 
 **Scope**
-1. Keep the existing `/razorpay` handler as-is (signature verify → `payment.captured` → capture).
-2. Add `POST /dodo`: verify via `verifyDodoWebhook` (Standard Webhooks headers); on failure 400.
-3. Switch on `payload.type`: `payment.succeeded` → process; else `200 { status:"ignored" }`.
-4. Extract `data.payment_id`, `data.amount` (paise), `listingId` from `metadata.listingId`
-   (fallback: `GET /payments/{payment_id}` via SDK if metadata absent).
-5. Extract a shared `recordPayment({ provider, providerPaymentId, listingId, amountPaise })` helper
-   used by **both** handlers: idempotent `insert ... onConflictDoNothing({ target: providerPaymentId })`,
-   then `amountPaise >= MIN_PAISE` → `captured` + activate `pending_payment`; else `flagged`.
-6. Preserve existing `[board-webhook] ...` logging; tag with provider.
-
-**Acceptance**
-- Razorpay webhook still works end-to-end; `dodo wh trigger payment.succeeded` creates a
-  `board_payments` row with `provider='dodo'`; replays don't duplicate.
-
----
-
-### Subtask 5 — Client: dual checkout buttons + dispatch (`~450 LOC`)
-
-**Files**
-- `client/src/components/board/DodoPayButton.tsx` (new, ~150 LOC)
-- `client/src/components/board/PaymentButton.tsx` (new dispatcher, ~120 LOC)
-- `client/src/components/board/BoostModal.tsx` (edit — render `PaymentButton`)
-- `client/src/lib/api.ts` (edit `createBoardOrder` + add `getBoardGateway`)
-- `client/src/types.ts` (edit `BoardOrder` → provider-tagged union + `GatewayInfo`)
-- `client/src/components/board/RazorpayButton.tsx` (kept, **no deletion**)
-
-**Scope**
-1. `types.ts`: `BoardOrder` becomes the provider-tagged union matching server `CreateOrderResult`;
-   add `GatewayInfo = { provider: "razorpay" | "dodo" }`.
-2. `api.ts`: `createBoardOrder` returns the union; add `getBoardGateway()` → `GET /api/board/gateway`.
-3. `RazorpayButton.tsx`: keep exactly as-is (still loads checkout.js + opens modal).
-4. `DodoPayButton.tsx`: no script, no SDK — on click `createBoardOrder` → `window.open(checkoutUrl, "_blank")`;
-   same props/loading/error/styling as `RazorpayButton`.
-5. `PaymentButton.tsx`: on mount, `getBoardGateway()`; render `RazorpayButton` or `DodoPayButton`
-   accordingly. Handle unknown/loading/error provider states.
-6. `BoostModal.tsx`: swap `RazorpayButton` → `PaymentButton`; copy becomes gateway-neutral
+1. `types.ts`: `BoardOrder` becomes `{ checkoutUrl: string; sessionId: string; amountPaise: number; currency: string }`.
+2. `api.ts`: `createBoardOrder` returns the new shape.
+3. `DodoPayButton.tsx`: no script, no SDK — on click `createBoardOrder` → `window.open(checkoutUrl, "_blank")`;
+   loading/error styling matches the old `RazorpayButton`.
+4. `BoostModal.tsx`: swap `RazorpayButton` → `DodoPayButton`; copy becomes gateway-neutral
    ("A secure checkout opens. Complete the payment — we'll confirm automatically."). Polling unchanged.
+5. Delete `RazorpayButton.tsx`.
 
 **Acceptance**
-- With `PAYMENT_GATEWAY=razorpay` the modal checkout renders; with `dodo` the new-tab flow renders.
-  `npm run lint` passes.
+- Modal checkout renders; new-tab flow works; `npm run lint` passes.
 
 ---
 
-### Subtask 6 — Wiring, env, docs, reframing (`~350 LOC`)
+### Subtask 5 — Product reframing: UI + copy (`~250 LOC`)
 
 **Files**
-- `server/src/index.ts` (mount — confirm both webhook routes served; no raw-body change needed)
-- `.env.example` files (server + client) — add `PAYMENT_GATEWAY` + Dodo vars, keep Razorpay vars
-- `docs/ARCHITECTURE.md` — document dual-gateway flow, env switch, updated data-model + API tables
-- `client/src/content/staticPages.ts` — apply product reframing copy (§2.4)
+- `client/src/content/staticPages.ts` (terms + FAQ copy)
+- `client/src/components/board/*` (labels, aria text, verbs)
+- `client/src/views/` (route copy, page titles)
+- `docs/ARCHITECTURE.md` (user-facing "bidding board" → "sponsored board")
 
 **Scope**
-1. Confirm `/api/board/webhook` serves both `/razorpay` and `/dodo` (both under `express.raw`).
-2. Document all env vars (§6) in `.env.example`; **keep** Razorpay vars, mark them
-   "used when `PAYMENT_GATEWAY=razorpay`".
-3. Rewrite `ARCHITECTURE.md` payment-flow section to describe the gateway abstraction + switch.
-4. Apply §2.4 reframing to `staticPages.ts` (terms/FAQ: "bidding" → "sponsored placement").
-5. Run `npm run build` (client then server) and `npm run lint`.
+1. Apply the §2.4 mapping table end-to-end:
+   - "Bidding board" → "Sponsored board" / "Boost board" in labels + titles.
+   - Action verbs "Bid" → "Boost" / "Sponsor" only.
+   - Payment copy "bid" → "one-time placement fee" / "boost fee".
+   - Terms/FAQ "All bidding board payments are non-refundable" →
+     "Sponsored placement fees are non-refundable".
+   - Remove any "outbid / win / lose" language.
+2. Update aria-labels and alt text to match new copy.
+3. `docs/ARCHITECTURE.md`: rename "bidding board" → "sponsored board" where user-facing.
+4. Database/API identifiers (`/api/board`, `board_*`, `bidPaise`) stay internal — do not rename.
 
 **Acceptance**
-- Build + lint green; both gateways selectable purely via `PAYMENT_GATEWAY`; docs match code.
+- No user-facing "bidding"/"bid" language remains; `npm run lint` passes.
+
+---
+
+### Subtask 6 — Wiring, env, docs (`~250 LOC`)
+
+**Files**
+- `server/src/index.ts` (confirm webhook route served under `express.raw`)
+- `.env.example` files (server + client) — add Dodo vars, remove Razorpay vars
+- `docs/ARCHITECTURE.md` — document Dodo flow, updated data-model + API tables
+
+**Scope**
+1. Confirm `/api/board/webhook/dodo` is served under `express.raw`.
+2. Document all env vars (§6) in `.env.example`; **remove** Razorpay vars.
+3. Rewrite `ARCHITECTURE.md` payment-flow section to describe the Dodo integration.
+4. Run `npm run build` (client then server) and `npm run lint`.
+
+**Acceptance**
+- Build + lint green; docs match code.
 
 ---
 
 ## 8. Testing & rollout
 
-1. **Razorpay regression**: `PAYMENT_GATEWAY=razorpay` → full flow must behave exactly as today
-   (modal checkout, `/razorpay` webhook). This is the fallback path — test it first.
-2. **Dodo test mode**: create a Dodo test-mode PWYW product (min ₹99), set
-   `PAYMENT_GATEWAY=dodo` + `DODO_PAYMENTS_ENVIRONMENT=test_mode`, use Dodo test cards/UPI from
+1. **Dodo test mode**: create a Dodo test-mode PWYW product (min ₹99), set
+   `DODO_PAYMENTS_ENVIRONMENT=test_mode`, use Dodo test cards/UPI from
    `docs.dodopayments.com/miscellaneous/testing-process`.
-3. **Webhooks locally**: `dodo wh listen` (test-mode key) forwards real events to
+2. **Webhooks locally**: `dodo wh listen` (test-mode key) forwards real events to
    `http://localhost:3000/api/board/webhook/dodo`; `dodo wh trigger` for mock payloads (mock
    payloads are unsigned → use `unsafe_unwrap` only in a dev-only guard).
-4. **Switch test**: with the same listing, capture a payment on each gateway and confirm both rows
-   land in `board_payments` with the correct `provider`, and the listing activates/boosts identically.
-5. **End-to-end (dodo)**: create listing → Boost ₹150 → complete test checkout → `pending_payment`
+3. **End-to-end**: create listing → Boost ₹150 → complete test checkout → `pending_payment`
    → `active`, `bidPaise` increments, rank reorders.
-6. **Compliance gate**: only set `DODO_PAYMENTS_ENVIRONMENT=live_mode` (and `PAYMENT_GATEWAY=dodo`
-   in prod) after written approval from `compliance@dodopayments.com` (§2.2).
-7. **Rollback drill**: flip `PAYMENT_GATEWAY` back to `razorpay` and confirm instant reversion
-   with zero code changes.
+4. **Compliance gate**: only set `DODO_PAYMENTS_ENVIRONMENT=live_mode` after written approval from
+   `compliance@dodopayments.com` (§2.2).
 
 ## 9. Risks & mitigations
 
 | Risk | Mitigation |
 |------|------------|
 | Dodo compliance rejects "bidding" framing | Pre-approve with `compliance@`; market as "sponsored boost / placement fee" |
-| Dodo misbehaves in production | `PAYMENT_GATEWAY=razorpay` — one-env-var rollback, no deploy |
-| `metadata` not present on Dodo webhook payload | Fallback `GET /payments/{id}` in Subtask 4 |
-| INR e-mandate / UPI specifics differ from Razorpay | Follow `features/payment-methods/india`; keep `MIN_PAISE` floor |
+| `metadata` not present on Dodo webhook payload | Fallback `GET /payments/{id}` in Subtask 3 |
+| INR e-mandate / UPI specifics differ from current setup | Follow `features/payment-methods/india`; keep `MIN_PAISE` floor |
 | `checkout_url` reuse (24h expiry) | Generate fresh session per click; never cache |
-| Shared `provider_payment_id` collision across gateways | Ids are namespaced (`pay_...` vs `razorpay order id`); if ever ambiguous, switch unique index to `(provider, provider_payment_id)` |
-| MoR fees differ from Razorpay PG fees | Re-check `BOARD_MIN_PAISE` after seeing Dodo fee schedule |
-| Client/backend `PAYMENT_GATEWAY` drift | `GET /api/board/gateway` is the single source of truth for the UI |
+| MoR fees differ from previous Razorpay PG fees | Re-check `BOARD_MIN_PAISE` after seeing Dodo fee schedule |
+| Legacy Razorpay rows in `board_payments` | Preserved via rename; no data loss, treated as historical records |
