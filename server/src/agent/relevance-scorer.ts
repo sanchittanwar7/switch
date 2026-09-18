@@ -116,7 +116,7 @@ export function summarizeTopRoles(top: RankedRole[]): string {
   const lines = top.map((r) => {
     const pct = Math.round(r.normalizedScore * 100);
     const loc = r.location ? ` — ${r.location}` : "";
-    const link = r.url ? ` — ${r.url}` : "";
+    const link = r.url ? ` — [Job](${r.url})` : "";
     return `${r.rank}. **${r.title}**${loc} — ${pct}% match${link}`;
   });
   return `**Top matching roles:**\n\n${lines.join("\n")}`;
