@@ -17,6 +17,7 @@
     "@ai-sdk/openai": "^4.0.20",
     "@mozilla/readability": "^0.6.0",
     "@supabase/supabase-js": "^2.110.8",
+    "@typesafe-ai/sdk": "^0.6.0",
     "ai": "^7.0.37",
     "cors": "^2.8.5",
     "dodopayments": "^2.50.0",
