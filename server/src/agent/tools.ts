@@ -8,6 +8,14 @@ import { Readability } from "@mozilla/readability";
 import { db } from "../db";
 import { applications } from "../db/schema";
 import { eq, and, asc } from "drizzle-orm";
+import { isTypeSafeConfigured, describeTypeSafeError } from "../lib/typesafe";
+import { loadCandidateProfile, isProfileEmpty } from "./profile-loader";
+import {
+  scoreRolesForCandidate,
+  buildTopRoles,
+  summarizeTopRoles,
+  type OpenRole,
+} from "./relevance-scorer";
 
 export function createTools(userId: string, workspaceSubPath?: string) {
   const resolve = (relativePath: string) =>
@@ -69,7 +77,9 @@ export function createTools(userId: string, workspaceSubPath?: string) {
       },
     }),
     web_fetch: tool({
-      description: "Fetch a web page and return its main text content",
+      description:
+        "Fetch a URL and return its content. HTML pages are reduced to their main article text; " +
+        "JSON APIs (e.g. Greenhouse/Lever/Ashby/SmartRecruiters job boards) are returned as raw JSON.",
       inputSchema: z.object({
         url: z.string().describe("The URL to fetch"),
       }),
@@ -79,8 +89,12 @@ export function createTools(userId: string, workspaceSubPath?: string) {
           if (!response.ok) {
             return `Failed to fetch: HTTP ${response.status} ${response.statusText}`;
           }
-          const html = await response.text();
-          const dom = new JSDOM(html, { url });
+          const contentType = response.headers.get("content-type") ?? "";
+          const body = await response.text();
+          if (contentType.includes("application/json") || contentType.includes("+json")) {
+            return body;
+          }
+          const dom = new JSDOM(body, { url });
           const reader = new Readability(dom.window.document);
           const article = reader.parse();
           return article?.textContent || "Could not extract meaningful content from this page.";
@@ -124,6 +138,52 @@ export function createTools(userId: string, workspaceSubPath?: string) {
           return `Job added to wishlist: ${company} - ${role} (id: ${created.id})`;
         } catch (err) {
           return `Error adding job to wishlist: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
+      },
+    }),
+    rank_open_roles: tool({
+      description:
+        "Rank the company's open roles by how relevant the user's profile is to each role. " +
+        "Pass every role you found (with its JD text) and get back the top 5 ranked by relevance, " +
+        "formatted as a Markdown list. Use this after collecting the company's open roles from its " +
+        "ATS JSON API (or from search results if no ATS resolves).",
+      inputSchema: z.object({
+        jobs: z
+          .array(
+            z.object({
+              title: z.string().describe("Role title"),
+              location: z.string().optional().describe("Role location, e.g. 'Remote'"),
+              url: z.string().optional().describe("Link to the job posting"),
+              description: z.string().describe("The job description text"),
+            }),
+          )
+          .min(1)
+          .max(25)
+          .describe("Open roles with their job descriptions"),
+      }),
+      execute: async ({ jobs }) => {
+        if (!isTypeSafeConfigured()) {
+          return "TypeSafe AI is not configured. Set TYPESAFE_API_KEY in server/.env.";
+        }
+
+        const profile = await loadCandidateProfile(userId);
+        if (isProfileEmpty(profile)) {
+          return "Your profile is empty. Add location, work experience, skills, and projects in Profile first.";
+        }
+
+        try {
+          const roles: OpenRole[] = jobs.map((j, i) => ({
+            id: `job_${i}`,
+            title: j.title,
+            location: j.location,
+            url: j.url,
+            description: j.description,
+          }));
+          const ranked = await scoreRolesForCandidate(profile, roles);
+          const top = buildTopRoles(ranked, 5);
+          return summarizeTopRoles(top);
+        } catch (err) {
+          return `Could not rank roles: ${describeTypeSafeError(err)}`;
         }
       },
     }),

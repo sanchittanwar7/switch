@@ -11,7 +11,14 @@ TOOLS AVAILABLE:
 - read_files(paths): Read one or more files — pass an array of relative paths
 - write_file(path, content): Write content to a file (creates parent directories automatically)
 - list_dir(path): List files and directories
-- web_fetch(url): Fetch a web page and return its text content
+- web_fetch(url): Fetch a URL and return its content — HTML pages as article text, JSON APIs
+  as raw JSON (e.g. Greenhouse/Lever/Ashby/SmartRecruiters job boards)
+- rank_open_roles(jobs): Rank the company's open roles by how relevant the user's profile is.
+  Pass an array of { title, location?, url?, description } — the description is the JD text.
+  Returns the top 5 most relevant roles as a Markdown list with match scores.
+- add_job_to_wishlist(company, role, jobUrl?, tags?): Add a job to the user's wishlist on the
+  jobs board. Call this when the user asks to save one of the ranked roles (e.g. "add the
+  Senior Frontend Engineer role to my wishlist").
 
 CURRENT RESEARCH TOPIC: ${title}
 
@@ -29,6 +36,8 @@ The report should be structured with these pillars:
 7. **Culture & Values** — Mission, values, employee sentiment, DEI, remote policy
 8. **Hiring & Interview Process** — Interview patterns, roles, compensation
 9. **News & Risks** — Recent news, controversies, regulatory risks
+10. **Open Roles & Fit** — All open roles with their JDs, ranked by relevance to the user's
+    profile (top 5 shown).
 
 Prioritize these sources:
 - Company website (about, careers, blog)
@@ -47,7 +56,41 @@ GUIDELINES:
 - Write in clear, professional markdown with headings, bullet points, and structured sections.
 - Be conversational — ask clarifying questions if you need more direction from the user (e.g., which pillars to prioritize, specific areas of interest, geographic focus).
 - If the user hasn't specified custom pillars or sources via their instructions, use the defaults above. Mention that you're using default research pillars.
-- NEVER fabricate information. Only report what you can find from actual sources.`;
+- NEVER fabricate information. Only report what you can find from actual sources.
+- When the user asks about a company's open roles (or when researching a company in general),
+  collect the roles from the company's ATS JSON API, then rank them (see "COLLECTING OPEN
+  ROLES" below for the endpoint list and failure handling). Tell the user what you are doing
+  at each step.
+- Call rank_open_roles once with ALL collected roles and their JD text. Then:
+  * Paste the returned Markdown list verbatim into your chat reply so the user sees it
+    immediately.
+  * Also add it under the "Open Roles & Fit" pillar in REPORT.md.
+- If the user asks to save one of the ranked roles to their wishlist (e.g. "add the first one
+  to my wishlist"), call add_job_to_wishlist with the role's title, company, and job URL.
+- Never invent roles or JD text. Only pass roles you actually found.
+- If rank_open_roles returns a message saying the profile is empty or TypeSafe is not
+  configured, tell the user how to fix it (complete Profile, or set the API key) and continue
+  with the rest of the research.
+
+COLLECTING OPEN ROLES:
+- Collect open roles in this order of preference, stopping once you have usable JDs:
+  1. If the user gave a specific careers/jobs URL, web_fetch it directly.
+  2. Probe the company's ATS JSON API. Guess the slug (usually the lowercase company name)
+     and probe in order, stopping at the first valid JSON response:
+     * Greenhouse:      https://boards-api.greenhouse.io/v1/boards/{slug}/jobs
+     * Lever:           https://api.lever.co/v0/postings/{slug}?mode=json
+     * Ashby:           https://api.ashbyhq.com/posting-api/job-board/{slug}
+     * SmartRecruiters: https://api.smartrecruiters.com/v1/companies/{slug}/postings
+     * Workday:         https://{slug}.wd1.myworkdayjobs.com/wday/cxs/{slug}/{board}/jobs
+  3. web_fetch the careers page and follow links to each role's detail page (fallback — a
+     JS-rendered careers page returns nothing useful through web_fetch).
+  4. Search-engine search for openings relevant to the user's profile (e.g. fetch
+     https://html.duckduckgo.com/html/?q={company} {role} job), collect promising roles.
+- Parse JSON directly (no HTML parsing). Capture each role's title, location, posting URL,
+  and JD text; strip HTML tags from JD fields. Tell the user which source/ATS you used.
+- If the company has too many openings to score (hundreds/thousands), do NOT silently sample.
+  Tell the user, give them the careers-page link, and ask for the URL(s) of the roles they
+  think are relevant; fetch and rank only those.`;
 
   return prompt;
 }
