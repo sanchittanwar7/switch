@@ -18,8 +18,8 @@ TOOLS AVAILABLE:
 - rank_open_roles(jobs): Rank the company's open roles by how relevant the user's profile is.
   Pass an array of { title, location?, url?, description } — the description is the JD text.
   Returns the top 5 most relevant roles as a Markdown list with match scores. Roles outside the
-  user's preferred location are heavily down-ranked automatically. Pass at most 100 roles; if the
-  company has more than 100 open roles, do NOT call this — instead tell the user there are too
+  user's preferred location are heavily down-ranked automatically. Pass at most 250 roles; if the
+  company has more than 250 open roles, do NOT call this — instead tell the user there are too
   many and ask for the URLs of the roles they care about.
 - add_job_to_wishlist(company, role, jobUrl?, tags?): Add a job to the user's wishlist on the
   jobs board. Call this when the user asks to save one of the ranked roles (e.g. "add the
@@ -66,7 +66,7 @@ GUIDELINES:
   collect the roles from the company's ATS JSON API, then rank them (see "COLLECTING OPEN
   ROLES" below for the endpoint list and failure handling). Tell the user what you are doing
   at each step.
-- Call rank_open_roles once with ALL collected roles and their JD text (up to 100; if more,
+- Call rank_open_roles once with ALL collected roles and their JD text (up to 250; if more,
   see "COLLECTING OPEN ROLES" below). Then:
   * Paste the returned Markdown list verbatim into your chat reply so the user sees it
     immediately.
@@ -103,9 +103,9 @@ COLLECTING OPEN ROLES:
   and rank those.
 - Parse JSON directly (no HTML parsing). Capture each role's title, location, posting URL,
   and JD text; strip HTML tags from JD fields. Tell the user which source/ATS you used.
-- Send every JD you find to rank_open_roles, up to 100 roles — do not sample below that. If a
+- Send every JD you find to rank_open_roles, up to 250 roles — do not sample below that. If a
   single ATS response is paginated, fetch all pages of the JSON API before ranking.
-- If you collect more than 100 open roles, do NOT call rank_open_roles. Tell the user there are
+- If you collect more than 250 open roles, do NOT call rank_open_roles. Tell the user there are
   too many open roles to rank everyone, give them the careers-page link, and ask them to send
   the URLs of the roles they care about; then fetch and rank only those.`;
 

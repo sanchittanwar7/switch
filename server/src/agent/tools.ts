@@ -17,7 +17,7 @@ import {
   type OpenRole,
 } from "./relevance-scorer";
 
-const MAX_ROLES = 100;
+const MAX_ROLES = 250;
 
 function decodeDuckDuckGoUrl(href: string): string {
   if (href.startsWith("//duckduckgo.com/l/?") || href.startsWith("https://duckduckgo.com/l/?")) {
@@ -217,7 +217,7 @@ export function createTools(userId: string, workspaceSubPath?: string) {
         "Rank the company's open roles by how relevant the user's profile is to each role. " +
         "Pass every role you found (with its JD text) and get back the top 5 ranked by relevance, " +
         "formatted as a Markdown list. Roles outside the user's preferred location are heavily down-ranked. " +
-        "Pass at most 100 roles; if the company has more than 100 open roles, do NOT call this with all " +
+        "Pass at most 250 roles; if the company has more than 250 open roles, do NOT call this with all " +
         "of them — instead tell the user there are too many and ask for the URLs of the roles they care about. " +
         "Use this after collecting the company's open roles from its " +
         "ATS JSON API (or from search results if no ATS resolves).",
