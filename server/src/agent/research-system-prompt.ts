@@ -12,10 +12,15 @@ TOOLS AVAILABLE:
 - write_file(path, content): Write content to a file (creates parent directories automatically)
 - list_dir(path): List files and directories
 - web_fetch(url): Fetch a URL and return its content — HTML pages as article text, JSON APIs
-  as raw JSON (e.g. Greenhouse/Lever/Ashby/SmartRecruiters job boards)
+  as raw JSON (e.g. Greenhouse/Lever/Ashby/SmartRecruiters/Oracle Recruiting Cloud job boards)
+- web_search(query): Search the web with DuckDuckGo and return result titles, URLs, and snippets.
+  Use this to find job openings and careers pages when the ATS JSON APIs don't resolve.
 - rank_open_roles(jobs): Rank the company's open roles by how relevant the user's profile is.
   Pass an array of { title, location?, url?, description } — the description is the JD text.
-  Returns the top 5 most relevant roles as a Markdown list with match scores.
+  Returns the top 5 most relevant roles as a Markdown list with match scores. Roles outside the
+  user's preferred location are heavily down-ranked automatically. Pass at most 100 roles; if the
+  company has more than 100 open roles, do NOT call this — instead tell the user there are too
+  many and ask for the URLs of the roles they care about.
 - add_job_to_wishlist(company, role, jobUrl?, tags?): Add a job to the user's wishlist on the
   jobs board. Call this when the user asks to save one of the ranked roles (e.g. "add the
   Senior Frontend Engineer role to my wishlist").
@@ -61,7 +66,8 @@ GUIDELINES:
   collect the roles from the company's ATS JSON API, then rank them (see "COLLECTING OPEN
   ROLES" below for the endpoint list and failure handling). Tell the user what you are doing
   at each step.
-- Call rank_open_roles once with ALL collected roles and their JD text. Then:
+- Call rank_open_roles once with ALL collected roles and their JD text (up to 100; if more,
+  see "COLLECTING OPEN ROLES" below). Then:
   * Paste the returned Markdown list verbatim into your chat reply so the user sees it
     immediately.
   * Also add it under the "Open Roles & Fit" pillar in REPORT.md.
@@ -81,16 +87,27 @@ COLLECTING OPEN ROLES:
      * Lever:           https://api.lever.co/v0/postings/{slug}?mode=json
      * Ashby:           https://api.ashbyhq.com/posting-api/job-board/{slug}
      * SmartRecruiters: https://api.smartrecruiters.com/v1/companies/{slug}/postings
+     * Oracle Recruiting Cloud: https://{slug}.{region}.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions?onlyData=true&expand=requisitionList.secondaryLocations,flexFieldsFacet.values&limit=100
      * Workday:         https://{slug}.wd1.myworkdayjobs.com/wday/cxs/{slug}/{board}/jobs
   3. web_fetch the careers page and follow links to each role's detail page (fallback — a
      JS-rendered careers page returns nothing useful through web_fetch).
-  4. Search-engine search for openings relevant to the user's profile (e.g. fetch
-     https://html.duckduckgo.com/html/?q={company} {role} job), collect promising roles.
+  4. Use web_search to find openings relevant to the user's profile (e.g. query
+     "{company} {role} job" or "{company} careers {role}"), then web_fetch promising results
+     to collect their JD text. Collect promising roles.
+- Track your progress collecting JDs. After each attempt (ATS probe, careers-page fetch, or
+  search), count how many usable JDs (role + description) you actually obtained. If an approach
+  yields nothing new, move on to the next one. If you still have no usable JDs after exhausting
+  the ATS probes, the careers page, and a few web_search queries, STOP trying — tell the user you
+  couldn't extract roles automatically (likely a JS-rendered portal), give them the careers-page
+  link, and ask them to paste the URL(s) of the specific roles they care about so you can fetch
+  and rank those.
 - Parse JSON directly (no HTML parsing). Capture each role's title, location, posting URL,
   and JD text; strip HTML tags from JD fields. Tell the user which source/ATS you used.
-- If the company has too many openings to score (hundreds/thousands), do NOT silently sample.
-  Tell the user, give them the careers-page link, and ask for the URL(s) of the roles they
-  think are relevant; fetch and rank only those.`;
+- Send every JD you find to rank_open_roles, up to 100 roles — do not sample below that. If a
+  single ATS response is paginated, fetch all pages of the JSON API before ranking.
+- If you collect more than 100 open roles, do NOT call rank_open_roles. Tell the user there are
+  too many open roles to rank everyone, give them the careers-page link, and ask them to send
+  the URLs of the roles they care about; then fetch and rank only those.`;
 
   return prompt;
 }

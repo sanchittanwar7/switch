@@ -38,7 +38,7 @@ export interface RelevanceResult {
   rubric: string[];
 }
 
-const MAX_DESCRIPTION_CHARS = 4000;
+const MAX_DESCRIPTION_CHARS = 10000;
 
 function truncate(role: OpenRole): OpenRole {
   if (role.description.length <= MAX_DESCRIPTION_CHARS) return role;
@@ -50,8 +50,11 @@ function buildQuestions(roles: OpenRole[]) {
   roles.forEach((_, i) => {
     questions[`job_${i}`] = score(
       `How relevant is the candidate's profile to the job described in \`jobs[${i}]\`? ` +
-        `Consider required skills, seniority, domain, and (when stated) the role's location ` +
-        `against the candidate's location preference.`,
+        `Consider required skills, seniority, and domain. ` +
+        `Location is a hard filter: if the role's location is incompatible with the candidate's ` +
+        `preferred location (city, country, or remote), rate "No overlap" (the lowest level) ` +
+        `regardless of how well the skills match. Only weigh skill/domain/seniority fit once the ` +
+        `location is compatible.`,
       RUBRIC,
     );
   });

@@ -17,6 +17,22 @@ import {
   type OpenRole,
 } from "./relevance-scorer";
 
+const MAX_ROLES = 100;
+
+function decodeDuckDuckGoUrl(href: string): string {
+  if (href.startsWith("//duckduckgo.com/l/?") || href.startsWith("https://duckduckgo.com/l/?")) {
+    const match = href.match(/[?&]uddg=([^&]+)/);
+    if (match) {
+      try {
+        return decodeURIComponent(match[1]);
+      } catch {
+        return href;
+      }
+    }
+  }
+  return href;
+}
+
 export function createTools(userId: string, workspaceSubPath?: string) {
   const resolve = (relativePath: string) =>
     resolvePath(workspaceSubPath ? path.join(workspaceSubPath, relativePath) : relativePath, userId);
@@ -79,7 +95,7 @@ export function createTools(userId: string, workspaceSubPath?: string) {
     web_fetch: tool({
       description:
         "Fetch a URL and return its content. HTML pages are reduced to their main article text; " +
-        "JSON APIs (e.g. Greenhouse/Lever/Ashby/SmartRecruiters job boards) are returned as raw JSON.",
+        "JSON APIs (e.g. Greenhouse/Lever/Ashby/SmartRecruiters/Oracle Recruiting Cloud job boards) are returned as raw JSON.",
       inputSchema: z.object({
         url: z.string().describe("The URL to fetch"),
       }),
@@ -100,6 +116,61 @@ export function createTools(userId: string, workspaceSubPath?: string) {
           return article?.textContent || "Could not extract meaningful content from this page.";
         } catch (err) {
           return `Error fetching ${url}: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
+      },
+    }),
+    web_search: tool({
+      description:
+        "Search the web with DuckDuckGo and return the top results (title, URL, snippet). " +
+        "Use this to find job openings, careers pages, and other leads when the ATS JSON APIs " +
+        "don't resolve.",
+      inputSchema: z.object({
+        query: z.string().describe("The search query"),
+        maxResults: z
+          .number()
+          .int()
+          .min(1)
+          .max(20)
+          .optional()
+          .describe("Max results to return (default 10)"),
+      }),
+      execute: async ({ query, maxResults = 10 }) => {
+        try {
+          const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
+          const response = await fetch(url, {
+            headers: {
+              "User-Agent":
+                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+            },
+          });
+          if (!response.ok) {
+            return `Search failed: HTTP ${response.status} ${response.statusText}`;
+          }
+          const body = await response.text();
+          const dom = new JSDOM(body);
+          const doc = dom.window.document;
+          const results: { title: string; url: string; snippet: string }[] = [];
+          doc.querySelectorAll(".result").forEach((result) => {
+            const link = result.querySelector(".result__a");
+            const snippetEl = result.querySelector(".result__snippet");
+            if (!link) return;
+            const title = link.textContent?.trim() ?? "";
+            const url = decodeDuckDuckGoUrl(link.getAttribute("href") ?? "");
+            const snippet = snippetEl?.textContent?.trim() ?? "";
+            if (title && url) results.push({ title, url, snippet });
+          });
+          const sliced = results.slice(0, maxResults);
+          if (sliced.length === 0) {
+            return "No search results found.";
+          }
+          return sliced
+            .map(
+              (r, i) =>
+                `${i + 1}. ${r.title}\n   ${r.url}${r.snippet ? `\n   ${r.snippet}` : ""}`,
+            )
+            .join("\n\n");
+        } catch (err) {
+          return `Error searching: ${err instanceof Error ? err.message : "Unknown error"}`;
         }
       },
     }),
@@ -145,7 +216,10 @@ export function createTools(userId: string, workspaceSubPath?: string) {
       description:
         "Rank the company's open roles by how relevant the user's profile is to each role. " +
         "Pass every role you found (with its JD text) and get back the top 5 ranked by relevance, " +
-        "formatted as a Markdown list. Use this after collecting the company's open roles from its " +
+        "formatted as a Markdown list. Roles outside the user's preferred location are heavily down-ranked. " +
+        "Pass at most 100 roles; if the company has more than 100 open roles, do NOT call this with all " +
+        "of them — instead tell the user there are too many and ask for the URLs of the roles they care about. " +
+        "Use this after collecting the company's open roles from its " +
         "ATS JSON API (or from search results if no ATS resolves).",
       inputSchema: z.object({
         jobs: z
@@ -158,7 +232,6 @@ export function createTools(userId: string, workspaceSubPath?: string) {
             }),
           )
           .min(1)
-          .max(25)
           .describe("Open roles with their job descriptions"),
       }),
       execute: async ({ jobs }) => {
@@ -166,19 +239,24 @@ export function createTools(userId: string, workspaceSubPath?: string) {
           return "TypeSafe AI is not configured. Set TYPESAFE_API_KEY in server/.env.";
         }
 
+        if (jobs.length > MAX_ROLES) {
+          return `There are ${jobs.length} open roles, which is more than I can rank at once (max ${MAX_ROLES}). Please pick the roles you care about and send me their job posting URLs, and I'll fetch and rank just those.`;
+        }
+
         const profile = await loadCandidateProfile(userId);
         if (isProfileEmpty(profile)) {
           return "Your profile is empty. Add location, work experience, skills, and projects in Profile first.";
         }
 
+        const roles: OpenRole[] = jobs.map((j, i) => ({
+          id: `job_${i}`,
+          title: j.title,
+          location: j.location,
+          url: j.url,
+          description: j.description,
+        }));
+
         try {
-          const roles: OpenRole[] = jobs.map((j, i) => ({
-            id: `job_${i}`,
-            title: j.title,
-            location: j.location,
-            url: j.url,
-            description: j.description,
-          }));
           const ranked = await scoreRolesForCandidate(profile, roles);
           const top = buildTopRoles(ranked, 5);
           return summarizeTopRoles(top);
