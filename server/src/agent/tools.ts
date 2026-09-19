@@ -5,6 +5,7 @@ import path from "path";
 import { getWorkspaceRoot, resolvePath } from "../utils/paths";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
+import { tavily } from "@tavily/core";
 import { db } from "../db";
 import { applications } from "../db/schema";
 import { eq, and, asc } from "drizzle-orm";
@@ -155,20 +156,6 @@ async function updateRoleSourceMemory(
   });
 }
 
-function decodeDuckDuckGoUrl(href: string): string {
-  if (href.startsWith("//duckduckgo.com/l/?") || href.startsWith("https://duckduckgo.com/l/?")) {
-    const match = href.match(/[?&]uddg=([^&]+)/);
-    if (match) {
-      try {
-        return decodeURIComponent(match[1]);
-      } catch {
-        return href;
-      }
-    }
-  }
-  return href;
-}
-
 export function createTools(userId: string, workspaceSubPath?: string) {
   const resolve = (relativePath: string) =>
     resolvePath(workspaceSubPath ? path.join(workspaceSubPath, relativePath) : relativePath, userId);
@@ -307,11 +294,11 @@ export function createTools(userId: string, workspaceSubPath?: string) {
     }),
     web_search: tool({
       description:
-        "Search the web with DuckDuckGo and return the top results (title, URL, snippet). " +
+        "Search the web with Tavily and return the top results (title, URL, snippet). " +
         "Use this to find job openings, careers pages, and other leads when the ATS JSON APIs " +
         "don't resolve.",
       inputSchema: z.object({
-        query: z.string().describe("The search query"),
+        query: z.string().max(400).describe("The search query"),
         maxResults: z
           .number()
           .int()
@@ -321,38 +308,23 @@ export function createTools(userId: string, workspaceSubPath?: string) {
           .describe("Max results to return (default 10)"),
       }),
       execute: async ({ query, maxResults = 10 }) => {
+        const apiKey = process.env.TAVILY_API_KEY;
+        if (!apiKey) {
+          return "Web search is unavailable. Set TAVILY_API_KEY in server/.env.";
+        }
+
         try {
-          const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-          const response = await fetch(url, {
-            headers: {
-              "User-Agent":
-                "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-            },
+          const response = await tavily({ apiKey }).search(query, {
+            maxResults,
+            searchDepth: "basic",
           });
-          if (!response.ok) {
-            return `Search failed: HTTP ${response.status} ${response.statusText}`;
-          }
-          const body = await response.text();
-          const dom = new JSDOM(body);
-          const doc = dom.window.document;
-          const results: { title: string; url: string; snippet: string }[] = [];
-          doc.querySelectorAll(".result").forEach((result) => {
-            const link = result.querySelector(".result__a");
-            const snippetEl = result.querySelector(".result__snippet");
-            if (!link) return;
-            const title = link.textContent?.trim() ?? "";
-            const url = decodeDuckDuckGoUrl(link.getAttribute("href") ?? "");
-            const snippet = snippetEl?.textContent?.trim() ?? "";
-            if (title && url) results.push({ title, url, snippet });
-          });
-          const sliced = results.slice(0, maxResults);
-          if (sliced.length === 0) {
+          if (response.results.length === 0) {
             return "No search results found.";
           }
-          return sliced
+          return response.results
             .map(
               (r, i) =>
-                `${i + 1}. ${r.title}\n   ${r.url}${r.snippet ? `\n   ${r.snippet}` : ""}`,
+                `${i + 1}. ${r.title}\n   ${r.url}${r.content ? `\n   ${r.content}` : ""}`,
             )
             .join("\n\n");
         } catch (err) {
