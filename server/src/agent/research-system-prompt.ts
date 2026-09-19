@@ -15,7 +15,7 @@ TOOLS AVAILABLE:
   as raw JSON. Do not use this to fetch a recognized hosted ATS board.
 - fetch_ats_jobs(sourceUrl): Given a hosted ATS URL found in web_search results or supplied by the
   user, derive its documented JSON endpoint and return raw jobs JSON. Supports Ashby, Greenhouse,
-  Lever, SmartRecruiters, and Workday. Use this instead of web_fetch for those ATS URLs.
+  Lever, Recruitee, SmartRecruiters, and Workday. Use this instead of web_fetch for those ATS URLs.
 - web_search(query): Search the web with Tavily and return result titles, URLs, and snippets.
   Use one targeted, high-coverage query per research group whenever possible, then fetch relevant result URLs.
 - read_company_role_sources(): Read shared global company-role-sources.json of verified company
@@ -107,7 +107,7 @@ COLLECTING OPEN ROLES:
      relevant role families and skills, location preference, and common careers/ATS terms. This
      search must be based on the structured profile, not guessed job titles or ATS details.
   3. Inspect returned URLs and domains to determine whether the company uses a recognized hosted ATS
-     (such as Greenhouse, Lever, Ashby, Workday, SmartRecruiters, or Oracle) or a self-hosted
+     (such as Greenhouse, Lever, Ashby, Recruitee, Workday, SmartRecruiters, or Oracle) or a self-hosted
      company careers page. Only make this conclusion from returned URLs, page titles, snippets, or
      URLs supplied by the user.
   4. For a recognized hosted ATS result, call fetch_ats_jobs with its exact discovered URL before

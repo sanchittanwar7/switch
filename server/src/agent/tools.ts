@@ -183,6 +183,13 @@ function getAtsJsonApi(sourceUrl: string): { provider: string; url: string } | n
     };
   }
 
+  if (host.endsWith(".recruitee.com")) {
+    return {
+      provider: "Recruitee",
+      url: `https://${source.hostname}/api/offers/`,
+    };
+  }
+
   if (host === "jobs.smartrecruiters.com" && pathParts[0]) {
     return {
       provider: "SmartRecruiters",
@@ -341,7 +348,7 @@ export function createTools(userId: string, workspaceSubPath?: string) {
       description:
         "Fetch raw job JSON from a recognized hosted ATS using a board URL discovered through web_search or supplied by the user. " +
         "Derives a documented API endpoint from that exact URL; it never guesses an ATS vendor, company slug, or board name. " +
-        "Use instead of web_fetch for Ashby, Greenhouse, Lever, SmartRecruiters, and Workday board URLs.",
+        "Use instead of web_fetch for Ashby, Greenhouse, Lever, Recruitee, SmartRecruiters, and Workday board URLs.",
       inputSchema: z.object({
         sourceUrl: z.string().url().describe("Discovered hosted ATS board or job URL"),
       }),
