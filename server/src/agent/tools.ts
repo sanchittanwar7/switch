@@ -2,7 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import fs from "fs/promises";
 import path from "path";
-import { resolvePath } from "../utils/paths";
+import { getWorkspaceRoot, resolvePath } from "../utils/paths";
 import { JSDOM } from "jsdom";
 import { Readability } from "@mozilla/readability";
 import { db } from "../db";
@@ -18,6 +18,142 @@ import {
 } from "./relevance-scorer";
 
 const MAX_ROLES = 250;
+const ROLE_SOURCE_MEMORY_FILE = "company-role-sources.json";
+const LEGACY_ROLE_SOURCE_MEMORY_FILE = "memory.md";
+const ROLE_SOURCE_ROW = /^\|\s*(.*?)\s*\|\s*(https?:\/\/[^|]+?)\s*\|\s*$/i;
+
+let roleSourceMemoryLock = Promise.resolve();
+
+type RoleSourceMemory = Record<string, { company: string; url: string; updatedAt: string }>;
+
+function normalizeCompanyName(company: string): string {
+  return company.replace(/[|\r\n]/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function getRoleSourceMemoryPath(): string {
+  return path.join(getWorkspaceRoot(), ROLE_SOURCE_MEMORY_FILE);
+}
+
+function getLegacyRoleSourceMemoryPath(): string {
+  return path.join(getWorkspaceRoot(), LEGACY_ROLE_SOURCE_MEMORY_FILE);
+}
+
+function getCompanyKey(company: string): string {
+  return normalizeCompanyName(company).toLocaleLowerCase();
+}
+
+async function withRoleSourceMemoryLock<T>(action: () => Promise<T>): Promise<T> {
+  const previous = roleSourceMemoryLock;
+  let release!: () => void;
+  roleSourceMemoryLock = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+
+  await previous;
+  try {
+    return await action();
+  } finally {
+    release();
+  }
+}
+
+function parseRoleSourceMemory(content: string): RoleSourceMemory {
+  const parsed: unknown = JSON.parse(content);
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Global company role-source memory must be a JSON object");
+  }
+
+  const memory: RoleSourceMemory = {};
+  for (const [key, entry] of Object.entries(parsed)) {
+    if (
+      !entry ||
+      typeof entry !== "object" ||
+      !("company" in entry) ||
+      !("url" in entry) ||
+      !("updatedAt" in entry) ||
+      typeof entry.company !== "string" ||
+      typeof entry.url !== "string" ||
+      typeof entry.updatedAt !== "string"
+    ) {
+      throw new Error(`Invalid global company role-source memory entry: ${key}`);
+    }
+    memory[key] = entry;
+  }
+  return memory;
+}
+
+async function readRoleSourceMemory(): Promise<RoleSourceMemory> {
+  try {
+    return parseRoleSourceMemory(await fs.readFile(getRoleSourceMemoryPath(), "utf-8"));
+  } catch (err) {
+    if (!(err instanceof Error && "code" in err && err.code === "ENOENT")) {
+      throw err;
+    }
+
+    try {
+      const legacyContent = await fs.readFile(getLegacyRoleSourceMemoryPath(), "utf-8");
+      const memory: RoleSourceMemory = {};
+      for (const line of legacyContent.split("\n")) {
+        const match = line.match(ROLE_SOURCE_ROW);
+        if (!match) continue;
+        const company = normalizeCompanyName(match[1]);
+        if (!company) continue;
+        memory[getCompanyKey(company)] = {
+          company,
+          url: match[2].trim(),
+          updatedAt: new Date().toISOString(),
+        };
+      }
+      await writeRoleSourceMemory(memory);
+      await fs.unlink(getLegacyRoleSourceMemoryPath());
+      return memory;
+    } catch (legacyErr) {
+      if (legacyErr instanceof Error && "code" in legacyErr && legacyErr.code === "ENOENT") {
+        const memory: RoleSourceMemory = {};
+        await writeRoleSourceMemory(memory);
+        return memory;
+      }
+      throw legacyErr;
+    }
+  }
+}
+
+async function writeRoleSourceMemory(memory: RoleSourceMemory): Promise<void> {
+  const memoryPath = getRoleSourceMemoryPath();
+  await fs.mkdir(path.dirname(memoryPath), { recursive: true });
+  const tempPath = `${memoryPath}.${process.pid}.${Date.now()}.tmp`;
+  await fs.writeFile(tempPath, `${JSON.stringify(memory, null, 2)}\n`, "utf-8");
+  await fs.rename(tempPath, memoryPath);
+}
+
+async function updateRoleSourceMemory(
+  company: string,
+  url?: string,
+): Promise<{ action: "added" | "updated" | "removed" | "not_found"; company: string }> {
+  const normalizedCompany = normalizeCompanyName(company);
+  if (!normalizedCompany) {
+    throw new Error("Company name is required");
+  }
+
+  return withRoleSourceMemoryLock(async () => {
+    const memory = await readRoleSourceMemory();
+    const key = getCompanyKey(normalizedCompany);
+
+    if (!url) {
+      if (!memory[key]) {
+        return { action: "not_found", company: normalizedCompany };
+      }
+      delete memory[key];
+      await writeRoleSourceMemory(memory);
+      return { action: "removed", company: normalizedCompany };
+    }
+
+    const action = memory[key] ? "updated" : "added";
+    memory[key] = { company: normalizedCompany, url, updatedAt: new Date().toISOString() };
+    await writeRoleSourceMemory(memory);
+    return { action, company: normalizedCompany };
+  });
+}
 
 function decodeDuckDuckGoUrl(href: string): string {
   if (href.startsWith("//duckduckgo.com/l/?") || href.startsWith("https://duckduckgo.com/l/?")) {
@@ -38,6 +174,56 @@ export function createTools(userId: string, workspaceSubPath?: string) {
     resolvePath(workspaceSubPath ? path.join(workspaceSubPath, relativePath) : relativePath, userId);
 
   return {
+    read_company_role_sources: tool({
+      description:
+        "Read shared global company-role-sources.json containing reliable company careers and ATS URLs. " +
+        "Call before searching for a company's open roles; entries are available to every user.",
+      inputSchema: z.object({}),
+      execute: async () => {
+        try {
+          return JSON.stringify(await withRoleSourceMemoryLock(readRoleSourceMemory), null, 2);
+        } catch (err) {
+          return `Error reading global company role-source memory: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
+      },
+    }),
+    save_company_role_source: tool({
+      description:
+        "Save a verified, reliable official careers or ATS URL for a company in shared global company-role-sources.json. " +
+        "Replaces any existing URL for that company, so use after finding a new source or refreshing a stale one.",
+      inputSchema: z.object({
+        company: z.string().describe("Company name"),
+        url: z
+          .string()
+          .url()
+          .refine((value) => value.startsWith("http://") || value.startsWith("https://"), "URL must use HTTP(S)")
+          .describe("Verified official careers page or ATS endpoint URL"),
+      }),
+      execute: async ({ company, url }) => {
+        try {
+          const result = await updateRoleSourceMemory(company, url);
+          return `Global company role-source memory ${result.action}: ${result.company} -> ${url}`;
+        } catch (err) {
+          return `Error saving global company role-source memory: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
+      },
+    }),
+    remove_company_role_source: tool({
+      description:
+        "Remove a stale or invalid company careers or ATS URL from shared global company-role-sources.json. " +
+        "Call as soon as a cached URL is stale; save a replacement separately if you find one.",
+      inputSchema: z.object({
+        company: z.string().describe("Company name"),
+      }),
+      execute: async ({ company }) => {
+        try {
+          const result = await updateRoleSourceMemory(company);
+          return `Global company role-source memory ${result.action}: ${result.company}`;
+        } catch (err) {
+          return `Error removing global company role-source memory: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
+      },
+    }),
     read_files: tool({
       description: "Read one or more files from the workspace directory. Returns content for each file.",
       inputSchema: z.object({
