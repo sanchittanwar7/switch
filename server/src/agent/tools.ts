@@ -156,6 +156,50 @@ async function updateRoleSourceMemory(
   });
 }
 
+function getAtsJsonApi(sourceUrl: string): { provider: string; url: string } | null {
+  const source = new URL(sourceUrl);
+  const host = source.hostname.toLowerCase();
+  const pathParts = source.pathname.split("/").filter(Boolean);
+
+  if (host === "jobs.ashbyhq.com" && pathParts[0]) {
+    return {
+      provider: "Ashby",
+      url: `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(pathParts[0])}`,
+    };
+  }
+
+  if (host === "boards.greenhouse.io" && pathParts[0]) {
+    return {
+      provider: "Greenhouse",
+      url: `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(pathParts[0])}/jobs`,
+    };
+  }
+
+  if (host === "jobs.lever.co" && pathParts[0]) {
+    return {
+      provider: "Lever",
+      url: `https://api.lever.co/v0/postings/${encodeURIComponent(pathParts[0])}?mode=json`,
+    };
+  }
+
+  if (host === "jobs.smartrecruiters.com" && pathParts[0]) {
+    return {
+      provider: "SmartRecruiters",
+      url: `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(pathParts[0])}/postings`,
+    };
+  }
+
+  if (host.endsWith(".myworkdayjobs.com") && pathParts[1]) {
+    const company = host.split(".")[0];
+    return {
+      provider: "Workday",
+      url: `https://${source.hostname}/wday/cxs/${encodeURIComponent(company)}/${encodeURIComponent(pathParts[1])}/jobs`,
+    };
+  }
+
+  return null;
+}
+
 export function createTools(userId: string, workspaceSubPath?: string) {
   const resolve = (relativePath: string) =>
     resolvePath(workspaceSubPath ? path.join(workspaceSubPath, relativePath) : relativePath, userId);
@@ -164,7 +208,7 @@ export function createTools(userId: string, workspaceSubPath?: string) {
     read_company_role_sources: tool({
       description:
         "Read shared global company-role-sources.json containing reliable company careers and ATS URLs. " +
-        "Call before searching for a company's open roles; entries are available to every user.",
+        "Use after web discovery to corroborate or refresh a verified official role source; entries are available to every user.",
       inputSchema: z.object({}),
       execute: async () => {
         try {
@@ -268,7 +312,7 @@ export function createTools(userId: string, workspaceSubPath?: string) {
     web_fetch: tool({
       description:
         "Fetch a URL and return its content. HTML pages are reduced to their main article text; " +
-        "JSON APIs (e.g. Greenhouse/Lever/Ashby/SmartRecruiters/Oracle Recruiting Cloud job boards) are returned as raw JSON.",
+        "JSON APIs are returned as raw JSON. Do not use this for a recognized hosted ATS board; use fetch_ats_jobs instead.",
       inputSchema: z.object({
         url: z.string().describe("The URL to fetch"),
       }),
@@ -292,11 +336,36 @@ export function createTools(userId: string, workspaceSubPath?: string) {
         }
       },
     }),
+    fetch_ats_jobs: tool({
+      description:
+        "Fetch raw job JSON from a recognized hosted ATS using a board URL discovered through web_search or supplied by the user. " +
+        "Derives a documented API endpoint from that exact URL; it never guesses an ATS vendor, company slug, or board name. " +
+        "Use instead of web_fetch for Ashby, Greenhouse, Lever, SmartRecruiters, and Workday board URLs.",
+      inputSchema: z.object({
+        sourceUrl: z.string().url().describe("Discovered hosted ATS board or job URL"),
+      }),
+      execute: async ({ sourceUrl }) => {
+        try {
+          const api = getAtsJsonApi(sourceUrl);
+          if (!api) {
+            return "Unsupported ATS URL. Fetch the discovered page directly and follow its official job links.";
+          }
+
+          const response = await fetch(api.url);
+          if (!response.ok) {
+            return `Failed to fetch ${api.provider} JSON API: HTTP ${response.status} ${response.statusText}`;
+          }
+
+          return `${api.provider} JSON API: ${api.url}\n\n${await response.text()}`;
+        } catch (err) {
+          return `Error fetching ATS jobs: ${err instanceof Error ? err.message : "Unknown error"}`;
+        }
+      },
+    }),
     web_search: tool({
       description:
         "Search the web with Tavily and return the top results (title, URL, snippet). " +
-        "Use this to find job openings, careers pages, and other leads when the ATS JSON APIs " +
-        "don't resolve.",
+        "Use focused, high-coverage queries to discover sources, then fetch relevant result URLs before reporting facts.",
       inputSchema: z.object({
         query: z.string().max(400).describe("The search query"),
         maxResults: z
@@ -369,6 +438,13 @@ export function createTools(userId: string, workspaceSubPath?: string) {
           return `Error adding job to wishlist: ${err instanceof Error ? err.message : "Unknown error"}`;
         }
       },
+    }),
+    get_candidate_profile: tool({
+      description:
+        "Return the user's structured candidate profile: location preferences, work experience, skills, and projects. " +
+        "Call before searching for open roles so the search query targets the user's relevant roles and locations.",
+      inputSchema: z.object({}),
+      execute: async () => JSON.stringify(await loadCandidateProfile(userId), null, 2),
     }),
     rank_open_roles: tool({
       description:
