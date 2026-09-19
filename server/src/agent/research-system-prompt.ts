@@ -133,7 +133,10 @@ COLLECTING OPEN ROLES:
   single ATS response is paginated, fetch all pages of the JSON API before ranking.
 - If you collect more than 250 open roles, do NOT call rank_open_roles. Tell the user there are
   too many open roles to rank everyone, give them the careers-page link, and ask them to send
-  the URLs of the roles they care about; then fetch and rank only those.`;
+  the URLs of the roles they care about; then fetch and rank only those.
+- If fetch_ats_jobs reports an oversized response, do not retry its board endpoint or use web_fetch
+  on its HTML board. Tell the user to share hand-picked job URLs or JD content, then fetch and rank
+  only those.`;
 
   return prompt;
 }

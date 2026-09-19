@@ -19,6 +19,7 @@ import {
 } from "./relevance-scorer";
 
 const MAX_ROLES = 250;
+const MAX_ATS_RESULT_CHARS = 200_000;
 const ROLE_SOURCE_MEMORY_FILE = "company-role-sources.json";
 const LEGACY_ROLE_SOURCE_MEMORY_FILE = "memory.md";
 const ROLE_SOURCE_ROW = /^\|\s*(.*?)\s*\|\s*(https?:\/\/[^|]+?)\s*\|\s*$/i;
@@ -356,7 +357,12 @@ export function createTools(userId: string, workspaceSubPath?: string) {
             return `Failed to fetch ${api.provider} JSON API: HTTP ${response.status} ${response.statusText}`;
           }
 
-          return `${api.provider} JSON API: ${api.url}\n\n${await response.text()}`;
+          const body = await response.text();
+          if (body.length > MAX_ATS_RESULT_CHARS) {
+            return `Too many open roles to process automatically: the ${api.provider} response is ${body.length.toLocaleString()} characters, exceeding the ${MAX_ATS_RESULT_CHARS.toLocaleString()}-character limit. Please share hand-picked job URLs or job-description content, and I will fetch and rank those roles against your profile.`;
+          }
+
+          return `${api.provider} JSON API: ${api.url}\n\n${body}`;
         } catch (err) {
           return `Error fetching ATS jobs: ${err instanceof Error ? err.message : "Unknown error"}`;
         }
