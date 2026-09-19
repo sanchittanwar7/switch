@@ -13,7 +13,7 @@ TOOLS AVAILABLE:
 - list_dir(path): List files and directories
 - web_fetch(url): Fetch a URL and return its content — HTML pages as article text, JSON APIs
   as raw JSON (e.g. Greenhouse/Lever/Ashby/SmartRecruiters/Oracle Recruiting Cloud job boards)
-- web_search(query): Search the web with DuckDuckGo and return result titles, URLs, and snippets.
+- web_search(query): Search the web with Tavily and return result titles, URLs, and snippets.
   Use this to find job openings and careers pages when the ATS JSON APIs don't resolve.
 - read_company_role_sources(): Read shared global company-role-sources.json of verified company
   careers and ATS URLs.
