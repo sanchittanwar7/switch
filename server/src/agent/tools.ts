@@ -1,6 +1,7 @@
 import { tool } from "ai";
 import { z } from "zod";
 import fs from "fs/promises";
+import os from "os";
 import path from "path";
 import { getWorkspaceRoot, resolvePath } from "../utils/paths";
 import { JSDOM } from "jsdom";
@@ -17,6 +18,12 @@ import {
   summarizeTopRoles,
   type OpenRole,
 } from "./relevance-scorer";
+import {
+  normalizeProfileTerms,
+  retrieveAtsCandidates,
+} from "./ats-candidate-retrieval";
+import { ATS_PROVIDERS, getAtsJsonApi } from "./ats-url";
+import { truncateWebFetchResult } from "./tool-output";
 
 const MAX_ROLES = 250;
 const MAX_ATS_RESULT_CHARS = 200_000;
@@ -157,57 +164,6 @@ async function updateRoleSourceMemory(
   });
 }
 
-function getAtsJsonApi(sourceUrl: string): { provider: string; url: string } | null {
-  const source = new URL(sourceUrl);
-  const host = source.hostname.toLowerCase();
-  const pathParts = source.pathname.split("/").filter(Boolean);
-
-  if (host === "jobs.ashbyhq.com" && pathParts[0]) {
-    return {
-      provider: "Ashby",
-      url: `https://api.ashbyhq.com/posting-api/job-board/${encodeURIComponent(pathParts[0])}`,
-    };
-  }
-
-  if (host === "boards.greenhouse.io" && pathParts[0]) {
-    return {
-      provider: "Greenhouse",
-      url: `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(pathParts[0])}/jobs`,
-    };
-  }
-
-  if (host === "jobs.lever.co" && pathParts[0]) {
-    return {
-      provider: "Lever",
-      url: `https://api.lever.co/v0/postings/${encodeURIComponent(pathParts[0])}?mode=json`,
-    };
-  }
-
-  if (host.endsWith(".recruitee.com")) {
-    return {
-      provider: "Recruitee",
-      url: `https://${source.hostname}/api/offers/`,
-    };
-  }
-
-  if (host === "jobs.smartrecruiters.com" && pathParts[0]) {
-    return {
-      provider: "SmartRecruiters",
-      url: `https://api.smartrecruiters.com/v1/companies/${encodeURIComponent(pathParts[0])}/postings`,
-    };
-  }
-
-  if (host.endsWith(".myworkdayjobs.com") && pathParts[1]) {
-    const company = host.split(".")[0];
-    return {
-      provider: "Workday",
-      url: `https://${source.hostname}/wday/cxs/${encodeURIComponent(company)}/${encodeURIComponent(pathParts[1])}/jobs`,
-    };
-  }
-
-  return null;
-}
-
 export function createTools(userId: string, workspaceSubPath?: string) {
   const resolve = (relativePath: string) =>
     resolvePath(workspaceSubPath ? path.join(workspaceSubPath, relativePath) : relativePath, userId);
@@ -333,14 +289,18 @@ export function createTools(userId: string, workspaceSubPath?: string) {
           const contentType = response.headers.get("content-type") ?? "";
           const body = await response.text();
           if (contentType.includes("application/json") || contentType.includes("+json")) {
-            return body;
+            return truncateWebFetchResult(body);
           }
           const dom = new JSDOM(body, { url });
           const reader = new Readability(dom.window.document);
           const article = reader.parse();
-          return article?.textContent || "Could not extract meaningful content from this page.";
+          return truncateWebFetchResult(
+            article?.textContent || "Could not extract meaningful content from this page.",
+          );
         } catch (err) {
-          return `Error fetching ${url}: ${err instanceof Error ? err.message : "Unknown error"}`;
+          return truncateWebFetchResult(
+            `Error fetching ${url}: ${err instanceof Error ? err.message : "Unknown error"}`,
+          );
         }
       },
     }),
@@ -348,30 +308,69 @@ export function createTools(userId: string, workspaceSubPath?: string) {
       description:
         "Fetch raw job JSON from a recognized hosted ATS using a board URL discovered through web_search or supplied by the user. " +
         "Derives a documented API endpoint from that exact URL; it never guesses an ATS vendor, company slug, or board name. " +
-        "Use instead of web_fetch for Ashby, Greenhouse, Lever, Recruitee, SmartRecruiters, and Workday board URLs.",
+        "Use instead of web_fetch for Ashby, Greenhouse, Lever, Recruitee, SmartRecruiters, and Workday board URLs. " +
+        "For a custom careers domain, pass atsProvider only when the discovered URL or page content provides evidence for that provider; the tool verifies the hinted API and reports a failed hunch. " +
+        "For oversized responses, pass 1-20 profile-grounded role, skill, domain, or location phrases in profileTerms so complete candidate records can be retrieved.",
       inputSchema: z.object({
-        sourceUrl: z.string().url().describe("Discovered hosted ATS board or job URL"),
+        sourceUrl: z.string().url().max(4096).describe("Discovered hosted ATS board or job URL"),
+        profileTerms: z
+          .array(z.string().max(80))
+          .min(1)
+          .max(20)
+          .optional()
+          .describe("Profile-grounded role, skill, domain, and location phrases for oversized ATS responses"),
+        atsProvider: z
+          .enum(ATS_PROVIDERS)
+          .optional()
+          .describe("ATS provider verified from the discovered URL or page content, used for custom careers domains"),
       }),
-      execute: async ({ sourceUrl }) => {
+      execute: async ({ sourceUrl, profileTerms, atsProvider }) => {
         try {
-          const api = getAtsJsonApi(sourceUrl);
+          const api = getAtsJsonApi(sourceUrl, atsProvider);
           if (!api) {
-            return "Unsupported ATS URL. Fetch the discovered page directly and follow its official job links.";
+            return atsProvider
+              ? `Could not verify the ${atsProvider} ATS hint from this URL. Fetch the discovered page and use only provider evidence it contains.`
+              : "Unsupported ATS URL. Fetch the discovered page directly and follow its official job links.";
           }
 
           const response = await fetch(api.url);
           if (!response.ok) {
+            if (atsProvider) {
+              return `Could not verify the ${atsProvider} ATS hint: its derived JSON API returned HTTP ${response.status} ${response.statusText}.`;
+            }
             return `Failed to fetch ${api.provider} JSON API: HTTP ${response.status} ${response.statusText}`;
           }
 
           const body = await response.text();
           if (body.length > MAX_ATS_RESULT_CHARS) {
-            return `Too many open roles to process automatically: the ${api.provider} response is ${body.length.toLocaleString()} characters, exceeding the ${MAX_ATS_RESULT_CHARS.toLocaleString()}-character limit. Please share hand-picked job URLs or job-description content, and I will fetch and rank those roles against your profile.`;
+            const tempDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "switch-ats-"));
+            try {
+              const filePath = path.join(tempDirectory, "jobs.json");
+              await fs.writeFile(filePath, body, "utf8");
+
+              let payload: unknown;
+              try {
+                payload = JSON.parse(await fs.readFile(filePath, "utf8"));
+              } catch {
+                return "Could not parse the ATS JSON response. Please share job URLs or job-description text instead.";
+              }
+
+              const terms = normalizeProfileTerms(profileTerms);
+              if (terms.length === 0) {
+                return "This ATS response is too large for raw output. Call get_candidate_profile, then retry with 1-20 specific profile-grounded profileTerms.";
+              }
+
+              const prefix = `${api.provider} JSON API: ${api.url}\n\nThis careers board returned a large number of openings. I narrowed complete job records using the candidate profile. These records are a subset, not an exhaustive result.\n\n`;
+              const result = retrieveAtsCandidates(payload, terms, MAX_ATS_RESULT_CHARS - prefix.length);
+              return `${prefix}${result.text}`;
+            } finally {
+              await fs.rm(tempDirectory, { recursive: true, force: true });
+            }
           }
 
           return `${api.provider} JSON API: ${api.url}\n\n${body}`;
-        } catch (err) {
-          return `Error fetching ATS jobs: ${err instanceof Error ? err.message : "Unknown error"}`;
+        } catch {
+          return "Error fetching ATS jobs.";
         }
       },
     }),
